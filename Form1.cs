@@ -1822,8 +1822,8 @@ namespace FunctionGrapher2._0
                 for (int i = start, j = -1; ; i--)
                 { if (RecoverMultiply.IsClose(input[i])) j = i; else if (RecoverMultiply.IsOpen(input[i])) return (i, j); }
             }
-            static int pairedInnerBra(ReadOnlySpan<char> input, int start) { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
-
+            static int pairedInnerBra(ReadOnlySpan<char> input, int start)
+            { for (int i = start + 1; ; i++) if (RecoverMultiply.IsClose(input[i])) return i; }
             (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, start);
         } // Backward lookup for parenthesis pairs
         public static bool CheckParenthesis(ReadOnlySpan<char> input)
