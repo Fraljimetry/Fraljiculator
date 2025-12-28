@@ -1873,7 +1873,7 @@ namespace FunctionGrapher2._0
                 i = endIndex;
             }
             return result.ToString();
-        } // To prevent the interior ',' from interfering the exterior splitting
+        } // To prevent the interior ',' from interfering with exterior splitting
         private static string[] ReplaceRecover(string input)
             => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
         protected static string ReplaceSubstrings(string input, List<string> substrings, string substitution)
@@ -3195,4 +3195,5 @@ namespace FunctionGrapher2._0
         public readonly TEntry _const = _const;
         public readonly Matrix<TEntry> matrix = matrix;
     } /// Constant matrices for recycling
+
 }
