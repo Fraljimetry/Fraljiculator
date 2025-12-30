@@ -3196,6 +3196,3 @@ namespace FunctionGrapher2._0
         public readonly Matrix<TEntry> matrix = matrix;
     } /// Constant matrices for recycling
 }
-
-
-
