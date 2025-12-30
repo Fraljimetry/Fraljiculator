@@ -1,6 +1,4 @@
-/// DATE: 2023.4~5, 2024.9~11, 2025.1
-/// DESIGNER: Fraljimetry
-/// PRECISION: System.Single (float)
+/// DATE: 2023.4~5, 2024.9~11, 2025.1, DESIGNER: Fraljimetry, PRECISION: System.Single (float)
 
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
@@ -34,7 +32,7 @@ namespace FunctionGrapher2._0
             CONTROL_GRAY = Argb(105, 105, 105), GRID_GRAY = Argb(75, 255, 255, 255), READONLY_GRAY = Color.Gainsboro,
             UPPER_GOLD = Color.Gold, LOWER_BLUE = Color.RoyalBlue, ZERO_BLUE = Color.Lime, POLE_PURPLE = Color.Magenta;
 
-        private static float scaling_factor, title_elapsed, pause_pos, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
+        private static float scale_factor, title_elapsed, pause_pos, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
         private static readonly float GRID_WIDTH_1 = 3f, GRID_WIDTH_2 = 2f, CURVE_WIDTH_LIMIT = 20f, STRIDE = 0.25f, MOD = 0.25f,
             ARG = MathF.PI / 12, STRIDE_REAL = 1, EPS_REAL = 0.015f, EPS_COMPLEX = 0.015f, SIZE_REAL = 0.5f, DECAY = 0.2f, DEPTH = 2,
             CURVE_WIDTH = 5, INCREMENT = 0.01f, TITLE = 0.01f;
@@ -68,7 +66,7 @@ namespace FunctionGrapher2._0
         public Graph()
         {
             InitializeComponent();
-            SetTitleBarColor(); ReduceFontSizeByScale(this, ref scaling_factor);
+            SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor);
             InitializeMusicPlayer(); InitializeClickSound(); AttachClickEvents(this);
             InitializeTimers(); InitializeGraphics();
             InitializeCombo(); InitializeData();
@@ -100,8 +98,7 @@ namespace FunctionGrapher2._0
         { if (stream != null) setUpStream(stream); else GetMusicClickErrorBox(message); }
         private void InitializeMusicPlayer() => InitializeMusicClick(GetStream("bgm"), MUSIC, soundStream =>
         {
-            MediaPlayer = new();
-            // Saving the stream to a temp file, since Windows Media Player cannot play directly from the stream
+            MediaPlayer = new(); // Saving the stream to a temp file, since WMP cannot play directly from the stream
             string tempFile = Path.Combine(Path.GetTempPath(), $"{TEMP_BGM_NAME}.wav");
             using FileStream fileStream = new(tempFile, FileMode.Create, FileAccess.Write); // "using" should not be removed
             soundStream.CopyTo(fileStream);
@@ -233,8 +230,7 @@ namespace FunctionGrapher2._0
         public static extern bool HideCaret(IntPtr hWnd); // Also used for Message Boxes
         protected override void WndProc(ref Message m) // Window Procedure
         {
-            const int WM_NCLBTNDOWN = 0x00A1; // Window Message, Non-Client Left Button Down
-            const int HTCAPTION = 0x0002; // Hit Test Caption
+            const int WM_NCLBTNDOWN = 0x00A1, HTCAPTION = 0x0002; //Window Message, Non-Client Left Button, Hit Test
             if (m.Msg == WM_NCLBTNDOWN && m.WParam.ToInt32() == HTCAPTION) return; // Preventing dragging the title bar
             base.WndProc(ref m);
         } // Overriding WndProc to customize window behavior
@@ -286,7 +282,7 @@ namespace FunctionGrapher2._0
         private static void DrawAxesGrids(int[] borders)
         {
             bdp_painted = true; // To prevent calling Graph_Paint afterwards
-            var (xStart, yStart, xEnd, yEnd) = (AddOne(borders[0]), AddOne(borders[2]), borders[1], borders[3]);
+            var (xInit, yInit, xEnd, yEnd) = (AddOne(borders[0]), AddOne(borders[2]), borders[1], borders[3]);
             static float calculateGrid(float range) => MathF.Pow(GRID, MathF.Floor(MathF.Log(range / 2, GRID)));
             var (xGrid, yGrid) = (calculateGrid(Get_Row()), calculateGrid(-Get_Column())); // Remind the minus sign
 
@@ -296,20 +292,20 @@ namespace FunctionGrapher2._0
                 RealComplex.For((int)MathF.Floor(scopes[3] / yGrid), (int)MathF.Ceiling(scopes[2] / yGrid), i =>
                 {
                     int pos = LinearTransformY(i * yGrid, borders);
-                    if (pos >= yStart && pos < yEnd) graphics.DrawLine(gridPen, xStart, pos, xEnd, pos);
+                    if (pos >= yInit && pos < yEnd) graphics.DrawLine(gridPen, xInit, pos, xEnd, pos);
                 });
                 RealComplex.For((int)MathF.Floor(scopes[0] / xGrid), (int)MathF.Ceiling(scopes[1] / xGrid), i =>
                 {
                     int pos = LinearTransformX(i * xGrid, borders);
-                    if (pos >= xStart && pos < xEnd) graphics.DrawLine(gridPen, pos, yEnd, pos, yStart);
+                    if (pos >= xInit && pos < xEnd) graphics.DrawLine(gridPen, pos, yEnd, pos, yInit);
                 });
             }
             drawGrids(xGrid, yGrid, GRID_WIDTH_1);
             drawGrids(xGrid / GRID, yGrid / GRID, GRID_WIDTH_2);
 
             var (x, y) = (LinearTransformX(0f, borders), LinearTransformY(0f, borders)); // Should not write "0.0" or "0"
-            if (y >= yStart && y < yEnd) graphics.DrawLine(AXES_PEN, xStart, y, xEnd, y);
-            if (x >= xStart && x < xEnd) graphics.DrawLine(AXES_PEN, x, yEnd, x, yStart);
+            if (y >= yInit && y < yEnd) graphics.DrawLine(AXES_PEN, xInit, y, xEnd, y);
+            if (x >= xInit && x < xEnd) graphics.DrawLine(AXES_PEN, x, yEnd, x, yInit);
         }
         private static void DrawBackdropAxesGrids(int[] borders, bool isMain, bool IsFrozen = false)
         {
@@ -362,10 +358,11 @@ namespace FunctionGrapher2._0
         {
             var (rows, columns) = (GetRow(borders), GetColumn(borders));
             var (xCoor, yCoor) = (GetMatrix(rows, columns), GetMatrix(rows, columns));
-            var (xStart, yStart, _x, _y) = (AddOne(borders[0]), AddOne(borders[2]), GetRatioRow(borders), GetRatioColumn(borders));
-            Parallel.For(0, rows, p => {
-                float* xPtr = xCoor.RowPtr(p), yPtr = yCoor.RowPtr(p); int _xStart = xStart + p, _yStart = yStart; // Must NOT be pre-defined
-                for (int q = 0; q < columns; q++, xPtr++, yPtr++, _yStart++) (*xPtr, *yPtr) = LinearTransform(_xStart, _yStart, _x, _y, borders);
+            var (xInit, yInit, _x, _y) = (AddOne(borders[0]), AddOne(borders[2]), GetRatioRow(borders), GetRatioColumn(borders));
+            Parallel.For(0, rows, p =>
+            {
+                float* xPtr = xCoor.RowPtr(p), yPtr = yCoor.RowPtr(p); int _xInit = xInit + p, _yInit = yInit; // Must NOT be pre-defined
+                for (int q = 0; q < columns; q++, xPtr++, yPtr++, _yInit++) (*xPtr, *yPtr) = LinearTransform(_xInit, _yInit, _x, _y, borders);
             });
             return (rows, columns, xCoor, yCoor);
         }
@@ -377,7 +374,8 @@ namespace FunctionGrapher2._0
         private unsafe static void ClearBitmap(Bitmap bmp)
         {
             var (bpp, bmpData) = GetBppBmpData(bmp); var pixelPtr = (byte*)bmpData.Scan0 + bpp - 1;
-            Parallel.For(0, rectangle.Height, y => {
+            Parallel.For(0, rectangle.Height, y =>
+            {
                 byte* _pixelPtr = pixelPtr + y * bmpData.Stride;
                 for (int x = 0; x < rectangle.Width; x++, _pixelPtr += bpp) *_pixelPtr = 0; // It suffices to set color.A to zero
             }); // Deliberate loop order
@@ -398,13 +396,13 @@ namespace FunctionGrapher2._0
         private unsafe static void LoopBase(Action<int, int, IntPtr> pixelLoop)
         {
             Bitmap bmp = GetBitmap(is_main); var (bpp, bmpData) = GetBppBmpData(bmp);
-            var (xStart, yStart) = (AddOne(borders[0]), AddOne(borders[2])); var (xLength, yLength) = (borders[1] - xStart, borders[3] - yStart);
+            var (xInit, yInit) = (AddOne(borders[0]), AddOne(borders[2])); var (xLen, yLen) = (borders[1] - xInit, borders[3] - yInit);
             try
             {
-                Parallel.For(0, yLength, y =>
+                Parallel.For(0, yLen, y =>
                 {
-                    var pixelPtr = (IntPtr)((byte*)bmpData.Scan0 + (yStart + y) * bmpData.Stride + xStart * bpp);
-                    for (int x = 0; x < xLength; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr);
+                    var pixelPtr = (IntPtr)((byte*)bmpData.Scan0 + (yInit + y) * bmpData.Stride + xInit * bpp);
+                    for (int x = 0; x < xLen; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr);
                 }); // Deliberate loop order
             }
             finally { bmp.UnlockBits(bmpData); }
@@ -451,7 +449,8 @@ namespace FunctionGrapher2._0
                 2 => (Color.Black, Color.White),
                 3 => (LOWER_BLUE, UPPER_GOLD)
             };
-            bool draw = mode == 1 ? (MathF.Min(LowerDist(v1, s1), LowerDist(v2, s2)) < epsilon) : (LowerIdx(v1, s1) + LowerIdx(v2, s2)) % 2 == 0;
+            bool draw = mode == 1 ? MathF.Min(LowerDist(v1, s1), LowerDist(v2, s2)) < epsilon
+                : (LowerIdx(v1, s1) + LowerIdx(v2, s2)) % 2 == 0;
             return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
         };
         private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? c => ObtainColorWheel(c, alpha: 1) : _value =>
@@ -629,7 +628,7 @@ namespace FunctionGrapher2._0
         private void DisplayIterateLoop(string[] split)
         {
             var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
-            int int3 = RealSub.ToInt(split[3]), int4 = (int)MathF.Max(int3, RealSub.ToInt(split[4])), _int = is_checking ? int3 : int4; // Necessary
+            int int3 = RealSub.ToInt(split[3]), int4 = (int)MathF.Max(int3, RealSub.ToInt(split[4])), _int = is_checking ? int3 : int4;
             string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops);
             string obtainDisplayInput(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(5, loops) : defaultInput;
 
@@ -1692,8 +1691,7 @@ namespace FunctionGrapher2._0
         private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
             FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
             FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-
-        private static float scaling_factor;
+        private static float scale_factor;
         private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
         private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
         private static bool is_resized;
@@ -1756,7 +1754,7 @@ namespace FunctionGrapher2._0
             SetUpButton(width, height, btnColor, btnTxtColor);
             Controls.Add(txtMessage); Controls.Add(btnOk);
 
-            Graph.ReduceFontSizeByScale(this, ref scaling_factor);
+            Graph.ReduceFontSizeByScale(this, ref scale_factor);
             KeyPreview = true; KeyDown += new(Form_KeyDown);
         }
         private static void Display(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
@@ -1779,7 +1777,7 @@ namespace FunctionGrapher2._0
     /// </summary>
     public class MyString
     {
-        private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; } // Cannot use foreach
+        private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; }
         public static readonly string[] FUNC_NAMES = AddSuffix(["func", "Func", "polar", "Polar", "param", "Param"]);
         public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]);
         private static readonly List<string> CONFUSION = ["zeta", "Zeta"];
@@ -1824,6 +1822,7 @@ namespace FunctionGrapher2._0
             }
             static int pairedInnerBra(ReadOnlySpan<char> input, int start)
             { for (int i = start + 1; ; i++) if (RecoverMultiply.IsClose(input[i])) return i; }
+
             (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, start);
         } // Backward lookup for parenthesis pairs
         public static bool CheckParenthesis(ReadOnlySpan<char> input)
@@ -1852,7 +1851,8 @@ namespace FunctionGrapher2._0
                     _subStr.AsSpan().CopyTo(span[_start..]); // Copying the substitution
                     _origStr.AsSpan(_end + 1).CopyTo(span[(_start + _subStr.Length)..]); // Copying the remaining
                 });
-        public static string ReplaceLoop(string[] split, int origIdx, int subIdx, int i) => split[origIdx].Replace(split[subIdx], WrapBase(i, '(', ')'));
+        public static string ReplaceLoop(string[] split, int origIdx, int subIdx, int i)
+            => split[origIdx].Replace(split[subIdx], WrapBase(i, '(', ')'));
         protected static string ReplaceInput(string input, ref int countBra, int idx, int end, bool isComplex)
             => Replace(input, WrapBase(countBra++, '[', ']'), idx - (isComplex ? 2 : (RealComplex.IJ_.Contains(input[idx - 1]) ? 3 : 2)), end);
         protected static void ReplaceInput(ref string input, ref int countBra, ref int start, int end, ref int tagL)
@@ -1924,33 +1924,36 @@ namespace FunctionGrapher2._0
         protected static readonly float GAMMA = 0.57721566f;
         protected static readonly int THRESHOLD = 10, STEP = 1; // THRESHOLD: breaking long expressions; STEP: copying pattern
         public static readonly string SUB_CHARS = ":;", IJ_ = String.Concat(I_, J_);
-        protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', CB = '{', _D_ = '$', E = 'e', E_ = 'E', _F = 'f', F_ = 'F', _F_ = '!',
-            G = 'g', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l', M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'p',
-            P_ = 'P', _Q = 'q', _R = 'r', _S = 's', S_ = 'S', SB = '[', SP = '#', _T = 't', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'Z';
+        protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', CB = '{', _D_ = '$', E = 'e', E_ = 'E',
+            _F = 'f', F_ = 'F', _F_ = '!', G = 'g', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l', M_ = 'M',
+            MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'p', P_ = 'P', _Q = 'q', _R = 'r', _S = 's', S_ = 'S',
+            SB = '[', SP = '#', _T = 't', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'Z';
         public unsafe static int[] GetArithProg(int length, int diff)
         {
             int[] progression = new int[length];
-            fixed (int* ptr = progression) { int* _ptr = ptr; for (int i = 0, j = 0; i < length; i++, _ptr++, j += diff) *_ptr = j; } // _ptr is necessary
+            fixed (int* ptr = progression)
+            { int* _ptr = ptr; for (int i = 0, j = 0; i < length; i++, _ptr++, j += diff) *_ptr = j; } // _ptr is necessary
             return progression;
         }
-        protected static void InitializeFields<TEntry>(int rows, int columns, ref int[]? rowOffsets, ref int[]? copyInitPos,
+        protected static void Initialize<TEntry>(int rows, int columns, ref int[]? rowOffs, ref int[]? copyInitPos,
             ref int resInitPos, ref uint colBytes, ref uint strdBytes, ref uint resBytes)
         {
-            rowOffsets = GetArithProg(rows, columns);
+            rowOffs = GetArithProg(rows, columns);
             copyInitPos = rows >= STEP ? GetArithProg(rows / STEP, STEP) : [];
             resInitPos = rows >= STEP ? copyInitPos[^1] + STEP : 0;
 
             int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
             colBytes = getBytes(1); strdBytes = getBytes(STEP); resBytes = getBytes(rows - resInitPos);
         } // Fields for optimization
-        public static void For(int start, int end, Action<int> action) { for (int i = start; i <= end; i++) action(i); } // Complicated start and end
-        protected static Matrix<float> ChooseMode(string mode, Matrix<float> m1, Matrix<float> m2, int[] rowOffsets, int columns)
+        public static void For(int start, int end, Action<int> action)
+        { for (int i = start; i <= end; i++) action(i); } // Complicated start and end
+        protected static Matrix<float> ChooseMode(string mode, Matrix<float> m1, Matrix<float> m2, int[] rowOffs, int columns)
         {
             switch (Char.Parse(mode))
             {
                 case MODE_1: return m1;
                 case MODE_2: return m2;
-                default: ThrowException(); return new(rowOffsets, columns); // Should not have happened
+                default: ThrowException(); return new(rowOffs, columns); // Should not have happened
             }
         }
         protected static string[] PrepareBreakPower(string input, int THRESHOLD)
@@ -2195,32 +2198,31 @@ namespace FunctionGrapher2._0
         #region Fields & Constructors
         private readonly uint colBytes, strdBytes, resBytes; // Sizes of copy chunks
         private readonly int rows, columns, resInitPos;
-        private readonly int[] rowOffsets, copyInitPos; // For row extraction
+        private readonly int[] rowOffs, copyInitPos; // For row extraction
         private readonly bool useList; // Whether to use constMtx or not
         private readonly Matrix<Complex> z;
-        private readonly Matrix<Complex>[] bufferCocs; // To precompute repetitively used blocks
+        private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<Complex>> constMtx = [];
-
         private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private bool readList; // Reading or writing constMtx
         private string input;
         private Matrix<Complex> Z; // For substitution
 
-        public ComplexSub(string input, Matrix<Complex>? z, Matrix<Complex>? Z, Matrix<Complex>[]? bufferCocs,
+        public ComplexSub(string input, Matrix<Complex>? z, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs,
             int rows, int columns, bool useList = false)
         {
             ThrowException(String.IsNullOrEmpty(input));
             this.input = Recover(input, true); braValues = new MatrixCopy<Complex>[CountChars(this.input, "(")];
             if (z != null) this.z = (Matrix<Complex>)z; if (Z != null) this.Z = (Matrix<Complex>)Z;
-            this.rows = rows; this.columns = columns; this.useList = useList; this.bufferCocs = bufferCocs;
-            InitializeFields<Complex>(rows, columns, ref rowOffsets, ref copyInitPos, ref resInitPos, ref colBytes, ref strdBytes, ref resBytes);
+            this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
+            Initialize<Complex>(rows, columns, ref rowOffs, ref copyInitPos, ref resInitPos, ref colBytes, ref strdBytes, ref resBytes);
         }
         public ComplexSub(string input, Matrix<float> xCoor, Matrix<float> yCoor, int rows, int columns)
             : this(input, InitilizeZ(xCoor, yCoor, rows, columns), null, null, rows, columns) { } // Special for complex
-        private ComplexSub ObtainSub(string input, Matrix<Complex>? Z, Matrix<Complex>[]? bufferCocs, bool useList = false)
-            => new(input, z, Z, bufferCocs, rows, columns, useList);
-        private Matrix<Complex> ObtainValue(string input) => new ComplexSub(input, z, Z, bufferCocs, rows, columns).Obtain();
+        private ComplexSub ObtainSub(string input, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs, bool useList = false)
+            => new(input, z, Z, buffCocs, rows, columns, useList);
+        private Matrix<Complex> ObtainValue(string input) => new ComplexSub(input, z, Z, buffCocs, rows, columns).Obtain();
         #endregion
 
         #region Calculations
@@ -2287,7 +2289,7 @@ namespace FunctionGrapher2._0
             int n = ThrowReturnLengths(split, 1, 50);
             return HandleMatrix(_sum =>
             {
-                Matrix<Complex> sum = new(rowOffsets, columns),
+                Matrix<Complex> sum = new(rowOffs, columns),
                     coeff = Const(Complex.ONE).matrix, _coeff = Const(Complex.ONE).matrix, initial = ObtainValue(split[0]);
                 Parallel.For(0, rows, p =>
                 {
@@ -2313,7 +2315,7 @@ namespace FunctionGrapher2._0
         private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
         {
             ThrowInvalidLengths(split, [validLength]);
-            ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, validLength - 3, 0), initMtx, bufferCocs, true);
+            ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, validLength - 3, 0), initMtx, buffCocs, true);
 
             void resetCount() => buffer.countBra = buffer.countCst = 0;
             _ = buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute constMtx
@@ -2322,31 +2324,32 @@ namespace FunctionGrapher2._0
             { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), true); resetCount(); action(buffer); });
             return buffer.Z;
         } // Meticulously optimized
-        private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, new(rowOffsets, columns), b => { Plus(b.Obtain(), b.Z); });
-        private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE).matrix, b => { Multiply(b.Obtain(), b.Z); });
+        private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, new(rowOffs, columns), b => { Plus(b.Obtain(), b.Z); });
+        private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(new(1)).matrix, b => { Multiply(b.Obtain(), b.Z); });
         private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
         private Matrix<Complex> Composite(string[] split)
         {
             Matrix<Complex> _value = ObtainValue(split[0]);
-            for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, bufferCocs).Obtain();
+            for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, buffCocs).Obtain();
             return _value;
         }
         private Matrix<Complex> Cocoon(string[] split)
         {
             ComplexSub body = ObtainSub(split[0], null, new Matrix<Complex>[split.Length - 1]);
-            for (int i = 1; i < split.Length; i++) body.bufferCocs[i - 1] = ObtainValue(split[i]);
+            for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
             return body.Obtain();
         } // For shallow and complicated composites
         #endregion
 
         #region Elements
         private Matrix<Complex> HandleMatrix(Action<Matrix<Complex>> action)
-        { Matrix<Complex> matrix = new(rowOffsets, columns); action(matrix); return matrix; }
+        { Matrix<Complex> matrix = new(rowOffs, columns); action(matrix); return matrix; }
         [MethodImpl(512)] // AggressiveOptimization
         public unsafe static Matrix<Complex> InitilizeZ(Matrix<float> xCoor, Matrix<float> yCoor, int rows, int columns)
         {
             Matrix<Complex> z = new(GetArithProg(rows, columns), columns);
-            Parallel.For(0, rows, p => {
+            Parallel.For(0, rows, p =>
+            {
                 Complex* zPtr = z.RowPtr(p); float* xCoorPtr = xCoor.RowPtr(p), yCoorPtr = yCoor.RowPtr(p);
                 for (int q = 0; q < columns; q++, zPtr++, xCoorPtr++, yCoorPtr++) *zPtr = new(*xCoorPtr, *yCoorPtr);
             });
@@ -2366,7 +2369,7 @@ namespace FunctionGrapher2._0
                     }));
                 case 2: constMtx.Add(new(_const, Const(_const).matrix)); return new(constMtx[^1].matrix, true);
                 case 3: return _const.Equals(constMtx[countCst]._const) ? new(constMtx[countCst++].matrix, true) : Const(_const);
-                default: ThrowException(); return new(new(rowOffsets, columns)); // Should not have happened
+                default: ThrowException(); return new(new(rowOffs, columns)); // Should not have happened
             }
         } // Sensitive
         [MethodImpl(512)] // AggressiveOptimization
@@ -2426,7 +2429,7 @@ namespace FunctionGrapher2._0
         {
             _Z => new(z, true),
             Z_ => new(Z, true),
-            CB => new(bufferCocs[Int32.Parse(TryBraNum(input))], true),
+            CB => new(buffCocs[Int32.Parse(TryBraNum(input))], true),
             SB => braValues[Int32.Parse(TryBraNum(input))],
             I => ReturnConst(Complex.I), // Special for complex
             E => ReturnConst(new(MathF.E)),
@@ -2569,31 +2572,30 @@ namespace FunctionGrapher2._0
         #region Fields & Constructors
         private readonly uint colBytes, strdBytes, resBytes; // Sizes of copy chunks
         private readonly int rows, columns, resInitPos;
-        private readonly int[] rowOffsets, copyInitPos; // For row extraction
+        private readonly int[] rowOffs, copyInitPos; // For row extraction
         private readonly bool useList; // Whether to use constMtx or not
         private readonly Matrix<float> x, y;
-        private readonly Matrix<float>[] bufferCocs; // To precompute repetitively used blocks
+        private readonly Matrix<float>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<float>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<float>> constMtx = [];
-
         private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private bool readList; // Reading or writing constMtx
         private string input;
         private Matrix<float> X, Y; // For substitution
 
-        public RealSub(string input, Matrix<float>? x, Matrix<float>? y, Matrix<float>? X, Matrix<float>? Y, Matrix<float>[]? bufferCocs,
+        public RealSub(string input, Matrix<float>? x, Matrix<float>? y, Matrix<float>? X, Matrix<float>? Y, Matrix<float>[]? buffCocs,
             int rows, int columns, bool useList = false)
         {
             ThrowException(String.IsNullOrEmpty(input));
             this.input = Recover(input, false); braValues = new MatrixCopy<float>[CountChars(this.input, "(")];
             if (x != null) this.x = (Matrix<float>)x; if (y != null) this.y = (Matrix<float>)y;
             if (X != null) this.X = (Matrix<float>)X; if (Y != null) this.Y = (Matrix<float>)Y;
-            this.rows = rows; this.columns = columns; this.useList = useList; this.bufferCocs = bufferCocs;
-            InitializeFields<float>(rows, columns, ref rowOffsets, ref copyInitPos, ref resInitPos, ref colBytes, ref strdBytes, ref resBytes);
+            this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
+            Initialize<float>(rows, columns, ref rowOffs, ref copyInitPos, ref resInitPos, ref colBytes, ref strdBytes, ref resBytes);
         }
-        private RealSub ObtainSub(string input, Matrix<float>? X, Matrix<float>? Y, Matrix<float>[]? bufferCocs, bool useList = false)
-            => new(input, x, y, X, Y, bufferCocs, rows, columns, useList);
-        private Matrix<float> ObtainValue(string input) => new RealSub(input, x, y, X, Y, bufferCocs, rows, columns).Obtain();
+        private RealSub ObtainSub(string input, Matrix<float>? X, Matrix<float>? Y, Matrix<float>[]? buffCocs, bool useList = false)
+            => new(input, x, y, X, Y, buffCocs, rows, columns, useList);
+        private Matrix<float> ObtainValue(string input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
         public static float Obtain(string input, float x = 0) => new RealSub(input, new(x), null, null, null, null, 1, 1).Obtain()[0, 0];
         public static int ToInt(string input) => (int)Obtain(input); // Often bound to MyString.For
         #endregion
@@ -2708,7 +2710,7 @@ namespace FunctionGrapher2._0
             int n = ThrowReturnLengths(split, 1, 50);
             return HandleMatrix(_sum =>
             {
-                Matrix<float> sum = new(rowOffsets, columns), coeff = Const(1).matrix, _coeff = Const(1).matrix, initial = ObtainValue(split[0]);
+                Matrix<float> sum = new(rowOffs, columns), coeff = Const(1).matrix, _coeff = Const(1).matrix, initial = ObtainValue(split[0]);
                 Parallel.For(0, rows, p =>
                 {
                     float* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
@@ -2733,7 +2735,7 @@ namespace FunctionGrapher2._0
         private Matrix<float> ProcessSPI(string[] split, int validLength, Matrix<float> initMtx, Action<RealSub> action)
         {
             ThrowInvalidLengths(split, [validLength]);
-            RealSub buffer = ObtainSub(ReplaceLoop(split, 0, validLength - 3, 0), initMtx, null, bufferCocs, true);
+            RealSub buffer = ObtainSub(ReplaceLoop(split, 0, validLength - 3, 0), initMtx, null, buffCocs, true);
 
             void resetCount() => buffer.countBra = buffer.countCst = 0;
             _ = buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute constMtx
@@ -2742,13 +2744,13 @@ namespace FunctionGrapher2._0
             { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), false); resetCount(); action(buffer); });
             return buffer.X;
         } // Meticulously optimized
-        private Matrix<float> Sum(string[] split) => ProcessSPI(split, 4, new(rowOffsets, columns), b => { Plus(b.Obtain(), b.X); });
+        private Matrix<float> Sum(string[] split) => ProcessSPI(split, 4, new(rowOffs, columns), b => { Plus(b.Obtain(), b.X); });
         private Matrix<float> Product(string[] split) => ProcessSPI(split, 4, Const(1).matrix, b => { Multiply(b.Obtain(), b.X); });
         private Matrix<float> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
         private Matrix<float> Iterate2(string[] split)
         {
             ThrowInvalidLengths(split, [8]);
-            RealSub obtain(int idx) => ObtainSub(ReplaceLoop(split, idx, 4, 0), ObtainValue(split[2]), ObtainValue(split[3]), bufferCocs, true);
+            RealSub obtain(int idx) => ObtainSub(ReplaceLoop(split, idx, 4, 0), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
             RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<float> temp1, temp2;
 
             void resetCount() => buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
@@ -2761,12 +2763,12 @@ namespace FunctionGrapher2._0
                 resetCount(); temp1 = buffer1.Obtain(); temp2 = buffer2.Obtain(); // Necessary
                 buffer1.X = buffer2.X = temp1; buffer1.Y = buffer2.Y = temp2;
             });
-            return ChooseMode(split[^1], buffer1.X, buffer1.Y, rowOffsets, columns); // Or, alternatively, buffer2
+            return ChooseMode(split[^1], buffer1.X, buffer1.Y, rowOffs, columns); // Or, alternatively, buffer2
         } // Special for real
         private Matrix<float> Composite1(string[] split)
         {
             Matrix<float> _value = ObtainValue(split[0]);
-            for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, null, bufferCocs).Obtain();
+            for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, null, buffCocs).Obtain();
             return _value;
         }
         private Matrix<float> Composite2(string[] split)
@@ -2776,22 +2778,22 @@ namespace FunctionGrapher2._0
             for (int i = 0, j = 2; i < split.Length / 2 - 1; i++)
             {
                 temp1 = value1; temp2 = value2; // Necessary
-                Matrix<float> obtainValue() => ObtainSub(split[j++], temp1, temp2, bufferCocs).Obtain();
+                Matrix<float> obtainValue() => ObtainSub(split[j++], temp1, temp2, buffCocs).Obtain();
                 value1 = obtainValue(); value2 = obtainValue(); // Even and odd terms respectively
             }
-            return ChooseMode(split[^1], value1, value2, rowOffsets, columns);
+            return ChooseMode(split[^1], value1, value2, rowOffs, columns);
         } // Special for real
         private Matrix<float> Cocoon(string[] split)
         {
             RealSub body = ObtainSub(split[0], null, null, new Matrix<float>[split.Length - 1]);
-            for (int i = 1; i < split.Length; i++) body.bufferCocs[i - 1] = ObtainValue(split[i]);
+            for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
             return body.Obtain();
         } // For shallow and complicated composites
         #endregion
 
         #region Elements
         private Matrix<float> HandleMatrix(Action<Matrix<float>> action)
-        { Matrix<float> matrix = new(rowOffsets, columns); action(matrix); return matrix; }
+        { Matrix<float> matrix = new(rowOffs, columns); action(matrix); return matrix; }
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe MatrixCopy<float> Const(float _const, int mode = 1)
         {
@@ -2806,7 +2808,7 @@ namespace FunctionGrapher2._0
                     }));
                 case 2: constMtx.Add(new(_const, Const(_const).matrix)); return new(constMtx[^1].matrix, true);
                 case 3: return _const.Equals(constMtx[countCst]._const) ? new(constMtx[countCst++].matrix, true) : Const(_const);
-                default: ThrowException(); return new(new(rowOffsets, columns)); // Should not have happened
+                default: ThrowException(); return new(new(rowOffs, columns)); // Should not have happened
             }
         } // Sensitive
         [MethodImpl(512)] // AggressiveOptimization
@@ -2868,7 +2870,7 @@ namespace FunctionGrapher2._0
             _Y => new(y, true),
             X_ => new(X, true),
             Y_ => new(Y, true),
-            CB => new(bufferCocs[Int32.Parse(TryBraNum(input))], true),
+            CB => new(buffCocs[Int32.Parse(TryBraNum(input))], true),
             SB => braValues[Int32.Parse(TryBraNum(input))],
             E => ReturnConst(MathF.E),
             P => ReturnConst(MathF.PI),
@@ -3096,7 +3098,6 @@ namespace FunctionGrapher2._0
             var (mod, unit) = (MathF.Exp(-MathF.Tau * c.imaginary), MathF.SinCos(MathF.Tau * c.real));
             return new(mod * unit.Cos, mod * unit.Sin);
         } // Often used in analytic number theory, represented by 'q'
-
         public static Complex Sin(Complex c)
         {
             var (mod, unit) = (MathF.Exp(-c.imaginary), MathF.SinCos(c.real));
@@ -3157,7 +3158,6 @@ namespace FunctionGrapher2._0
             Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); float re = _c.real - 1, im = _c.imaginary;
             return new(MathF.Log(re * re + im * im) / 4, MathF.Atan2(im, re) / 2);
         }
-
         public static Complex Sqrt(Complex c) => Pow(c, 0.5f);
         public static float Modulus(float x, float y) => Modulus(new(x, y));
         public static float Modulus(Complex c) => MathF.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
@@ -3168,20 +3168,20 @@ namespace FunctionGrapher2._0
     public readonly struct Matrix<TEntry>
     {
         private readonly TEntry[] matrix;
-        private readonly int[] rowOffsets; // For row extraction
+        private readonly int[] rowOffs; // For row extraction
         [MethodImpl(256)] // AggressiveInlining
-        public Matrix(int[] rowOffsets, int columns) { this.rowOffsets = rowOffsets; matrix = new TEntry[rowOffsets[^1] + columns]; }
+        public Matrix(int[] rowOffs, int columns) { this.rowOffs = rowOffs; matrix = new TEntry[rowOffs[^1] + columns]; }
         [MethodImpl(256)] // AggressiveInlining
-        public Matrix(TEntry x) { matrix = [x]; rowOffsets = [0]; } // Special for real
+        public Matrix(TEntry x) { matrix = [x]; rowOffs = [0]; } // Special for real
         public TEntry this[int row, int column]
         {
             [MethodImpl(256)] // AggressiveInlining
-            get => Access(matrix, Access(rowOffsets, row) + column);
+            get => Access(matrix, Access(rowOffs, row) + column);
             [MethodImpl(256)] // AggressiveInlining
-            set => Access(matrix, Access(rowOffsets, row) + column) = value;
+            set => Access(matrix, Access(rowOffs, row) + column) = value;
         }
         [MethodImpl(256)] // AggressiveInlining
-        public readonly unsafe TEntry* RowPtr(int row = 0) { fixed (TEntry* ptr = &Access(matrix, Access(rowOffsets, row))) { return ptr; } }
+        public readonly unsafe TEntry* RowPtr(int row = 0) { fixed (TEntry* ptr = &Access(matrix, Access(rowOffs, row))) { return ptr; } }
         [MethodImpl(256)] // AggressiveInlining
         private static ref T Access<T>(T[] array, int index) => ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index);
     } /// Optimized real or complex matrices
