@@ -3096,7 +3096,6 @@ namespace FunctionGrapher2._0
             var (mod, unit) = (MathF.Exp(-MathF.Tau * c.imaginary), MathF.SinCos(MathF.Tau * c.real));
             return new(mod * unit.Cos, mod * unit.Sin);
         } // Often used in analytic number theory, represented by 'q'
-
         public static Complex Sin(Complex c)
         {
             var (mod, unit) = (MathF.Exp(-c.imaginary), MathF.SinCos(c.real));
@@ -3157,7 +3156,6 @@ namespace FunctionGrapher2._0
             Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); float re = _c.real - 1, im = _c.imaginary;
             return new(MathF.Log(re * re + im * im) / 4, MathF.Atan2(im, re) / 2);
         }
-
         public static Complex Sqrt(Complex c) => Pow(c, 0.5f);
         public static float Modulus(float x, float y) => Modulus(new(x, y));
         public static float Modulus(Complex c) => MathF.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
