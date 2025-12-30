@@ -100,8 +100,7 @@ namespace FunctionGrapher2._0
         { if (stream != null) setUpStream(stream); else GetMusicClickErrorBox(message); }
         private void InitializeMusicPlayer() => InitializeMusicClick(GetStream("bgm"), MUSIC, soundStream =>
         {
-            MediaPlayer = new();
-            // Saving the stream to a temp file, since Windows Media Player cannot play directly from the stream
+            MediaPlayer = new(); // Saving the stream to a temp file, since WMP cannot play directly from the stream
             string tempFile = Path.Combine(Path.GetTempPath(), $"{TEMP_BGM_NAME}.wav");
             using FileStream fileStream = new(tempFile, FileMode.Create, FileAccess.Write); // "using" should not be removed
             soundStream.CopyTo(fileStream);
@@ -147,6 +146,7 @@ namespace FunctionGrapher2._0
             int indent = (int)(CURVE_WIDTH_LIMIT / 2), _indent = indent * 2,
                 widthMac = X_RIGHT_MAC - X_LEFT_MAC, heightMac = Y_DOWN_MAC - Y_UP_MAC,
                 widthMic = X_RIGHT_MIC - X_LEFT_MIC, heightMic = Y_DOWN_MIC - Y_UP_MIC;
+            
             rect_mac = new(X_LEFT_MAC - indent, Y_UP_MAC - indent, widthMac + _indent, heightMac + _indent);
             rect_mic = new(X_LEFT_MIC - indent, Y_UP_MIC - indent, widthMic + _indent, heightMic + _indent);
 
@@ -3196,3 +3196,4 @@ namespace FunctionGrapher2._0
         public readonly Matrix<TEntry> matrix = matrix;
     } /// Constant matrices for recycling
 }
+
