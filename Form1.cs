@@ -401,8 +401,7 @@ namespace FunctionGrapher2._0
             var (xStart, yStart) = (AddOne(borders[0]), AddOne(borders[2])); var (xLength, yLength) = (borders[1] - xStart, borders[3] - yStart);
             try
             {
-                Parallel.For(0, yLength, y =>
-                {
+                Parallel.For(0, yLength, y => {
                     var pixelPtr = (IntPtr)((byte*)bmpData.Scan0 + (yStart + y) * bmpData.Stride + xStart * bpp);
                     for (int x = 0; x < xLength; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr);
                 }); // Deliberate loop order
@@ -3196,4 +3195,5 @@ namespace FunctionGrapher2._0
         public readonly Matrix<TEntry> matrix = matrix;
     } /// Constant matrices for recycling
 }
+
 
