@@ -450,7 +450,8 @@ namespace FunctionGrapher2._0
                 2 => (Color.Black, Color.White),
                 3 => (LOWER_BLUE, UPPER_GOLD)
             };
-            bool draw = mode == 1 ? (MathF.Min(LowerDist(v1, s1), LowerDist(v2, s2)) < epsilon) : (LowerIdx(v1, s1) + LowerIdx(v2, s2)) % 2 == 0;
+            bool draw = mode == 1 ? (MathF.Min(LowerDist(v1, s1), LowerDist(v2, s2)) < epsilon)
+                : (LowerIdx(v1, s1) + LowerIdx(v2, s2)) % 2 == 0;
             return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
         };
         private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? c => ObtainColorWheel(c, alpha: 1) : _value =>
@@ -3195,5 +3196,6 @@ namespace FunctionGrapher2._0
         public readonly Matrix<TEntry> matrix = matrix;
     } /// Constant matrices for recycling
 }
+
 
 
