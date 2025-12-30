@@ -100,7 +100,8 @@ namespace FunctionGrapher2._0
         { if (stream != null) setUpStream(stream); else GetMusicClickErrorBox(message); }
         private void InitializeMusicPlayer() => InitializeMusicClick(GetStream("bgm"), MUSIC, soundStream =>
         {
-            MediaPlayer = new(); // Saving the stream to a temp file, since WMP cannot play directly from the stream
+            MediaPlayer = new();
+            // Saving the stream to a temp file, since Windows Media Player cannot play directly from the stream
             string tempFile = Path.Combine(Path.GetTempPath(), $"{TEMP_BGM_NAME}.wav");
             using FileStream fileStream = new(tempFile, FileMode.Create, FileAccess.Write); // "using" should not be removed
             soundStream.CopyTo(fileStream);
@@ -146,7 +147,6 @@ namespace FunctionGrapher2._0
             int indent = (int)(CURVE_WIDTH_LIMIT / 2), _indent = indent * 2,
                 widthMac = X_RIGHT_MAC - X_LEFT_MAC, heightMac = Y_DOWN_MAC - Y_UP_MAC,
                 widthMic = X_RIGHT_MIC - X_LEFT_MIC, heightMic = Y_DOWN_MIC - Y_UP_MIC;
-            
             rect_mac = new(X_LEFT_MAC - indent, Y_UP_MAC - indent, widthMac + _indent, heightMac + _indent);
             rect_mic = new(X_LEFT_MIC - indent, Y_UP_MIC - indent, widthMic + _indent, heightMic + _indent);
 
@@ -401,7 +401,8 @@ namespace FunctionGrapher2._0
             var (xStart, yStart) = (AddOne(borders[0]), AddOne(borders[2])); var (xLength, yLength) = (borders[1] - xStart, borders[3] - yStart);
             try
             {
-                Parallel.For(0, yLength, y => {
+                Parallel.For(0, yLength, y =>
+                {
                     var pixelPtr = (IntPtr)((byte*)bmpData.Scan0 + (yStart + y) * bmpData.Stride + xStart * bpp);
                     for (int x = 0; x < xLength; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr);
                 }); // Deliberate loop order
@@ -450,8 +451,7 @@ namespace FunctionGrapher2._0
                 2 => (Color.Black, Color.White),
                 3 => (LOWER_BLUE, UPPER_GOLD)
             };
-            bool draw = mode == 1 ? (MathF.Min(LowerDist(v1, s1), LowerDist(v2, s2)) < epsilon)
-                : (LowerIdx(v1, s1) + LowerIdx(v2, s2)) % 2 == 0;
+            bool draw = mode == 1 ? (MathF.Min(LowerDist(v1, s1), LowerDist(v2, s2)) < epsilon) : (LowerIdx(v1, s1) + LowerIdx(v2, s2)) % 2 == 0;
             return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
         };
         private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? c => ObtainColorWheel(c, alpha: 1) : _value =>
@@ -3096,6 +3096,7 @@ namespace FunctionGrapher2._0
             var (mod, unit) = (MathF.Exp(-MathF.Tau * c.imaginary), MathF.SinCos(MathF.Tau * c.real));
             return new(mod * unit.Cos, mod * unit.Sin);
         } // Often used in analytic number theory, represented by 'q'
+
         public static Complex Sin(Complex c)
         {
             var (mod, unit) = (MathF.Exp(-c.imaginary), MathF.SinCos(c.real));
@@ -3156,6 +3157,7 @@ namespace FunctionGrapher2._0
             Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); float re = _c.real - 1, im = _c.imaginary;
             return new(MathF.Log(re * re + im * im) / 4, MathF.Atan2(im, re) / 2);
         }
+
         public static Complex Sqrt(Complex c) => Pow(c, 0.5f);
         public static float Modulus(float x, float y) => Modulus(new(x, y));
         public static float Modulus(Complex c) => MathF.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
