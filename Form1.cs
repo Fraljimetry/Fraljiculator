@@ -2192,18 +2192,18 @@ namespace FunctionGrapher2._0
     public sealed class ComplexSub : RecoverMultiply
     {
         #region Fields & Constructors
+        private string input;
         private readonly uint colBytes, strdBytes, resBytes; // Sizes of copy chunks
+        private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private readonly int rows, columns, resInitPos;
         private readonly int[] rowOffs, copyInitPos; // For row extraction
+        private bool readList; // Reading or writing constMtx
         private readonly bool useList; // Whether to use constMtx or not
+        private Matrix<Complex> Z; // For substitution
         private readonly Matrix<Complex> z;
         private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<Complex>> constMtx = [];
-        private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
-        private bool readList; // Reading or writing constMtx
-        private string input;
-        private Matrix<Complex> Z; // For substitution
 
         public ComplexSub(string input, Matrix<Complex>? z, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs,
             int rows, int columns, bool useList = false)
@@ -2567,18 +2567,18 @@ namespace FunctionGrapher2._0
     public sealed class RealSub : RecoverMultiply
     {
         #region Fields & Constructors
+        private string input;
         private readonly uint colBytes, strdBytes, resBytes; // Sizes of copy chunks
+        private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private readonly int rows, columns, resInitPos;
         private readonly int[] rowOffs, copyInitPos; // For row extraction
+        private bool readList; // Reading or writing constMtx
         private readonly bool useList; // Whether to use constMtx or not
+        private Matrix<float> X, Y; // For substitution
         private readonly Matrix<float> x, y;
         private readonly Matrix<float>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<float>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<float>> constMtx = [];
-        private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
-        private bool readList; // Reading or writing constMtx
-        private string input;
-        private Matrix<float> X, Y; // For substitution
 
         public RealSub(string input, Matrix<float>? x, Matrix<float>? y, Matrix<float>? X, Matrix<float>? Y, Matrix<float>[]? buffCocs,
             int rows, int columns, bool useList = false)
