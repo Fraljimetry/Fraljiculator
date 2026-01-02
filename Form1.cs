@@ -1,4 +1,6 @@
-/// DATE: 2023.4~5, 2024.9~11, 2025.1, DESIGNER: Fraljimetry, PRECISION: System.Single (float)
+/// DATE: 2023.4~5, 2024.9~11, 2025.1
+/// DESIGNER: Fraljimetry
+/// PRECISION: System.Single (float)
 
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
@@ -1512,16 +1514,16 @@ namespace FunctionGrapher2._0
             {
                 if (tbx.SelectionLength > 0) selectSuppress(0);
                 else if (caretPosition == 0) selectSuppress(0);
-                else if (RecoverMultiply.IsOpen(tbx.Text[caretPosition - 1])) selectSuppress(1);
+                else if (tbx.Text[caretPosition - 1] == '(') selectSuppress(1);
             } // '}' does not share this privilege
             else if (e.KeyCode == Keys.Oemcomma) insertSelectSuppress(", ", 2);
             else if (e.KeyCode == Keys.OemPipe) insertSelectSuppress(" | ", 3);
             else if (e.KeyCode == Keys.Back)
             {
                 if (caretPosition == 0 || !MyString.CheckParenthesis(tbx.Text) || tbx.SelectionLength > 0) return;
-                else if (RecoverMultiply.IsOpen(tbx.Text[caretPosition - 1]))
+                else if (tbx.Text[caretPosition - 1] == '(')
                 {
-                    if (RecoverMultiply.IsClose(tbx.Text[caretPosition])) SetText(tbx, tbx.Text.Remove(caretPosition - 1, 2));
+                    if (tbx.Text[caretPosition] == ')') SetText(tbx, tbx.Text.Remove(caretPosition - 1, 2));
                     selectSuppress(-1);
                 }
                 else if (tbx.Text[caretPosition - 1] == ')') selectSuppress(-1);
@@ -2182,8 +2184,6 @@ namespace FunctionGrapher2._0
         private static bool IsFunctionHead(char c) => c == FUNC_HEAD;
         private static bool IsBraL(char c) => BRA_L.Contains(c);
         private static bool IsBraR(char c) => BRA_R.Contains(c);
-        public static bool IsOpen(char c) => c == '(';
-        public static bool IsClose(char c) => c == ')';
     } /// Recovery of omitted '*'
 
     /// <summary>
