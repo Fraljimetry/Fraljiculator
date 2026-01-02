@@ -1795,7 +1795,7 @@ namespace FunctionGrapher2._0
         public static bool ContainsAny(ReadOnlySpan<char> input, string charsToCheck)
         {
             HashSet<char> charSet = [.. charsToCheck]; // Fast lookup
-            int count = 0; foreach (char c in input) if (charSet.Contains(c)) return true;
+            foreach (char c in input) if (charSet.Contains(c)) return true;
             return false;
         }
         public static bool ContainsAny(string input, ReadOnlySpan<string> stringsToCheck)
