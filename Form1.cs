@@ -76,8 +76,7 @@ namespace FunctionGrapher2._0
             BanMouseWheel();
         }
         private void Graph_Load(object sender, EventArgs e) => TextBoxFocus(sender, e);
-        private void Graph_Paint(object sender, PaintEventArgs e)
-        { if (!bdp_painted && !clicked) SubtitleBox_DoubleClick(sender, e); }
+        private void Graph_Paint(object sender, PaintEventArgs e) { if (!bdp_painted && !clicked) SubtitleBox_DoubleClick(sender, e); }
         //
         private int SetTitleBarColor()
         {
@@ -232,7 +231,7 @@ namespace FunctionGrapher2._0
         public static extern bool HideCaret(IntPtr hWnd); // Also used for Message Boxes
         protected override void WndProc(ref Message m) // Window Procedure
         {
-            const int WM_NCLBTNDOWN = 0x00A1, HTCAPTION = 0x0002; //Window Message, Non-Client Left Button, Hit Test
+            const int WM_NCLBTNDOWN = 0x00A1, HTCAPTION = 0x0002; //Window Message, Non-Client Left Button Down, Hit Test Caption
             if (m.Msg == WM_NCLBTNDOWN && m.WParam.ToInt32() == HTCAPTION) return; // Preventing dragging the title bar
             base.WndProc(ref m);
         } // Overriding WndProc to customize window behavior
@@ -243,8 +242,8 @@ namespace FunctionGrapher2._0
         private static Color Swap(Color c1, Color c2) => swap_colors ? c1 : c2;
         private static Color Argb(int a, int r, int g, int b) => Color.FromArgb(a, r, g, b);
         public static Color Argb(int r, int g, int b) => Color.FromArgb(r, g, b); // Also used for Message Boxes
-        public static float ArgRGB(float x, float y) => Single.IsNaN(x) && Single.IsNaN(y) ? -1 :
-            y == 0 ? (x == 0 ? -1 : x > 0 ? 0 : MathF.PI) : (y > 0 ? MathF.Atan2(y, x) : MathF.Atan2(y, x) + MathF.Tau); // Sensitive checking
+        public static float ArgRGB(float x, float y) => Single.IsNaN(x) && Single.IsNaN(y) ? -1 : y == 0 ?
+            (x == 0 ? -1 : x > 0 ? 0 : MathF.PI) : (y > 0 ? MathF.Atan2(y, x) : MathF.Atan2(y, x) + MathF.Tau); // Sensitive checking
         private static int Frac(int input, float alpha) => (int)(input * alpha);
         private static bool IllegalRatio(float ratio) => ratio < 0 || ratio > 1;
         private static int GetRow(int[] borders) => borders[1] - borders[0];
@@ -1692,6 +1691,7 @@ namespace FunctionGrapher2._0
         private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
             FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
             FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
+
         private static float scale_factor;
         private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
         private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1792,7 +1792,12 @@ namespace FunctionGrapher2._0
             return count;
         }
         protected static (int, int, int, int) PrepareLoop(ReadOnlySpan<char> input) => (CountChars(input, "("), input.Length - 1, 0, -1);
-        public static bool ContainsAny(ReadOnlySpan<char> input, string charsToCheck) => CountChars(input, charsToCheck) > 0;
+        public static bool ContainsAny(ReadOnlySpan<char> input, string charsToCheck)
+        {
+            HashSet<char> charSet = [.. charsToCheck]; // Fast lookup
+            int count = 0; foreach (char c in input) if (charSet.Contains(c)) return true;
+            return false;
+        }
         public static bool ContainsAny(string input, ReadOnlySpan<string> stringsToCheck)
         {
             foreach (string s in stringsToCheck) if (input.Contains(s)) return true;
@@ -1804,10 +1809,7 @@ namespace FunctionGrapher2._0
         private static int PairedParenthesis(ReadOnlySpan<char> input, int start)
         {
             for (int i = start + 1, count = 1; ; i++)
-            {
-                if (input[i] == '(') count++; else if (input[i] == ')') count--;
-                if (count == 0) return i;
-            }
+            { if (input[i] == '(') count++; else if (input[i] == ')') count--; if (count == 0) return i; }
         }
         protected static (int, int, string[]) PrepareSeriesSub(string input)
         {
@@ -1826,11 +1828,7 @@ namespace FunctionGrapher2._0
         public static bool CheckParenthesis(ReadOnlySpan<char> input)
         {
             int sum = 0;
-            foreach (char c in input)
-            {
-                if (c == '(') sum++; else if (c == ')') sum--;
-                if (sum < 0) return false;
-            }
+            foreach (char c in input) { if (c == '(') sum++; else if (c == ')') sum--; if (sum < 0) return false; }
             return sum == 0;
         }
         private static string WrapBase(int n, char c1, char c2) => String.Concat(c1, n.ToString(), c2);
@@ -2192,18 +2190,19 @@ namespace FunctionGrapher2._0
     public sealed class ComplexSub : RecoverMultiply
     {
         #region Fields & Constructors
-        private string input;
         private readonly uint colBytes, strdBytes, resBytes; // Sizes of copy chunks
-        private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private readonly int rows, columns, resInitPos;
         private readonly int[] rowOffs, copyInitPos; // For row extraction
-        private bool readList; // Reading or writing constMtx
         private readonly bool useList; // Whether to use constMtx or not
-        private Matrix<Complex> Z; // For substitution
         private readonly Matrix<Complex> z;
         private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<Complex>> constMtx = [];
+
+        private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
+        private bool readList; // Reading or writing constMtx
+        private string input;
+        private Matrix<Complex> Z; // For substitution
 
         public ComplexSub(string input, Matrix<Complex>? z, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs,
             int rows, int columns, bool useList = false)
@@ -2567,18 +2566,19 @@ namespace FunctionGrapher2._0
     public sealed class RealSub : RecoverMultiply
     {
         #region Fields & Constructors
-        private string input;
         private readonly uint colBytes, strdBytes, resBytes; // Sizes of copy chunks
-        private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private readonly int rows, columns, resInitPos;
         private readonly int[] rowOffs, copyInitPos; // For row extraction
-        private bool readList; // Reading or writing constMtx
         private readonly bool useList; // Whether to use constMtx or not
-        private Matrix<float> X, Y; // For substitution
         private readonly Matrix<float> x, y;
         private readonly Matrix<float>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<float>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<float>> constMtx = [];
+
+        private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
+        private bool readList; // Reading or writing constMtx
+        private string input;
+        private Matrix<float> X, Y; // For substitution
 
         public RealSub(string input, Matrix<float>? x, Matrix<float>? y, Matrix<float>? X, Matrix<float>? Y, Matrix<float>[]? buffCocs,
             int rows, int columns, bool useList = false)
