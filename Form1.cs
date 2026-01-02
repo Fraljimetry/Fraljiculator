@@ -3110,7 +3110,7 @@ namespace FunctionGrapher2._0
         }
         public static Complex Tan(Complex c)
         {
-            var (mod, unit) = (MathF.Exp(-2 * c.imaginary), MathF.SinCos(2 * c.real));
+            var (mod, unit) = (MathF.Exp(-c.imaginary - c.imaginary), MathF.SinCos(c.real + c.real));
             Complex _c = 2 / new Complex(1 + mod * unit.Cos, mod * unit.Sin); return new(-_c.imaginary, _c.real - 1);
         }
         public static Complex Asin(Complex c)
@@ -3140,7 +3140,7 @@ namespace FunctionGrapher2._0
         }
         public static Complex Tanh(Complex c)
         {
-            var (mod, unit) = (MathF.Exp(2 * c.real), MathF.SinCos(2 * c.imaginary));
+            var (mod, unit) = (MathF.Exp(c.real + c.real), MathF.SinCos(c.imaginary + c.imaginary));
             Complex _c = new(1 + mod * unit.Cos, mod * unit.Sin); return 1 - 2 / _c;
         }
         public static Complex Asinh(Complex c)
