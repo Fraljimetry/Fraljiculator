@@ -2219,8 +2219,6 @@ namespace FunctionGrapher2._0
         private ComplexSub ObtainSub(string input, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs, bool useList = false)
             => new(input, z, Z, buffCocs, rows, columns, useList);
         private Matrix<Complex> ObtainValue(string input) => new ComplexSub(input, z, Z, buffCocs, rows, columns).Obtain();
-        private Matrix<Complex> MtxZero() => new(rowOffs, columns);
-        private Matrix<Complex> MtxOne() => Const(Complex.ONE).matrix;
         #endregion
 
         #region Calculations
@@ -2339,6 +2337,8 @@ namespace FunctionGrapher2._0
         #endregion
 
         #region Elements
+        private Matrix<Complex> MtxZero() => new(rowOffs, columns);
+        private Matrix<Complex> MtxOne() => Const(Complex.ONE).matrix;
         private Matrix<Complex> HandleMatrix(Action<Matrix<Complex>> action)
         { Matrix<Complex> matrix = MtxZero(); action(matrix); return matrix; }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2595,8 +2595,6 @@ namespace FunctionGrapher2._0
         private Matrix<float> ObtainValue(string input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
         public static float Obtain(string input, float x = 0) => new RealSub(input, new(x), null, null, null, null, 1, 1).Obtain()[0, 0];
         public static int ToInt(string input) => (int)Obtain(input); // Often bound to MyString.For
-        private Matrix<float> MtxZero() => new(rowOffs, columns);
-        private Matrix<float> MtxOne() => Const(1f).matrix;
         #endregion
 
         #region Basic Calculations
@@ -2792,6 +2790,8 @@ namespace FunctionGrapher2._0
         #endregion
 
         #region Elements
+        private Matrix<float> MtxZero() => new(rowOffs, columns);
+        private Matrix<float> MtxOne() => Const(1).matrix;
         private Matrix<float> HandleMatrix(Action<Matrix<float>> action)
         { Matrix<float> matrix = MtxZero(); action(matrix); return matrix; }
         [MethodImpl(512)] // AggressiveOptimization
