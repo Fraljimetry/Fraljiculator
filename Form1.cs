@@ -560,7 +560,7 @@ namespace FunctionGrapher2._0
             Point pos = new(), posBuffer = new(); bool inRange, inRangeBuffer = false; int _ratio, reference = 0;
             float relativeSpeed = Obtain(DenseInput) / length, ratio; float* v1Ptr = value1.RowPtr(), v2Ptr = value2.RowPtr();
 
-            for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++)
+            for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++, segment_number++)
             {
                 (pos.X, pos.Y) = (LinearTransformX(*v1Ptr, borders), LinearTransformY(*v2Ptr, borders));
                 inRange = *v1Ptr > scopes[0] && *v1Ptr < scopes[1] && *v2Ptr > scopes[3] && *v2Ptr < scopes[2];
@@ -584,7 +584,6 @@ namespace FunctionGrapher2._0
                 }
                 inRangeBuffer = inRange;
                 posBuffer = pos;
-                segment_number++; // Sensitive position
             }
         }
         //
@@ -1804,7 +1803,7 @@ namespace FunctionGrapher2._0
         {
             for (int i = start + 1, count = 1; ; i++)
             {
-                if (RecoverMultiply.IsOpen(input[i])) count++; else if (RecoverMultiply.IsClose(input[i])) count--;
+                if (input[i] == '(') count++; else if (input[i] == ')') count--;
                 if (count == 0) return i;
             }
         }
@@ -1816,12 +1815,9 @@ namespace FunctionGrapher2._0
         protected static void ResetStartEnd(ReadOnlySpan<char> input, ref int start, ref int end)
         {
             static (int, int) innerBra(ReadOnlySpan<char> input, int start)
-            {
-                for (int i = start, j = -1; ; i--)
-                { if (RecoverMultiply.IsClose(input[i])) j = i; else if (RecoverMultiply.IsOpen(input[i])) return (i, j); }
-            }
+            { for (int i = start, j = -1; ; i--) { if (input[i] == ')') j = i; else if (input[i] == '(') return (i, j); } }
             static int pairedInnerBra(ReadOnlySpan<char> input, int start)
-            { for (int i = start + 1; ; i++) if (RecoverMultiply.IsClose(input[i])) return i; }
+            { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
 
             (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, start);
         } // Backward lookup for parenthesis pairs
@@ -1830,7 +1826,7 @@ namespace FunctionGrapher2._0
             int sum = 0;
             foreach (char c in input)
             {
-                if (RecoverMultiply.IsOpen(c)) sum++; else if (RecoverMultiply.IsClose(c)) sum--;
+                if (c == '(') sum++; else if (c == ')') sum--;
                 if (sum < 0) return false;
             }
             return sum == 0;
@@ -2223,6 +2219,8 @@ namespace FunctionGrapher2._0
         private ComplexSub ObtainSub(string input, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs, bool useList = false)
             => new(input, z, Z, buffCocs, rows, columns, useList);
         private Matrix<Complex> ObtainValue(string input) => new ComplexSub(input, z, Z, buffCocs, rows, columns).Obtain();
+        private Matrix<Complex> MtxZero() => new(rowOffs, columns);
+        private Matrix<Complex> MtxOne() => Const(Complex.ONE).matrix;
         #endregion
 
         #region Calculations
@@ -2232,7 +2230,7 @@ namespace FunctionGrapher2._0
             return HandleMatrix(sum =>
             {
                 Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
-                Matrix<Complex> product = Const(Complex.ONE).matrix, _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
+                Matrix<Complex> product = MtxOne(), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
                 Parallel.For(0, rows, p =>
                 {
                     Complex* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
@@ -2253,7 +2251,7 @@ namespace FunctionGrapher2._0
             int n = ThrowReturnLengths(split, 1, 100);
             return HandleMatrix(output =>
             {
-                Matrix<Complex> product = Const(Complex.ONE).matrix, initial = ObtainValue(split[0]);
+                Matrix<Complex> product = MtxOne(), initial = ObtainValue(split[0]);
                 Parallel.For(0, rows, p =>
                 {
                     Complex* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
@@ -2271,7 +2269,7 @@ namespace FunctionGrapher2._0
             return HandleMatrix(output =>
             {
                 Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
-                Matrix<Complex> product = Const(Complex.ONE).matrix, input1 = obtain(0), input2 = obtain(1);
+                Matrix<Complex> product = MtxOne(), input1 = obtain(0), input2 = obtain(1);
                 Parallel.For(0, rows, p =>
                 {
                     Complex* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
@@ -2289,8 +2287,7 @@ namespace FunctionGrapher2._0
             int n = ThrowReturnLengths(split, 1, 50);
             return HandleMatrix(_sum =>
             {
-                Matrix<Complex> sum = new(rowOffs, columns),
-                    coeff = Const(Complex.ONE).matrix, _coeff = Const(Complex.ONE).matrix, initial = ObtainValue(split[0]);
+                Matrix<Complex> sum = MtxZero(), coeff = MtxOne(), _coeff = MtxOne(), initial = ObtainValue(split[0]);
                 Parallel.For(0, rows, p =>
                 {
                     Complex* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
@@ -2324,8 +2321,8 @@ namespace FunctionGrapher2._0
             { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), true); resetCount(); action(buffer); });
             return buffer.Z;
         } // Meticulously optimized
-        private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, new(rowOffs, columns), b => { Plus(b.Obtain(), b.Z); });
-        private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(new(1)).matrix, b => { Multiply(b.Obtain(), b.Z); });
+        private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, MtxZero(), b => { Plus(b.Obtain(), b.Z); });
+        private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, MtxOne(), b => { Multiply(b.Obtain(), b.Z); });
         private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
         private Matrix<Complex> Composite(string[] split)
         {
@@ -2343,7 +2340,7 @@ namespace FunctionGrapher2._0
 
         #region Elements
         private Matrix<Complex> HandleMatrix(Action<Matrix<Complex>> action)
-        { Matrix<Complex> matrix = new(rowOffs, columns); action(matrix); return matrix; }
+        { Matrix<Complex> matrix = MtxZero(); action(matrix); return matrix; }
         [MethodImpl(512)] // AggressiveOptimization
         public unsafe static Matrix<Complex> InitilizeZ(Matrix<float> xCoor, Matrix<float> yCoor, int rows, int columns)
         {
@@ -2369,7 +2366,7 @@ namespace FunctionGrapher2._0
                     }));
                 case 2: constMtx.Add(new(_const, Const(_const).matrix)); return new(constMtx[^1].matrix, true);
                 case 3: return _const.Equals(constMtx[countCst]._const) ? new(constMtx[countCst++].matrix, true) : Const(_const);
-                default: ThrowException(); return new(new(rowOffs, columns)); // Should not have happened
+                default: ThrowException(); return new(MtxZero()); // Should not have happened
             }
         } // Sensitive
         [MethodImpl(512)] // AggressiveOptimization
@@ -2598,6 +2595,8 @@ namespace FunctionGrapher2._0
         private Matrix<float> ObtainValue(string input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
         public static float Obtain(string input, float x = 0) => new RealSub(input, new(x), null, null, null, null, 1, 1).Obtain()[0, 0];
         public static int ToInt(string input) => (int)Obtain(input); // Often bound to MyString.For
+        private Matrix<float> MtxZero() => new(rowOffs, columns);
+        private Matrix<float> MtxOne() => Const(1f).matrix;
         #endregion
 
         #region Basic Calculations
@@ -2615,7 +2614,8 @@ namespace FunctionGrapher2._0
             return HandleMatrix(output =>
             {
                 Matrix<float> input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
-                Parallel.For(0, rows, p => {
+                Parallel.For(0, rows, p =>
+                {
                     float* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
                     for (int q = 0; q < columns; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
                 });
@@ -2653,7 +2653,7 @@ namespace FunctionGrapher2._0
             return HandleMatrix(sum =>
             {
                 Matrix<float> obtain(int index) => ObtainValue(split[index]);
-                Matrix<float> product = Const(1).matrix, _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
+                Matrix<float> product = MtxOne(), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
                 Parallel.For(0, rows, p =>
                 {
                     float* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
@@ -2674,7 +2674,7 @@ namespace FunctionGrapher2._0
             int n = ThrowReturnLengths(split, 1, 100);
             return HandleMatrix(output =>
             {
-                Matrix<float> product = Const(1).matrix, initial = ObtainValue(split[0]);
+                Matrix<float> product = MtxOne(), initial = ObtainValue(split[0]);
                 Parallel.For(0, rows, p =>
                 {
                     float* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
@@ -2692,7 +2692,7 @@ namespace FunctionGrapher2._0
             return HandleMatrix(output =>
             {
                 Matrix<float> obtain(int index) => ObtainValue(split[index]);
-                Matrix<float> product = Const(1).matrix, input1 = obtain(0), input2 = obtain(1);
+                Matrix<float> product = MtxOne(), input1 = obtain(0), input2 = obtain(1);
                 Parallel.For(0, rows, p =>
                 {
                     float* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
@@ -2710,7 +2710,7 @@ namespace FunctionGrapher2._0
             int n = ThrowReturnLengths(split, 1, 50);
             return HandleMatrix(_sum =>
             {
-                Matrix<float> sum = new(rowOffs, columns), coeff = Const(1).matrix, _coeff = Const(1).matrix, initial = ObtainValue(split[0]);
+                Matrix<float> sum = MtxZero(), coeff = MtxOne(), _coeff = MtxOne(), initial = ObtainValue(split[0]);
                 Parallel.For(0, rows, p =>
                 {
                     float* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
@@ -2744,8 +2744,8 @@ namespace FunctionGrapher2._0
             { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), false); resetCount(); action(buffer); });
             return buffer.X;
         } // Meticulously optimized
-        private Matrix<float> Sum(string[] split) => ProcessSPI(split, 4, new(rowOffs, columns), b => { Plus(b.Obtain(), b.X); });
-        private Matrix<float> Product(string[] split) => ProcessSPI(split, 4, Const(1).matrix, b => { Multiply(b.Obtain(), b.X); });
+        private Matrix<float> Sum(string[] split) => ProcessSPI(split, 4, MtxZero(), b => { Plus(b.Obtain(), b.X); });
+        private Matrix<float> Product(string[] split) => ProcessSPI(split, 4, MtxOne(), b => { Multiply(b.Obtain(), b.X); });
         private Matrix<float> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
         private Matrix<float> Iterate2(string[] split)
         {
@@ -2793,7 +2793,7 @@ namespace FunctionGrapher2._0
 
         #region Elements
         private Matrix<float> HandleMatrix(Action<Matrix<float>> action)
-        { Matrix<float> matrix = new(rowOffs, columns); action(matrix); return matrix; }
+        { Matrix<float> matrix = MtxZero(); action(matrix); return matrix; }
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe MatrixCopy<float> Const(float _const, int mode = 1)
         {
@@ -2808,7 +2808,7 @@ namespace FunctionGrapher2._0
                     }));
                 case 2: constMtx.Add(new(_const, Const(_const).matrix)); return new(constMtx[^1].matrix, true);
                 case 3: return _const.Equals(constMtx[countCst]._const) ? new(constMtx[countCst++].matrix, true) : Const(_const);
-                default: ThrowException(); return new(new(rowOffs, columns)); // Should not have happened
+                default: ThrowException(); return new(MtxZero()); // Should not have happened
             }
         } // Sensitive
         [MethodImpl(512)] // AggressiveOptimization
