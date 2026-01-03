@@ -7,7 +7,7 @@ using System.Runtime.InteropServices; // DllImport, StructLayout
 using System.Drawing.Imaging; // BitmapData
 using System.Text; // StringBuilder
 
-namespace FunctionGrapher2._0
+namespace Fraljiculator
 {
     /// <summary>
     /// DISPLAY SECTION
