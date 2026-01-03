@@ -1,6 +1,4 @@
-/// DATE: 2023.4~5, 2024.9~11, 2025.1
-/// DESIGNER: Fraljimetry
-/// PRECISION: System.Single (float)
+/// DATE: 2023.4~5, 2024.9~11, 2025.1; DESIGNER: Fraljimetry; PRECISION: System.Single (float)
 
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
@@ -382,50 +380,55 @@ namespace Fraljiculator
             }); // Deliberate loop order
             bmp.UnlockBits(bmpData);
         }
-        private unsafe void SetPixelFast(byte* _ptr, Color color)
-        { pixel_number++; *_ptr = color.B; _ptr++; *_ptr = color.G; _ptr++; *_ptr = color.R; _ptr++; *_ptr = color.A; }
-        private unsafe void RealSpecial(byte* _ptr, Color _zero, Color _pole, float _value, (float min, float max) mM)
+        private unsafe void SetPixelFast(byte* _ptr, Color color, ref int pixNum)
+        { pixNum++; *_ptr = color.B; _ptr++; *_ptr = color.G; _ptr++; *_ptr = color.R; _ptr++; *_ptr = color.A; }
+        private unsafe void RealSpecial(byte* _ptr, Color _zero, Color _pole, float _value, (float min, float max) mM, ref int pixNum)
         {
-            if (_value < Single.Lerp(mM.min, mM.max, size_real)) SetPixelFast(_ptr, _zero);
-            if (_value > Single.Lerp(mM.max, mM.min, size_real)) SetPixelFast(_ptr, _pole);
+            if (_value < Single.Lerp(mM.min, mM.max, size_real)) SetPixelFast(_ptr, _zero, ref pixNum);
+            if (_value > Single.Lerp(mM.max, mM.min, size_real)) SetPixelFast(_ptr, _pole, ref pixNum);
         }
-        private unsafe void ComplexSpecial(byte* _ptr, Color _zero, Color _pole, float _value)
+        private unsafe void ComplexSpecial(byte* _ptr, Color _zero, Color _pole, float _value, ref int pixNum)
         {
-            if (_value < epsilon) SetPixelFast(_ptr, _zero);
-            if (_value > 1 / epsilon) SetPixelFast(_ptr, _pole);
+            if (_value < epsilon) SetPixelFast(_ptr, _zero, ref pixNum);
+            if (_value > 1 / epsilon) SetPixelFast(_ptr, _pole, ref pixNum);
         }
-        private unsafe static void LoopBase(Action<int, int, IntPtr> pixelLoop)
+        private unsafe delegate void PixelLoop(int x, int y, IntPtr pixelPtr, ref int pixNum);
+        private unsafe static void LoopBase(PixelLoop pixelLoop)
         {
             Bitmap bmp = GetBitmap(is_main); var (bpp, bmpData) = GetBppBmpData(bmp);
             var (xInit, yInit) = (AddOne(borders[0]), AddOne(borders[2])); var (xLen, yLen) = (borders[1] - xInit, borders[3] - yInit);
             try
             {
+                int[] pixel_numbers = new int[yLen];
                 Parallel.For(0, yLen, y =>
                 {
+                    int pixNum = 0;
                     var pixelPtr = (IntPtr)((byte*)bmpData.Scan0 + (yInit + y) * bmpData.Stride + xInit * bpp);
-                    for (int x = 0; x < xLen; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr);
+                    for (int x = 0; x < xLen; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr, ref pixNum);
+                    pixel_numbers[y] = pixNum;
                 }); // Deliberate loop order
+                for (int y = 0; y < yLen; y++) pixel_number += pixel_numbers[y];
             }
             finally { bmp.UnlockBits(bmpData); }
         }
         //
         private unsafe void RealLoop(Matrix<float> output, Color _zero, Color _pole, Func<float, Color> extractor, (float, float) mM)
-            => LoopBase((x, y, pixelPtr) =>
+            => LoopBase((x, y, pixelPtr, ref pixNum) =>
             {
                 float _value = output[x, y];
                 if (Single.IsNaN(_value)) return;
                 var _pixelPtr = (byte*)pixelPtr;
-                SetPixelFast(_pixelPtr, extractor(_value));
-                if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathF.Atan(_value), mM);
+                SetPixelFast(_pixelPtr, extractor(_value), ref pixNum);
+                if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathF.Atan(_value), mM, ref pixNum);
             });
         private unsafe void ComplexLoop(Matrix<Complex> output, Color _zero, Color _pole, Func<Complex, Color> extractor)
-            => LoopBase((x, y, pixelPtr) =>
+            => LoopBase((x, y, pixelPtr, ref pixNum) =>
             {
                 Complex _value = output[x, y];
                 if (Single.IsNaN(_value.real) || Single.IsNaN(_value.imaginary)) return;
                 var _pixelPtr = (byte*)pixelPtr;
-                SetPixelFast(_pixelPtr, extractor(_value));
-                if (!delete_point) ComplexSpecial(_pixelPtr, _zero, _pole, Complex.Modulus(_value));
+                SetPixelFast(_pixelPtr, extractor(_value), ref pixNum);
+                if (!delete_point) ComplexSpecial(_pixelPtr, _zero, _pole, Complex.Modulus(_value), ref pixNum);
             });
         private static Func<float, Color> GetColorReal123(int mode) => _value =>
         {
@@ -1691,7 +1694,6 @@ namespace Fraljiculator
         private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
             FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
             FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-
         private static float scale_factor;
         private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
         private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -2198,7 +2200,6 @@ namespace Fraljiculator
         private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<Complex>> constMtx = [];
-
         private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private bool readList; // Reading or writing constMtx
         private string input;
@@ -2574,7 +2575,6 @@ namespace Fraljiculator
         private readonly Matrix<float>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<float>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<float>> constMtx = [];
-
         private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private bool readList; // Reading or writing constMtx
         private string input;
