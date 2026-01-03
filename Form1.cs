@@ -372,11 +372,11 @@ namespace Fraljiculator
             => (Image.GetPixelFormatSize(bmp.PixelFormat) / 8, bmp.LockBits(rectangle, ImageLockMode.ReadWrite, bmp.PixelFormat));
         private unsafe static void ClearBitmap(Bitmap bmp)
         {
-            var (bpp, bmpData) = GetBppBmpData(bmp); var pixelPtr = (byte*)bmpData.Scan0 + bpp - 1;
+            var (bpp, bmpData) = GetBppBmpData(bmp); var bmpInit = (byte*)bmpData.Scan0 + bpp - 1;
             Parallel.For(0, rectangle.Height, y =>
             {
-                byte* _pixelPtr = pixelPtr + y * bmpData.Stride;
-                for (int x = 0; x < rectangle.Width; x++, _pixelPtr += bpp) *_pixelPtr = 0; // It suffices to set color.A to zero
+                byte* pixelPtr = bmpInit + y * bmpData.Stride;
+                for (int x = 0; x < rectangle.Width; x++, pixelPtr += bpp) *pixelPtr = 0; // It suffices to set color.A to zero
             }); // Deliberate loop order
             bmp.UnlockBits(bmpData);
         }
@@ -399,10 +399,10 @@ namespace Fraljiculator
             var (xInit, yInit) = (AddOne(borders[0]), AddOne(borders[2])); var (xLen, yLen) = (borders[1] - xInit, borders[3] - yInit);
             try
             {
-                int[] pixelNumbers = new int[yLen];
+                int[] pixelNumbers = new int[yLen]; var bmpInit = (byte*)bmpData.Scan0 + yInit * bmpData.Stride + xInit * bpp;
                 Parallel.For(0, yLen, y =>
                 {
-                    int pixNum = 0; var pixelPtr = (IntPtr)((byte*)bmpData.Scan0 + (yInit + y) * bmpData.Stride + xInit * bpp);
+                    int pixNum = 0; var pixelPtr = (IntPtr)(bmpInit + y * bmpData.Stride);
                     for (int x = 0; x < xLen; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr, ref pixNum);
                     pixelNumbers[y] = pixNum;
                 }); // Deliberate loop order
