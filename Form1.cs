@@ -49,7 +49,7 @@ namespace Fraljiculator
 
         private static bool is_flashing, is_paused = true, is_complex = true, delete_point = true, delete_coor, swap_colors,
             is_auto, freeze_graph, clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking,
-            error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted;
+            error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound = true;
         private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile",
             INPUT_DEFAULT = "z", GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO",
             MICRO = "MICRO", ZERO = "0", REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History stored at",
@@ -67,7 +67,7 @@ namespace Fraljiculator
         {
             InitializeComponent();
             SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor);
-            InitializeMusicPlayer(); InitializeClickSound(); AttachClickEvents(this);
+            if (music_sound) { InitializeMusicPlayer(); InitializeClickSound(); AttachClickEvents(this); }
             InitializeTimers(); InitializeGraphics();
             InitializeCombo(); InitializeData();
             SetThicknessDensenessScopesBorders();
@@ -392,7 +392,7 @@ namespace Fraljiculator
             if (_value < epsilon) SetPixelFast(_ptr, _zero, ref pixNum);
             if (_value > 1 / epsilon) SetPixelFast(_ptr, _pole, ref pixNum);
         }
-        private unsafe delegate void PixelLoop(int x, int y, IntPtr pixelPtr, ref int pixNum);
+        private delegate void PixelLoop(int x, int y, IntPtr pixelPtr, ref int pixNum); // Instead of Action<int, int, IntPtr, ref int>
         private unsafe static void LoopBase(PixelLoop pixelLoop)
         {
             Bitmap bmp = GetBitmap(is_main); var (bpp, bmpData) = GetBppBmpData(bmp);
@@ -402,8 +402,7 @@ namespace Fraljiculator
                 int[] pixel_numbers = new int[yLen];
                 Parallel.For(0, yLen, y =>
                 {
-                    int pixNum = 0;
-                    var pixelPtr = (IntPtr)((byte*)bmpData.Scan0 + (yInit + y) * bmpData.Stride + xInit * bpp);
+                    int pixNum = 0; var pixelPtr = (IntPtr)((byte*)bmpData.Scan0 + (yInit + y) * bmpData.Stride + xInit * bpp);
                     for (int x = 0; x < xLen; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr, ref pixNum);
                     pixel_numbers[y] = pixNum;
                 }); // Deliberate loop order
@@ -1358,6 +1357,7 @@ namespace Fraljiculator
         }
         private void PicturePlay_Click(object sender, EventArgs e)
         {
+            if (!music_sound) return;
             if (is_paused)
             {
                 MediaPlayer.controls.currentPosition = pause_pos;
