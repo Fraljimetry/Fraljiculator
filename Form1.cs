@@ -399,14 +399,14 @@ namespace Fraljiculator
             var (xInit, yInit) = (AddOne(borders[0]), AddOne(borders[2])); var (xLen, yLen) = (borders[1] - xInit, borders[3] - yInit);
             try
             {
-                int[] pixel_numbers = new int[yLen];
+                int[] pixelNumbers = new int[yLen];
                 Parallel.For(0, yLen, y =>
                 {
                     int pixNum = 0; var pixelPtr = (IntPtr)((byte*)bmpData.Scan0 + (yInit + y) * bmpData.Stride + xInit * bpp);
                     for (int x = 0; x < xLen; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr, ref pixNum);
-                    pixel_numbers[y] = pixNum;
+                    pixelNumbers[y] = pixNum;
                 }); // Deliberate loop order
-                for (int y = 0; y < yLen; y++) pixel_number += pixel_numbers[y];
+                for (int y = 0; y < yLen; y++) pixel_number += pixelNumbers[y];
             }
             finally { bmp.UnlockBits(bmpData); }
         }
