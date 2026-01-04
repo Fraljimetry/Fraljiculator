@@ -34,8 +34,8 @@ namespace Fraljiculator
 
         private static float scale_factor, title_elapsed, pause_pos, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
         private static readonly float GRID_WIDTH_1 = 3f, GRID_WIDTH_2 = 2f, CURVE_WIDTH_LIMIT = 20f, STRIDE = 0.25f, MOD = 0.25f,
-            ARG = MathF.PI / 12, STRIDE_REAL = 1, EPS_REAL = 0.015f, EPS_COMPLEX = 0.015f, SIZE_REAL = 0.5f, DECAY = 0.2f, DEPTH = 2,
-            CURVE_WIDTH = 5, INCREMENT = 0.01f, TITLE = 0.01f;
+            ARG = MathF.PI / 12, STRIDE_REAL = 1f, EPS_REAL = 0.015f, EPS_COMPLEX = 0.015f, SIZE_REAL = 0.5f, DECAY = 0.2f, DEPTH = 2f,
+            CURVE_WIDTH = 5f, INCREMENT = 0.01f, TITLE = 0.01f;
         private static int display_elapsed, x_left, x_right, y_up, y_down, color_mode, contour_mode,
             loop_number, chosen_number, export_number, pixel_number, segment_number;
         private static readonly int X_LEFT_MAC = 620, X_RIGHT_MAC = 1520, Y_UP_MAC = 45, Y_DOWN_MAC = 945,
@@ -195,14 +195,13 @@ namespace Fraljiculator
             size_real = SIZE_REAL * _thick / (1 + _thick); // For real extremities
             decay = DECAY * _thick;
 
-            int i = 0; // Necessary
             if (!GeneralInput_Undo())
             {
                 float _scope = Obtain(GeneralInput);
                 scopes = [-_scope, _scope, _scope, -_scope]; // Remind the signs
-                foreach (var tbx in tbxDetails) SetText(tbxDetails[i], scopes[i++].ToString("#0.0000"));
+                for (int i = 0; i < tbxDetails.Length; i++) SetText(tbxDetails[i], scopes[i].ToString("#0.0000"));
             }
-            else foreach (var tbx in tbxDetails) scopes[i] = RealSub.Obtain(RecoverMultiply.Simplify(tbxDetails[i++].Text));
+            else for (int i = 0; i < tbxDetails.Length; i++) scopes[i] = RealSub.Obtain(RecoverMultiply.Simplify(tbxDetails[i].Text));
             if (InvalidScopesX() || InvalidScopesY()) MyString.ThrowException(); // The detailed exception is determined later
 
             borders = [x_left, x_right, y_up, y_down];
@@ -399,14 +398,14 @@ namespace Fraljiculator
             var (xInit, yInit) = (AddOne(borders[0]), AddOne(borders[2])); var (xLen, yLen) = (borders[1] - xInit, borders[3] - yInit);
             try
             {
-                int[] pixelNumbers = new int[yLen]; var bmpInit = (byte*)bmpData.Scan0 + yInit * bmpData.Stride + xInit * bpp;
+                int[] pixNums = new int[yLen]; var bmpInit = (byte*)bmpData.Scan0 + yInit * bmpData.Stride + xInit * bpp;
                 Parallel.For(0, yLen, y =>
                 {
                     int pixNum = 0; var pixelPtr = (IntPtr)(bmpInit + y * bmpData.Stride);
                     for (int x = 0; x < xLen; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr, ref pixNum);
-                    pixelNumbers[y] = pixNum;
+                    pixNums[y] = pixNum;
                 }); // Deliberate loop order
-                for (int y = 0; y < yLen; y++) pixel_number += pixelNumbers[y];
+                fixed (int* ptr = pixNums) { int* _ptr = ptr; for (int y = 0; y < yLen; y++, _ptr++) pixel_number += *_ptr; }
             }
             finally { bmp.UnlockBits(bmpData); }
         }
@@ -453,7 +452,7 @@ namespace Fraljiculator
                 3 => (LOWER_BLUE, UPPER_GOLD)
             };
             bool draw = mode == 1 ? MathF.Min(LowerDist(v1, s1), LowerDist(v2, s2)) < epsilon
-                : (LowerIdx(v1, s1) + LowerIdx(v2, s2)) % 2 == 0;
+                : Single.IsEvenInteger(LowerIdx(v1, s1) + LowerIdx(v2, s2));
             return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
         };
         private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? c => ObtainColorWheel(c, alpha: 1) : _value =>
@@ -572,8 +571,8 @@ namespace Fraljiculator
                     ratio = relativeSpeed * steps % 1;
                     selectedPen = color_mode switch
                     {
-                        2 => ratio < 0.5 ? whitePen : blackPen,
-                        3 => ratio < 0.5 ? bluePen : yellowPen,
+                        2 => ratio < 0.5f ? whitePen : blackPen,
+                        3 => ratio < 0.5f ? bluePen : yellowPen,
                         _ => selectedPen
                     };
                     if (color_mode > 3) vividPen.Color = ObtainColorWheelCurve(ratio);
@@ -1694,6 +1693,7 @@ namespace Fraljiculator
         private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
             FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
             FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
+
         private static float scale_factor;
         private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
         private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1993,7 +1993,7 @@ namespace Fraljiculator
         protected static (string[], StringBuilder) GetMultiplyDivideComponents(string input)
             => (SplitByChars(input, "*/"), GetSignsBuilder(input, "*/"));
         protected static (bool trig, bool hyper) IsInverseFunc(int start, string input)
-            => (start > 1 ? input[start - 2] != _A : false, start > 2 ? input[start - 3] != _A : false); // Should not simplify
+            => (start > 1 ? input[start - 2] == _A : true, start > 2 ? input[start - 3] == _A : true); // Should not simplify
     } /// Commonalities for RealSub & ComplexSub
     public class ReplaceTags : RealComplex
     {
@@ -2200,6 +2200,7 @@ namespace Fraljiculator
         private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<Complex>> constMtx = [];
+
         private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private bool readList; // Reading or writing constMtx
         private string input;
@@ -2508,15 +2509,15 @@ namespace Fraljiculator
             int handleSub(Func<Complex, Complex> func, int tagL) { mtx = CopyMtx(bFValue); FuncSub(mtx, func); copy = false; return tagL; }
             tagL = input[start - 1] switch
             {
-                _S => handleSub(isInverse.trig ? Complex.Sin : Complex.Asin, isInverse.trig ? 1 : 2),
-                _C => handleSub(isInverse.trig ? Complex.Cos : Complex.Acos, isInverse.trig ? 1 : 2),
-                _T => handleSub(isInverse.trig ? Complex.Tan : Complex.Atan, isInverse.trig ? 1 : 2),
+                _S => handleSub(isInverse.trig ? Complex.Asin : Complex.Sin, isInverse.trig ? 2 : 1),
+                _C => handleSub(isInverse.trig ? Complex.Acos : Complex.Cos, isInverse.trig ? 2 : 1),
+                _T => handleSub(isInverse.trig ? Complex.Atan : Complex.Tan, isInverse.trig ? 2 : 1),
                 _H => handleSub(input[start - 2] switch
                 {
-                    _S => isInverse.hyper ? Complex.Sinh : Complex.Asinh,
-                    _C => isInverse.hyper ? Complex.Cosh : Complex.Acosh,
-                    _T => isInverse.hyper ? Complex.Tanh : Complex.Atanh
-                }, isInverse.hyper ? 2 : 3),
+                    _S => isInverse.hyper ? Complex.Asinh : Complex.Sinh,
+                    _C => isInverse.hyper ? Complex.Acosh : Complex.Cosh,
+                    _T => isInverse.hyper ? Complex.Atanh : Complex.Tanh
+                }, isInverse.hyper ? 3 : 2),
                 _A => handleSub(c => new(Complex.Modulus(c)), 1), // Converting from float to Complex
                 J_ => handleSub(Complex.Conjugate, 1),
                 _L => handleSub(Complex.Log, 1),
@@ -2551,7 +2552,7 @@ namespace Fraljiculator
             string input = this.input; // Preserving the original input
             if (input.Contains('('))
             {
-                while (input.Contains(UNDERLINE)) input = SeriesSub(input);
+                while (input.Contains(UNDERLINE)) input = SeriesSub(input); // Hard to count
                 var (length, start, end, tagL) = PrepareLoop(input);
                 for (int i = 0; i < length; i++)
                 {
@@ -2575,6 +2576,7 @@ namespace Fraljiculator
         private readonly Matrix<float>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<float>[] braValues; // To store values between parenthesis pairs
         private readonly List<ConstMatrix<float>> constMtx = [];
+
         private int countBra, countCst; // countBra: logging parentheses; countCst: logging constants
         private bool readList; // Reading or writing constMtx
         private string input;
@@ -2951,15 +2953,15 @@ namespace Fraljiculator
             int handleSub(Func<float, float> func, int tagL) { mtx = CopyMtx(bFValue); FuncSub(mtx, func); copy = false; return tagL; }
             tagL = input[start - 1] switch
             {
-                _S => handleSub(isInverse.trig ? MathF.Sin : MathF.Asin, isInverse.trig ? 1 : 2),
-                _C => handleSub(isInverse.trig ? MathF.Cos : MathF.Acos, isInverse.trig ? 1 : 2),
-                _T => handleSub(isInverse.trig ? MathF.Tan : MathF.Atan, isInverse.trig ? 1 : 2),
+                _S => handleSub(isInverse.trig ? MathF.Asin : MathF.Sin, isInverse.trig ? 2 : 1),
+                _C => handleSub(isInverse.trig ? MathF.Acos : MathF.Cos, isInverse.trig ? 2 : 1),
+                _T => handleSub(isInverse.trig ? MathF.Atan : MathF.Tan, isInverse.trig ? 2 : 1),
                 _H => handleSub(input[start - 2] switch
                 {
-                    _S => isInverse.hyper ? MathF.Sinh : MathF.Asinh,
-                    _C => isInverse.hyper ? MathF.Cosh : MathF.Acosh,
-                    _T => isInverse.hyper ? MathF.Tanh : MathF.Atanh
-                }, isInverse.hyper ? 2 : 3),
+                    _S => isInverse.hyper ? MathF.Asinh : MathF.Sinh,
+                    _C => isInverse.hyper ? MathF.Acosh : MathF.Cosh,
+                    _T => isInverse.hyper ? MathF.Atanh : MathF.Tanh
+                }, isInverse.hyper ? 3 : 2),
                 _A => handleSub(MathF.Abs, 1),
                 _L => handleSub(MathF.Log, 1),
                 E_ => handleSub(MathF.Exp, 1),
@@ -2992,10 +2994,8 @@ namespace Fraljiculator
                 _Z_ => Zeta,
                 S_ => Sum,
                 P_ => Product,
-                I_ when input[idx - 2] == MODE_1 => Iterate1,
-                I_ when input[idx - 2] == MODE_2 => Iterate2,
-                J_ when input[idx - 2] == MODE_1 => Composite1,
-                J_ when input[idx - 2] == MODE_2 => Composite2,
+                I_ => input[idx - 2] switch { MODE_1 => Iterate1, MODE_2 => Iterate2, },
+                J_ => input[idx - 2] switch { MODE_1 => Composite1, MODE_2 => Composite2, },
                 K_ => Cocoon
             };
             braValues[countBra] = new(braFunc(split)); // No need to copy
@@ -3006,7 +3006,7 @@ namespace Fraljiculator
             string input = this.input; // Preserving the original input
             if (input.Contains('('))
             {
-                while (input.Contains(UNDERLINE)) input = SeriesSub(input);
+                while (input.Contains(UNDERLINE)) input = SeriesSub(input); // Hard to count
                 var (length, start, end, tagL) = PrepareLoop(input);
                 for (int i = 0; i < length; i++)
                 {
