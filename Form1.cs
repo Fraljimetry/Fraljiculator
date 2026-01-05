@@ -455,12 +455,12 @@ namespace Fraljiculator
                 : Single.IsEvenInteger(LowerIdx(v1, s1) + LowerIdx(v2, s2));
             return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
         };
-        private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? c => ObtainColorWheel(c, alpha: 1) : _value =>
+        private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? (c => ObtainColorWheel(c, alpha: 1)) : (_value =>
         {
             Complex _valueLog = Complex.Log(_value);
             float alpha = (LowerRatio(_valueLog.real, mod_stride) + LowerRatio(_valueLog.imaginary, arg_stride)) / 2;
             return ObtainColorWheel(_value, GetShade(alpha));
-        };
+        });
         private void RealLoop123(Matrix<float> output, Color _zero, Color _pole, int mode, (float, float) mM)
             => RealLoop(output, _zero, _pole, GetColorReal123(mode), mM);
         private void RealLoop45(Matrix<float> output, bool mode, (float, float) mM)
@@ -515,11 +515,11 @@ namespace Fraljiculator
         #region Curves
         private (float, float, float) SetStartEndIncrement(string[] split, bool isPolar, bool isParam)
         {
+            float obtain(int index) => RealSub.Obtain(split[index]);
             (float, float, float) initializeParamPolar(int relPos)
             {
                 MyString.ThrowInvalidLengths(split, [relPos + 2, relPos + 3]);
-                return (RealSub.Obtain(split[relPos]), RealSub.Obtain(split[relPos + 1]),
-                    split.Length == relPos + 3 ? RealSub.Obtain(split[relPos + 2]) : INCREMENT);
+                return (obtain(relPos), obtain(relPos + 1), split.Length == relPos + 3 ? obtain(relPos + 2) : INCREMENT);
             }
             if (isParam) return initializeParamPolar(3);
             else if (isPolar) return initializeParamPolar(2);
@@ -527,9 +527,9 @@ namespace Fraljiculator
             {
                 MyString.ThrowInvalidLengths(split, [0, 1, 2, 3, 4]); float range = Obtain(GeneralInput);
                 float getRange(TextBox tbx, bool minus) => GeneralInput_Undo() ? RealSub.Obtain(tbx.Text) : (minus ? -range : range);
-                return (split.Length < 3 ? getRange(X_Left, true) : RealSub.Obtain(split[1]),
-                    split.Length < 3 ? getRange(X_Right, false) : RealSub.Obtain(split[2]),
-                    split.Length == 2 ? RealSub.Obtain(split[1]) : (split.Length == 4 ? RealSub.Obtain(split[3]) : INCREMENT));
+                return (split.Length < 3 ? getRange(X_Left, true) : obtain(1),
+                    split.Length < 3 ? getRange(X_Right, false) : obtain(2),
+                    split.Length == 2 ? obtain(1) : split.Length == 4 ? obtain(3) : INCREMENT);
             }
         }
         private unsafe static (Matrix<float>, Matrix<float>, int, bool) SetCurveValues(string[] split, bool isPolar, bool isParam,
@@ -629,7 +629,8 @@ namespace Fraljiculator
         private void DisplayIterateLoop(string[] split)
         {
             var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
-            int int3 = RealSub.ToInt(split[3]), int4 = (int)MathF.Max(int3, RealSub.ToInt(split[4])), _int = is_checking ? int3 : int4;
+            int toInt(int index) => RealSub.ToInt(split[index]);
+            int int3 = toInt(3), int4 = is_checking ? int3 : (int)MathF.Max(int3, toInt(4)); // Necessary
             string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops);
             string obtainDisplayInput(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(5, loops) : defaultInput;
 
@@ -638,7 +639,7 @@ namespace Fraljiculator
             {
                 Matrix<Complex> z = ComplexSub.InitilizeZ(xCoor, yCoor, rows, columns); // Special for complex
                 Matrix<Complex> Z = new ComplexSub(split[1], z, null, null, rows, columns).Obtain();
-                for (int loops = int3; loops <= _int; loops++)
+                for (int loops = int3; loops <= int4; loops++)
                 {
                     Z = new ComplexSub(replaceLoop(0, loops), z, Z, null, rows, columns).Obtain();
                     output_complex = new ComplexSub(obtainDisplayInput(loops, "Z"), z, Z, null, rows, columns).Obtain();
@@ -648,7 +649,7 @@ namespace Fraljiculator
             else
             {
                 Matrix<float> X = new RealSub(split[1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
-                for (int loops = int3; loops <= _int; loops++)
+                for (int loops = int3; loops <= int4; loops++)
                 {
                     X = new RealSub(replaceLoop(0, loops), xCoor, yCoor, X, null, null, rows, columns).Obtain();
                     output_real = new RealSub(obtainDisplayInput(loops, "y-X"), xCoor, yCoor, X, null, null, rows, columns).Obtain();
@@ -667,7 +668,8 @@ namespace Fraljiculator
                 containsTag(ReplaceTags.POLAR) ? DisplayPolar :
                 containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
 
-            int int2 = RealSub.ToInt(split[2]), int3 = is_checking ? int2 : (int)MathF.Max(int2, RealSub.ToInt(split[3])); // Necessary
+            int toInt(int index) => RealSub.ToInt(split[index]);
+            int int2 = toInt(2), int3 = is_checking ? int2 : (int)MathF.Max(int2, toInt(3)); // Necessary
             for (int loops = int2; loops <= int3; loops++) displayMethod(MyString.ReplaceLoop(split, 0, 1, loops));
         }
         private void DisplayOnScreen()
@@ -1693,7 +1695,6 @@ namespace Fraljiculator
         private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
             FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
             FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-
         private static float scale_factor;
         private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
         private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1852,7 +1853,7 @@ namespace Fraljiculator
         public static string ReplaceLoop(string[] split, int origIdx, int subIdx, int i)
             => split[origIdx].Replace(split[subIdx], WrapBase(i, '(', ')'));
         protected static string ReplaceInput(string input, ref int countBra, int idx, int end, bool isComplex)
-            => Replace(input, WrapBase(countBra++, '[', ']'), idx - (isComplex ? 2 : (RealComplex.IJ_.Contains(input[idx - 1]) ? 3 : 2)), end);
+            => Replace(input, WrapBase(countBra++, '[', ']'), idx - (isComplex ? 2 : RealComplex.IJ_.Contains(input[idx - 1]) ? 3 : 2), end);
         protected static void ReplaceInput(ref string input, ref int countBra, ref int start, int end, ref int tagL)
         { start -= tagL + 1; tagL = -1; input = Replace(input, WrapBase(countBra++, '[', ']'), start--, end); }
         private static string ReplaceInterior(string input, char origChar, char subChar)
@@ -1943,8 +1944,7 @@ namespace Fraljiculator
             int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
             colBytes = getBytes(1); strdBytes = getBytes(STEP); resBytes = getBytes(rows - resInitPos);
         } // Fields for optimization
-        public static void For(int start, int end, Action<int> action)
-        { for (int i = start; i <= end; i++) action(i); } // Complicated start and end
+        public static void For(int start, int end, Action<int> action) { for (int i = start; i <= end; i++) action(i); }
         protected static Matrix<float> ChooseMode(string mode, Matrix<float> m1, Matrix<float> m2, int[] rowOffs, int columns)
         {
             switch (Char.Parse(mode))
@@ -2600,7 +2600,7 @@ namespace Fraljiculator
         #endregion
 
         #region Basic Calculations
-        public static float Factorial(float n) => n < 0 ? Single.NaN : (MathF.Floor(n) == 0 ? 1 : MathF.Floor(n) * Factorial(n - 1));
+        public static float Factorial(float n) => n < 0 ? Single.NaN : MathF.Floor(n) == 0 ? 1 : MathF.Floor(n) * Factorial(n - 1);
         private static float Mod(float a, float n) => n != 0 ? a % MathF.Abs(n) : Single.NaN;
         private static float Combination(float n, float r)
             => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n > 0 ?
@@ -2994,8 +2994,8 @@ namespace Fraljiculator
                 _Z_ => Zeta,
                 S_ => Sum,
                 P_ => Product,
-                I_ => input[idx - 2] switch { MODE_1 => Iterate1, MODE_2 => Iterate2, },
-                J_ => input[idx - 2] switch { MODE_1 => Composite1, MODE_2 => Composite2, },
+                I_ => input[idx - 2] switch { MODE_1 => Iterate1, MODE_2 => Iterate2 },
+                J_ => input[idx - 2] switch { MODE_1 => Composite1, MODE_2 => Composite2 },
                 K_ => Cocoon
             };
             braValues[countBra] = new(braFunc(split)); // No need to copy
