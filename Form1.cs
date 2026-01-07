@@ -49,7 +49,7 @@ namespace Fraljiculator
 
         private static bool is_flashing, is_paused = true, is_complex = true, delete_point = true, delete_coor, swap_colors,
             is_auto, freeze_graph, clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking,
-            error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound = true;
+            error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound;
         private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile",
             INPUT_DEFAULT = "z", GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO",
             MICRO = "MICRO", ZERO = "0", REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History stored at",
@@ -559,14 +559,14 @@ namespace Fraljiculator
                 bluePen = dichoPen(LOWER_BLUE, UPPER_GOLD), yellowPen = dichoPen(UPPER_GOLD, LOWER_BLUE),
                 selectedPen = color_mode == 1 ? defaultPen : vividPen;
 
-            Point pos = new(), posBuffer = new(); bool inRange, inRangeBuffer = false; int _ratio, reference = 0;
+            Point pos = new(), posBuffer = new(); bool inRange, inRangeBuffer = false; int _ratio, _ratioBuffer = 0;
             float relativeSpeed = Obtain(DenseInput) / length, ratio; float* v1Ptr = value1.RowPtr(), v2Ptr = value2.RowPtr();
 
             for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++, segment_number++)
             {
                 (pos.X, pos.Y) = (LinearTransformX(*v1Ptr, borders), LinearTransformY(*v2Ptr, borders));
                 inRange = *v1Ptr > scopes[0] && *v1Ptr < scopes[1] && *v2Ptr > scopes[3] && *v2Ptr < scopes[2];
-                if (inRangeBuffer && inRange)
+                if (inRangeBuffer && inRange && posBuffer != pos)
                 {
                     ratio = relativeSpeed * steps % 1;
                     selectedPen = color_mode switch
@@ -581,8 +581,8 @@ namespace Fraljiculator
                     SetScrollBars(true); // Necessary for each loop
                     DrawScrollBar(LinearTransform(pos.X, pos.Y, GetRatioRow(borders), GetRatioColumn(borders), borders));
                     _ratio = Frac(REFRESH, ratio);
-                    if (reference != _ratio) DrawReferenceRectangles(selectedPen.Color);
-                    reference = _ratio;
+                    if (_ratioBuffer != _ratio) DrawReferenceRectangles(selectedPen.Color);
+                    _ratioBuffer = _ratio;
                 }
                 inRangeBuffer = inRange;
                 posBuffer = pos;
