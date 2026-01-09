@@ -49,7 +49,7 @@ namespace Fraljiculator
 
         private static bool is_flashing, is_paused = true, is_complex = true, delete_point = true, delete_coor, swap_colors,
             is_auto, freeze_graph, clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking,
-            error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound;
+            error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound = true;
         private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile",
             INPUT_DEFAULT = "z", GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO",
             MICRO = "MICRO", ZERO = "0", REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History stored at",
@@ -329,9 +329,9 @@ namespace Fraljiculator
         private static int LinearTransformY(float y, int[] borders) => (int)(borders[2] + (y - scopes[2]) / GetRatioColumn(borders));
         private static (float, float) LinearTransform(int x, int y, float xCoor, float yCoor, int[] borders)
             => (scopes[0] + (x - borders[0]) * xCoor, scopes[2] + (y - borders[2]) * yCoor); // For optimization
-        private static int LowerIdx(float a, float m) => (int)MathF.Floor(a / m);
-        private static float LowerDist(float a, float m) => a - m * LowerIdx(a, m);
-        private static float LowerRatio(float a, float m) => a == -0 ? 1 : LowerDist(a, m) / m; // -0 is necessary
+        private static int LowIdx(float a, float m) => (int)MathF.Floor(a / m);
+        private static float LowDist(float a, float m) => a - m * LowIdx(a, m);
+        private static float LowRatio(float a, float m) => a == -0 ? 1 : LowDist(a, m) / m; // -0 is necessary
         private static float GetShade(float alpha) => (alpha - 1) / DEPTH + 1;
         private unsafe static (float, float) FiniteExtremities(Matrix<float> output, int rows, int columns)
         {
@@ -440,7 +440,7 @@ namespace Fraljiculator
         };
         private static Func<float, Color> GetColorReal45(bool mode, (float min, float max) mM) => _value => mode ?
             ObtainColorStrip(_value, mM.min, mM.max) :
-            ObtainColorStrip(_value, mM.min, mM.max, GetShade(LowerRatio(_value, stride_real)));
+            ObtainColorStrip(_value, mM.min, mM.max, GetShade(LowRatio(_value, stride_real)));
         private static Func<Complex, Color> GetColorComplex123(int mode, bool isReIm) => input =>
         {
             Complex _value = isReIm ? input : Complex.Log(input); var (v1, v2) = (_value.real, _value.imaginary);
@@ -451,14 +451,14 @@ namespace Fraljiculator
                 2 => (Color.Black, Color.White),
                 3 => (LOWER_BLUE, UPPER_GOLD)
             };
-            bool draw = mode == 1 ? MathF.Min(LowerDist(v1, s1), LowerDist(v2, s2)) < epsilon
-                : Single.IsEvenInteger(LowerIdx(v1, s1) + LowerIdx(v2, s2));
+            bool draw = mode != 1 ? Single.IsEvenInteger(LowIdx(v1, s1) + LowIdx(v2, s2))
+                : MathF.Min(MathF.Min(LowDist(v1, s1), LowDist(v2, s2)), MathF.Min(-LowDist(v1, -s1), -LowDist(v2, -s2))) < epsilon;
             return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
         };
         private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? (c => ObtainColorWheel(c, alpha: 1)) : (_value =>
         {
             Complex _valueLog = Complex.Log(_value);
-            float alpha = (LowerRatio(_valueLog.real, mod_stride) + LowerRatio(_valueLog.imaginary, arg_stride)) / 2;
+            float alpha = (LowRatio(_valueLog.real, mod_stride) + LowRatio(_valueLog.imaginary, arg_stride)) / 2;
             return ObtainColorWheel(_value, GetShade(alpha));
         });
         private void RealLoop123(Matrix<float> output, Color _zero, Color _pole, int mode, (float, float) mM)
