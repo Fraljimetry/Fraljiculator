@@ -1,4 +1,6 @@
-/// DATE: 2023.4~5, 2024.9~11, 2025.1; DESIGNER: Fraljimetry; PRECISION: System.Single (float)
+/// DATE: 2023.4~5, 2024.9~11, 2025.1
+/// DESIGNER: Fraljimetry
+/// PRECISION: System.Single (float)
 
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
@@ -662,12 +664,10 @@ namespace Fraljiculator
             input = ReplaceTags.ReplaceCurves(input); string[] split = MyString.SplitString(input); // Do not merge into one
             bool containsTag(string s) => input.Contains(String.Concat(ReplaceTags.FUNC_HEAD, s, ReplaceTags.UNDERLINE, '('));
             if (containsTag(ReplaceTags.ITLOOP)) { DisplayIterateLoop(split); return; }
-
             Action<string> displayMethod =
                 containsTag(ReplaceTags.FUNC) ? DisplayFunction :
                 containsTag(ReplaceTags.POLAR) ? DisplayPolar :
                 containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
-
             int toInt(int index) => RealSub.ToInt(split[index]);
             int int2 = toInt(2), int3 = is_checking ? int2 : (int)MathF.Max(int2, toInt(3)); // Necessary
             for (int loops = int2; loops <= int3; loops++) displayMethod(MyString.ReplaceLoop(split, 0, 1, loops));
@@ -679,13 +679,11 @@ namespace Fraljiculator
             for (int loops = 0; loops < split.Length; loops++)
             {
                 bool containsTags(string s1, string s2) => MyString.ContainsAny(split[loops], [s1, s2]);
-
                 Action<string> displayMethod =    // Should not pull outside of the loop
                     containsTags(MyString.LOOP_NAMES[0], MyString.LOOP_NAMES[1]) ? DisplayLoop :
                     containsTags(MyString.FUNC_NAMES[0], MyString.FUNC_NAMES[1]) ? DisplayFunction :
                     containsTags(MyString.FUNC_NAMES[2], MyString.FUNC_NAMES[3]) ? DisplayPolar :
                     containsTags(MyString.FUNC_NAMES[4], MyString.FUNC_NAMES[5]) ? DisplayParam : DisplayRendering;
-
                 displayMethod(split[loops]);
             }
         }
@@ -1794,7 +1792,7 @@ namespace Fraljiculator
             int count = 0; foreach (char c in input) if (charSet.Contains(c)) count++;
             return count;
         }
-        protected static (int, int, int, int) PrepareLoop(ReadOnlySpan<char> input) => (CountChars(input, "("), input.Length - 1, 0, -1);
+        protected static (int, int, int, int) PrepareLoop(ReadOnlySpan<char> input) => (CountChars(input, "("), input.Length - 1, -1, 0);
         public static bool ContainsAny(ReadOnlySpan<char> input, string charsToCheck)
         {
             HashSet<char> charSet = [.. charsToCheck]; // Fast lookup
@@ -1826,8 +1824,8 @@ namespace Fraljiculator
             static int pairedInnerBra(ReadOnlySpan<char> input, int start)
             { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
 
-            (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, start);
-        } // Backward lookup for parenthesis pairs
+            int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
+        } // Backward lookup for parenthesis pairs, extremely sensitive
         public static bool CheckParenthesis(ReadOnlySpan<char> input)
         {
             int sum = 0;
@@ -1842,20 +1840,19 @@ namespace Fraljiculator
         protected static string BraFreePart(string input, int start, int end) => Extract(input, start + 1, end - 1);
         protected static string TryBraNum(string input) => BraFreePart(input, 0, input.Length - 1);
         public static string Replace(string origStr, string subStr, int start, int end)
-            => String.Create(start + subStr.Length + origStr.Length - end - 1, (origStr, subStr, start, end),
-                (span, state) =>
-                {
-                    var (_origStr, _subStr, _start, _end) = state;
-                    _origStr.AsSpan(0, _start).CopyTo(span); // Copying the beginning
-                    _subStr.AsSpan().CopyTo(span[_start..]); // Copying the substitution
-                    _origStr.AsSpan(_end + 1).CopyTo(span[(_start + _subStr.Length)..]); // Copying the remaining
-                });
+            => String.Create(start + subStr.Length + origStr.Length - end - 1, (origStr, subStr, start, end), (span, state) =>
+            {
+                var (_origStr, _subStr, _start, _end) = state;
+                _origStr.AsSpan(0, _start).CopyTo(span); // Copying the beginning
+                _subStr.AsSpan().CopyTo(span[_start..]); // Copying the substitution
+                _origStr.AsSpan(_end + 1).CopyTo(span[(_start + _subStr.Length)..]); // Copying the remaining
+            });
         public static string ReplaceLoop(string[] split, int origIdx, int subIdx, int i)
             => split[origIdx].Replace(split[subIdx], WrapBase(i, '(', ')'));
-        protected static string ReplaceInput(string input, ref int countBra, int idx, int end, bool isComplex)
-            => Replace(input, WrapBase(countBra++, '[', ']'), idx - (isComplex ? 2 : RealComplex.IJ_.Contains(input[idx - 1]) ? 3 : 2), end);
+        protected static string ReplaceInput(string input, ref int countBra, int start, int end)
+            => Replace(input, WrapBase(countBra++, '[', ']'), start, end);
         protected static void ReplaceInput(ref string input, ref int countBra, ref int start, int end, ref int tagL)
-        { start -= tagL + 1; tagL = -1; input = Replace(input, WrapBase(countBra++, '[', ']'), start--, end); }
+        { start -= tagL; tagL = 0; input = ReplaceInput(input, ref countBra, start--, end); }
         private static string ReplaceInterior(string input, char origChar, char subChar)
         {
             if (!input.Contains(ReplaceTags.UNDERLINE)) return input;
@@ -1904,7 +1901,6 @@ namespace Fraljiculator
         {
             int startIndex = 0, length = input.Length;
             while (startIndex < length && input[startIndex] == startChar) startIndex++;
-
             if (startIndex == length) return String.Empty;
             StringBuilder result = new(length - startIndex);
             return result.Append(input, startIndex, length - startIndex).ToString();
@@ -1922,7 +1918,7 @@ namespace Fraljiculator
     {
         protected static readonly float GAMMA = 0.57721566f;
         protected static readonly int THRESHOLD = 10, STEP = 1; // THRESHOLD: breaking long expressions; STEP: copying pattern
-        public static readonly string SUB_CHARS = ":;", IJ_ = String.Concat(I_, J_);
+        public static readonly string SUB_CHARS = ":;";
         protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', CB = '{', _D_ = '$', E = 'e', E_ = 'E',
             _F = 'f', F_ = 'F', _F_ = '!', G = 'g', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l', M_ = 'M',
             MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'p', P_ = 'P', _Q = 'q', _R = 'r', _S = 's', S_ = 'S',
@@ -2340,8 +2336,7 @@ namespace Fraljiculator
         #region Elements
         private Matrix<Complex> MtxZero() => new(rowOffs, columns);
         private Matrix<Complex> MtxOne() => Const(Complex.ONE).matrix;
-        private Matrix<Complex> HandleMatrix(Action<Matrix<Complex>> action)
-        { Matrix<Complex> matrix = MtxZero(); action(matrix); return matrix; }
+        private Matrix<Complex> HandleMatrix(Action<Matrix<Complex>> action) { Matrix<Complex> mtx = MtxZero(); action(mtx); return mtx; }
         [MethodImpl(512)] // AggressiveOptimization
         public unsafe static Matrix<Complex> InitilizeZ(Matrix<float> xCoor, Matrix<float> yCoor, int rows, int columns)
         {
@@ -2450,7 +2445,6 @@ namespace Fraljiculator
         {
             if (!input.Contains('^')) return Transform(input);
             if (CountChars(input, "^") > THRESHOLD) return BreakPower(input);
-
             string[] split = SplitByChars(input, "^");
             Matrix<Complex> tower = CopyMtx(Transform(split[^1]));
             for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
@@ -2468,13 +2462,12 @@ namespace Fraljiculator
         {
             if (!ContainsAny(input, "*/")) return PowerCore(input);
             if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input);
-
             var (split, signs) = GetMultiplyDivideComponents(input);
             Matrix<Complex> product = CopyMtx(PowerCore(split[0]));
             for (int j = 1; j < split.Length; j++)
             {
-                Action<Matrix<Complex>, Matrix<Complex>> operation = signs[j - 1] == '*' ? Multiply : Divide;
-                operation(PowerCore(split[j]).matrix, product);
+                Action<Matrix<Complex>, Matrix<Complex>>? op = signs[j - 1] == '*' ? Multiply : signs[j - 1] == '/' ? Divide : null;
+                if (op != null) op(PowerCore(split[j]).matrix, product); else ThrowException();
             }
             return new(product);
         }
@@ -2490,13 +2483,12 @@ namespace Fraljiculator
         {
             if (!ContainsAny(input, "+-")) return MultiplyDivideCore(input);
             if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input);
-
             var (split, signs) = GetPlusSubtractComponents(input);
             Matrix<Complex> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
             for (int i = 1; i < split.Length; i++)
             {
-                Action<Matrix<Complex>, Matrix<Complex>> operation = signs[i] == '+' ? Plus : Subtract;
-                operation(MultiplyDivideCore(split[i]).matrix, sum);
+                Action<Matrix<Complex>, Matrix<Complex>>? op = signs[i] == '+' ? Plus : signs[i] == '-' ? Subtract : null;
+                if (op != null) op(MultiplyDivideCore(split[i]).matrix, sum); else ThrowException();
             }
             return new(sum);
         }
@@ -2506,25 +2498,29 @@ namespace Fraljiculator
         {
             if (start == 0) return bFValue;
             var (isInverse, mtx, copy) = (IsInverseFunc(start, input), bFValue.matrix, bFValue.copy);
-            int handleSub(Func<Complex, Complex> func, int tagL) { mtx = CopyMtx(bFValue); FuncSub(mtx, func); copy = false; return tagL; }
+            int handleSub(Func<Complex, Complex> func, int tagL)
+            {
+                if (input[start - tagL] != FUNC_HEAD) ThrowException();
+                mtx = CopyMtx(bFValue); FuncSub(mtx, func); copy = false; return tagL;
+            }
             tagL = input[start - 1] switch
             {
-                _S => handleSub(isInverse.trig ? Complex.Asin : Complex.Sin, isInverse.trig ? 2 : 1),
-                _C => handleSub(isInverse.trig ? Complex.Acos : Complex.Cos, isInverse.trig ? 2 : 1),
-                _T => handleSub(isInverse.trig ? Complex.Atan : Complex.Tan, isInverse.trig ? 2 : 1),
-                _H => handleSub(input[start - 2] switch
+                _S => isInverse.trig ? handleSub(Complex.Asin, 3) : handleSub(Complex.Sin, 2),
+                _C => isInverse.trig ? handleSub(Complex.Acos, 3) : handleSub(Complex.Cos, 2),
+                _T => isInverse.trig ? handleSub(Complex.Atan, 3) : handleSub(Complex.Tan, 2),
+                _H => input[start - 2] switch
                 {
-                    _S => isInverse.hyper ? Complex.Asinh : Complex.Sinh,
-                    _C => isInverse.hyper ? Complex.Acosh : Complex.Cosh,
-                    _T => isInverse.hyper ? Complex.Atanh : Complex.Tanh
-                }, isInverse.hyper ? 3 : 2),
-                _A => handleSub(c => new(Complex.Modulus(c)), 1), // Converting from float to Complex
-                J_ => handleSub(Complex.Conjugate, 1),
-                _L => handleSub(Complex.Log, 1),
-                E_ => handleSub(Complex.Exp, 1),
-                SP => handleSub(Complex.Ei, 2), // Special for complex
-                _Q => handleSub(Complex.Sqrt, 1),
-                _F_ => handleSub(Complex.Factorial, 1),
+                    _S => isInverse.hyper ? handleSub(Complex.Asinh, 4) : handleSub(Complex.Sinh, 3),
+                    _C => isInverse.hyper ? handleSub(Complex.Acosh, 4) : handleSub(Complex.Cosh, 3),
+                    _T => isInverse.hyper ? handleSub(Complex.Atanh, 4) : handleSub(Complex.Tanh, 3)
+                },
+                _A => handleSub(c => new(Complex.Modulus(c)), 2), // Converting from float to Complex
+                J_ => handleSub(Complex.Conjugate, 2), // Special for complex
+                _L => handleSub(Complex.Log, 2),
+                E_ => handleSub(Complex.Exp, 2),
+                SP => handleSub(Complex.Ei, 3), // Special for complex
+                _Q => handleSub(Complex.Sqrt, 2),
+                _F_ => handleSub(Complex.Factorial, 2),
                 _ => tagL
             };
             return new(mtx, copy);
@@ -2532,20 +2528,22 @@ namespace Fraljiculator
         private string SeriesSub(string input)
         {
             var (idx, end, split) = PrepareSeriesSub(input);
-            Func<string[], Matrix<Complex>> braFunc = input[idx - 1] switch
+            (Func<string[], Matrix<Complex>>, int) handleSub(Func<string[], Matrix<Complex>> func, int tagL)
+            { if (input[idx - tagL] != FUNC_HEAD) ThrowException(); return (func, tagL); }
+            var (braFunc, tagL) = input[idx - 1] switch
             {
-                F_ => Hypergeometric,
-                G_ => Gamma,
-                B_ => Beta,
-                _Z_ => Zeta,
-                S_ => Sum,
-                P_ => Product,
-                I_ => Iterate,
-                J_ => Composite,
-                K_ => Cocoon
+                F_ => handleSub(Hypergeometric, 2),
+                G_ => handleSub(Gamma, 2),
+                B_ => handleSub(Beta, 2),
+                _Z_ => handleSub(Zeta, 2),
+                S_ => handleSub(Sum, 2),
+                P_ => handleSub(Product, 2),
+                I_ => handleSub(Iterate, 2),
+                J_ => handleSub(Composite, 2),
+                K_ => handleSub(Cocoon, 2)
             };
             braValues[countBra] = new(braFunc(split)); // No need to copy
-            return ReplaceInput(input, ref countBra, idx, end, true);
+            return ReplaceInput(input, ref countBra, idx - tagL, end);
         }
         public Matrix<Complex> Obtain()
         {
@@ -2794,8 +2792,7 @@ namespace Fraljiculator
         #region Elements
         private Matrix<float> MtxZero() => new(rowOffs, columns);
         private Matrix<float> MtxOne() => Const(1).matrix;
-        private Matrix<float> HandleMatrix(Action<Matrix<float>> action)
-        { Matrix<float> matrix = MtxZero(); action(matrix); return matrix; }
+        private Matrix<float> HandleMatrix(Action<Matrix<float>> action) { Matrix<float> mtx = MtxZero(); action(mtx); return mtx; }
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe MatrixCopy<float> Const(float _const, int mode = 1)
         {
@@ -2894,7 +2891,6 @@ namespace Fraljiculator
         {
             if (!input.Contains('^')) return Transform(input);
             if (CountChars(input, "^") > THRESHOLD) return BreakPower(input);
-
             string[] split = SplitByChars(input, "^");
             Matrix<float> tower = CopyMtx(Transform(split[^1]));
             for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
@@ -2912,13 +2908,12 @@ namespace Fraljiculator
         {
             if (!ContainsAny(input, "*/")) return PowerCore(input);
             if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input);
-
             var (split, signs) = GetMultiplyDivideComponents(input);
             Matrix<float> product = CopyMtx(PowerCore(split[0]));
             for (int j = 1; j < split.Length; j++)
             {
-                Action<Matrix<float>, Matrix<float>> operation = signs[j - 1] == '*' ? Multiply : Divide;
-                operation(PowerCore(split[j]).matrix, product);
+                Action<Matrix<float>, Matrix<float>>? op = signs[j - 1] == '*' ? Multiply : signs[j - 1] == '/' ? Divide : null;
+                if (op != null) op(PowerCore(split[j]).matrix, product); else ThrowException();
             }
             return new(product);
         }
@@ -2934,13 +2929,12 @@ namespace Fraljiculator
         {
             if (!ContainsAny(input, "+-")) return MultiplyDivideCore(input);
             if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input);
-
             var (split, signs) = GetPlusSubtractComponents(input);
             Matrix<float> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
             for (int i = 1; i < split.Length; i++)
             {
-                Action<Matrix<float>, Matrix<float>> operation = signs[i] == '+' ? Plus : Subtract;
-                operation(MultiplyDivideCore(split[i]).matrix, sum);
+                Action<Matrix<float>, Matrix<float>>? op = signs[i] == '+' ? Plus : signs[i] == '-' ? Subtract : null;
+                if (op != null) op(MultiplyDivideCore(split[i]).matrix, sum); else ThrowException();
             }
             return new(sum);
         }
@@ -2950,30 +2944,34 @@ namespace Fraljiculator
         {
             if (start == 0) return bFValue;
             var (isInverse, mtx, copy) = (IsInverseFunc(start, input), bFValue.matrix, bFValue.copy);
-            int handleSub(Func<float, float> func, int tagL) { mtx = CopyMtx(bFValue); FuncSub(mtx, func); copy = false; return tagL; }
+            int handleSub(Func<float, float> func, int tagL)
+            {
+                if (input[start - tagL] != FUNC_HEAD) ThrowException();
+                mtx = CopyMtx(bFValue); FuncSub(mtx, func); copy = false; return tagL;
+            }
             tagL = input[start - 1] switch
             {
-                _S => handleSub(isInverse.trig ? MathF.Asin : MathF.Sin, isInverse.trig ? 2 : 1),
-                _C => handleSub(isInverse.trig ? MathF.Acos : MathF.Cos, isInverse.trig ? 2 : 1),
-                _T => handleSub(isInverse.trig ? MathF.Atan : MathF.Tan, isInverse.trig ? 2 : 1),
-                _H => handleSub(input[start - 2] switch
+                _S => isInverse.trig ? handleSub(MathF.Asin, 3) : handleSub(MathF.Sin, 2),
+                _C => isInverse.trig ? handleSub(MathF.Acos, 3) : handleSub(MathF.Cos, 2),
+                _T => isInverse.trig ? handleSub(MathF.Atan, 3) : handleSub(MathF.Tan, 2),
+                _H => input[start - 2] switch
                 {
-                    _S => isInverse.hyper ? MathF.Asinh : MathF.Sinh,
-                    _C => isInverse.hyper ? MathF.Acosh : MathF.Cosh,
-                    _T => isInverse.hyper ? MathF.Atanh : MathF.Tanh
-                }, isInverse.hyper ? 3 : 2),
-                _A => handleSub(MathF.Abs, 1),
-                _L => handleSub(MathF.Log, 1),
-                E_ => handleSub(MathF.Exp, 1),
-                _Q => handleSub(MathF.Sqrt, 1),
-                _F_ => handleSub(Factorial, 1),
-                _D_ => handleSub(input[start - 2] switch
+                    _S => isInverse.hyper ? handleSub(MathF.Asinh, 4) : handleSub(MathF.Sinh, 3),
+                    _C => isInverse.hyper ? handleSub(MathF.Acosh, 4) : handleSub(MathF.Cosh, 3),
+                    _T => isInverse.hyper ? handleSub(MathF.Atanh, 4) : handleSub(MathF.Tanh, 3)
+                },
+                _A => handleSub(MathF.Abs, 2),
+                _L => handleSub(MathF.Log, 2),
+                E_ => handleSub(MathF.Exp, 2),
+                _Q => handleSub(MathF.Sqrt, 2),
+                _F_ => handleSub(Factorial, 2),
+                _D_ => input[start - 2] switch
                 {
-                    _F => MathF.Floor,
-                    _C => MathF.Ceiling,
-                    _R => MathF.Round,
-                    _S => r => MathF.Sign(r) // Automatic conversion from int to float
-                }, 2), // Special for real
+                    _F => handleSub(MathF.Floor, 3),
+                    _C => handleSub(MathF.Ceiling, 3),
+                    _R => handleSub(MathF.Round, 3),
+                    _S => handleSub(r => MathF.Sign(r), 3) // Automatic conversion from int to float
+                }, // Special for real
                 _ => tagL
             };
             return new(mtx, copy);
@@ -2981,25 +2979,27 @@ namespace Fraljiculator
         private string SeriesSub(string input)
         {
             var (idx, end, split) = PrepareSeriesSub(input);
-            Func<string[], Matrix<float>> braFunc = input[idx - 1] switch
+            (Func<string[], Matrix<float>>, int) handleSub(Func<string[], Matrix<float>> func, int tagL)
+            { if (input[idx - tagL] != FUNC_HEAD) ThrowException(); return (func, tagL); }
+            var (braFunc, tagL) = input[idx - 1] switch
             {
-                M_ => Mod,
-                C_ => Combination,
-                A_ => Permutation,
-                MAX => Max,
-                MIN => Min,
-                F_ => Hypergeometric,
-                G_ => Gamma,
-                B_ => Beta,
-                _Z_ => Zeta,
-                S_ => Sum,
-                P_ => Product,
-                I_ => input[idx - 2] switch { MODE_1 => Iterate1, MODE_2 => Iterate2 },
-                J_ => input[idx - 2] switch { MODE_1 => Composite1, MODE_2 => Composite2 },
-                K_ => Cocoon
+                M_ => handleSub(Mod, 2),
+                C_ => handleSub(Combination, 2),
+                A_ => handleSub(Permutation, 2),
+                MAX => handleSub(Max, 2),
+                MIN => handleSub(Min, 2),
+                F_ => handleSub(Hypergeometric, 2),
+                G_ => handleSub(Gamma, 2),
+                B_ => handleSub(Beta, 2),
+                _Z_ => handleSub(Zeta, 2),
+                S_ => handleSub(Sum, 2),
+                P_ => handleSub(Product, 2),
+                I_ => input[idx - 2] switch { MODE_1 => handleSub(Iterate1, 3), MODE_2 => handleSub(Iterate2, 3) },
+                J_ => input[idx - 2] switch { MODE_1 => handleSub(Composite1, 3), MODE_2 => handleSub(Composite2, 3) },
+                K_ => handleSub(Cocoon, 2)
             };
             braValues[countBra] = new(braFunc(split)); // No need to copy
-            return ReplaceInput(input, ref countBra, idx, end, false);
+            return ReplaceInput(input, ref countBra, idx - tagL, end);
         }
         public Matrix<float> Obtain()
         {
