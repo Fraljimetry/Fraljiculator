@@ -49,7 +49,7 @@ namespace Fraljiculator
 
         private static bool is_flashing, is_paused = true, is_complex = true, delete_point = true, delete_coor, swap_colors,
             is_auto, freeze_graph, clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking,
-            error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound = true;
+            error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound;
         private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile",
             INPUT_DEFAULT = "z", GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO",
             MICRO = "MICRO", ZERO = "0", REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History stored at",
@@ -801,7 +801,7 @@ namespace Fraljiculator
         {
             RunPreview_Click(sender, e);
             if (error_input) return; // To prevent the emergence of the second error box
-            Invoke((MethodInvoker)(() => { StopTimers(); Thread.Sleep(SLEEP); StartTimers(); })); // Executed on the UI thread
+            Invoke(() => { StopTimers(); Thread.Sleep(SLEEP); StartTimers(); }); // Executed on the UI thread
             RunConfirm_Click(sender, e);
         });
         private void RunConfirm_Click(object sender, EventArgs e) => RunClick(sender, e, GetBorders(1), true, () => Ending(MACRO));
@@ -833,7 +833,7 @@ namespace Fraljiculator
         private async Task Async(Action runClick)
         {
             if (NoInput()) return;
-            try { Clipboard.SetText(InputString.Text); } catch { AddDraft("\r\nFailed to copy to the clipboard.\r\n"); } // Courtesy of JSX
+            Clipboard.SetText(InputString.Text); // Problematic on JSX's PC
             BlockInput(true); Cursor.Hide();
             StartTimers();
             await Task.Run(() => { Thread.CurrentThread.Priority = ThreadPriority.Highest; runClick(); });
