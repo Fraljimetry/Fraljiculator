@@ -1,6 +1,4 @@
-/// DATE: 2023.4~5, 2024.9~11, 2025.1
-/// DESIGNER: Fraljimetry
-/// PRECISION: System.Single (float)
+/// DATE: 2023.4~5, 2024.9~11, 2025.1; DESIGNER: Fraljimetry; PRECISION: System.Single (float)
 
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
@@ -203,8 +201,8 @@ namespace Fraljiculator
                 scopes = [-_scope, _scope, _scope, -_scope]; // Remind the signs
                 for (int i = 0; i < tbxDetails.Length; i++) SetText(tbxDetails[i], scopes[i].ToString("#0.0000"));
             }
-            else for (int i = 0; i < tbxDetails.Length; i++) scopes[i] = RealSub.Obtain(RecoverMultiply.Simplify(tbxDetails[i].Text));
-            if (InvalidScopesX() || InvalidScopesY()) MyString.ThrowException(); // The detailed exception is determined later
+            else for (int i = 0; i < tbxDetails.Length; i++) scopes[i] = Obtain(tbxDetails[i]);
+            MyString.ThrowException(InvalidScopesX() || InvalidScopesY()); // The detailed exception is determined later
 
             borders = [x_left, x_right, y_up, y_down];
         }
@@ -264,7 +262,8 @@ namespace Fraljiculator
         private static ref bool ReturnAxesDrawn(bool isMain) => ref (isMain ? ref axes_drawn_mac : ref axes_drawn_mic);
         private static void SetAxesDrawn(bool isMain, bool drawn = false) { ReturnAxesDrawn(isMain) = drawn; }
         private static void ReverseBool(ref bool isChecked) => isChecked = !isChecked;
-        private static float Obtain(TextBox tbx) => RealSub.Obtain(tbx.Text);
+        private static float Obtain(string text) => RealSub.Obtain(RecoverMultiply.Simplify(text));
+        private static float Obtain(TextBox tbx) => Obtain(tbx.Text);
         private static void SetText(TextBox tbx, string text) => tbx.Text = text;
         private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
         private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
@@ -517,7 +516,7 @@ namespace Fraljiculator
         #region Curves
         private (float, float, float) SetStartEndIncrement(string[] split, bool isPolar, bool isParam)
         {
-            float obtain(int index) => RealSub.Obtain(split[index]);
+            float obtain(int index) => Obtain(split[index]);
             (float, float, float) initializeParamPolar(int relPos)
             {
                 MyString.ThrowInvalidLengths(split, [relPos + 2, relPos + 3]);
@@ -528,7 +527,7 @@ namespace Fraljiculator
             else
             {
                 MyString.ThrowInvalidLengths(split, [0, 1, 2, 3, 4]); float range = Obtain(GeneralInput);
-                float getRange(TextBox tbx, bool minus) => GeneralInput_Undo() ? RealSub.Obtain(tbx.Text) : (minus ? -range : range);
+                float getRange(TextBox tbx, bool minus) => GeneralInput_Undo() ? Obtain(tbx) : (minus ? -range : range);
                 return (split.Length < 3 ? getRange(X_Left, true) : obtain(1),
                     split.Length < 3 ? getRange(X_Right, false) : obtain(2),
                     split.Length == 2 ? obtain(1) : split.Length == 4 ? obtain(3) : INCREMENT);
@@ -544,7 +543,7 @@ namespace Fraljiculator
 
             int length = (int)((end - start) / increment), _length = length + 2; // For safety
             Matrix<float> partition = GetMatrix(1, _length); float steps = start;
-            float obtainCheck(string input) => RealSub.Obtain(input, steps);
+            float obtainCheck(string input) => RealSub.Obtain(input, steps); // Already simplified
             if (is_checking) { _ = obtainCheck(input1); _ = obtainCheck(input2); return (partition, partition, length, true); }
 
             float* partPtr = partition.RowPtr();
@@ -822,7 +821,7 @@ namespace Fraljiculator
                 PrepareSetDisplay(borders, isMain);
                 endAction();
             }
-            catch (Exception) { InputErrorBox(sender, e, WRONG_FORMAT); }
+            catch (Exception) { Invoke(() => InputErrorBox(sender, e, WRONG_FORMAT)); } // Executed on the UI thread
             finally
             {
                 if (error_input) StopTimers();
@@ -896,7 +895,7 @@ namespace Fraljiculator
                 exportStoreHandler();
                 AddDraft($"\r\n{prefix}\r\n{DateTime.Now:HH_mm_ss}\r\n");
             }
-            catch (Exception) { error_address = true; GetExportStoreErrorBox(); }
+            catch (Exception) { error_address = true; Invoke(() => GetExportStoreErrorBox()); } // Executed on the UI thread
         }
         private string GetFileName(string suffix)
         {
@@ -1417,7 +1416,7 @@ namespace Fraljiculator
                 foreach (var tbx in textBoxes)
                 {
                     bool noInput = String.IsNullOrEmpty(tbx.Text); noSomeInput = noSomeInput || noInput;
-                    if (!noInput) _ = RealSub.Obtain(RecoverMultiply.Simplify(tbx.Text)); // For checking
+                    if (!noInput) _ = Obtain(tbx); // For checking
                 }
                 lbl.ForeColor = noSomeInput ? Color.White : CORRECT_GREEN; // White if any being null or empty
             }
@@ -1867,7 +1866,7 @@ namespace Fraljiculator
                     result.Remove(j, 1).Insert(j, subChar);
                 }
                 i = endIndex;
-            }
+            } // Sensitive
             return result.ToString();
         } // To prevent the interior ',' from interfering with exterior splitting
         private static string[] ReplaceRecover(string input)
@@ -1936,7 +1935,6 @@ namespace Fraljiculator
             rowOffs = GetArithProg(rows, columns);
             copyInitPos = rows >= STEP ? GetArithProg(rows / STEP, STEP) : [];
             resInitPos = rows >= STEP ? copyInitPos[^1] + STEP : 0;
-
             int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
             colBytes = getBytes(1); strdBytes = getBytes(STEP); resBytes = getBytes(rows - resInitPos);
         } // Fields for optimization
@@ -1950,6 +1948,8 @@ namespace Fraljiculator
                 default: ThrowException(); return new(rowOffs, columns); // Should not have happened
             }
         }
+        protected static MatrixCopy<TEntry> HandleSolo<TEntry>(string input, MatrixCopy<TEntry> mc)
+        { ThrowException(input.Length != 1); return mc; }
         protected static string[] PrepareBreakPower(string input, int THRESHOLD)
         {
             StringBuilder result = new(input);
@@ -2150,7 +2150,7 @@ namespace Fraljiculator
             ThrowException(!CheckParenthesis(input) || input.Contains(LR_BRA) || ContainsAny(input, BARRED_CHARS));
             Func<string, string> replaceTags = isComplex ? ReplaceComplex : ReplaceReal;
             return replaceTags(ReplaceSubstrings(input, ENTER_BLANK, String.Empty));
-        }
+        } // Used only once at the beginning
         protected static string Recover(string input, bool isComplex)
         {
             int length = input.Length; if (length == 1) return input;
@@ -2420,14 +2420,14 @@ namespace Fraljiculator
         private MatrixCopy<Complex> ReturnConst(Complex _const) => Const(_const, !useList ? 1 : !readList ? 2 : 3);
         private MatrixCopy<Complex> Transform(string input) => input[0] switch
         {
-            _Z => new(z, true),
-            Z_ => new(Z, true),
+            _Z => HandleSolo<Complex>(input, new(z, true)),
+            Z_ => HandleSolo<Complex>(input, new(Z, true)),
             CB => new(buffCocs[Int32.Parse(TryBraNum(input))], true),
             SB => braValues[Int32.Parse(TryBraNum(input))],
-            I => ReturnConst(Complex.I), // Special for complex
-            E => ReturnConst(new(MathF.E)),
-            P => ReturnConst(new(MathF.PI)),
-            G => ReturnConst(new(GAMMA)),
+            I => HandleSolo<Complex>(input, ReturnConst(Complex.I)), // Special for complex
+            E => HandleSolo<Complex>(input, ReturnConst(new(MathF.E))),
+            P => HandleSolo<Complex>(input, ReturnConst(new(MathF.PI))),
+            G => HandleSolo<Complex>(input, ReturnConst(new(GAMMA))),
             _ => ReturnConst(new(Single.Parse(input)))
         };
         private MatrixCopy<Complex> BreakPower(string input)
@@ -2467,7 +2467,7 @@ namespace Fraljiculator
             for (int j = 1; j < split.Length; j++)
             {
                 Action<Matrix<Complex>, Matrix<Complex>>? op = signs[j - 1] == '*' ? Multiply : signs[j - 1] == '/' ? Divide : null;
-                if (op != null) op(PowerCore(split[j]).matrix, product); else ThrowException();
+                ThrowException(op == null); op(PowerCore(split[j]).matrix, product);
             }
             return new(product);
         }
@@ -2488,7 +2488,7 @@ namespace Fraljiculator
             for (int i = 1; i < split.Length; i++)
             {
                 Action<Matrix<Complex>, Matrix<Complex>>? op = signs[i] == '+' ? Plus : signs[i] == '-' ? Subtract : null;
-                if (op != null) op(MultiplyDivideCore(split[i]).matrix, sum); else ThrowException();
+                ThrowException(op == null); op(MultiplyDivideCore(split[i]).matrix, sum);
             }
             return new(sum);
         }
@@ -2500,7 +2500,7 @@ namespace Fraljiculator
             var (isInverse, mtx, copy) = (IsInverseFunc(start, input), bFValue.matrix, bFValue.copy);
             int handleSub(Func<Complex, Complex> func, int tagL)
             {
-                if (input[start - tagL] != FUNC_HEAD) ThrowException();
+                ThrowException(input[start - tagL] != FUNC_HEAD);
                 mtx = CopyMtx(bFValue); FuncSub(mtx, func); copy = false; return tagL;
             }
             tagL = input[start - 1] switch
@@ -2529,7 +2529,7 @@ namespace Fraljiculator
         {
             var (idx, end, split) = PrepareSeriesSub(input);
             (Func<string[], Matrix<Complex>>, int) handleSub(Func<string[], Matrix<Complex>> func, int tagL)
-            { if (input[idx - tagL] != FUNC_HEAD) ThrowException(); return (func, tagL); }
+            { ThrowException(input[idx - tagL] != FUNC_HEAD); return (func, tagL); }
             var (braFunc, tagL) = input[idx - 1] switch
             {
                 F_ => handleSub(Hypergeometric, 2),
@@ -2865,15 +2865,15 @@ namespace Fraljiculator
         private MatrixCopy<float> ReturnConst(float _const) => Const(_const, !useList ? 1 : !readList ? 2 : 3);
         private MatrixCopy<float> Transform(string input) => input[0] switch
         {
-            _X => new(x, true),
-            _Y => new(y, true),
-            X_ => new(X, true),
-            Y_ => new(Y, true),
+            _X => HandleSolo<float>(input, new(x, true)),
+            _Y => HandleSolo<float>(input, new(y, true)),
+            X_ => HandleSolo<float>(input, new(X, true)),
+            Y_ => HandleSolo<float>(input, new(Y, true)),
             CB => new(buffCocs[Int32.Parse(TryBraNum(input))], true),
             SB => braValues[Int32.Parse(TryBraNum(input))],
-            E => ReturnConst(MathF.E),
-            P => ReturnConst(MathF.PI),
-            G => ReturnConst(GAMMA),
+            E => HandleSolo<float>(input, ReturnConst(MathF.E)),
+            P => HandleSolo<float>(input, ReturnConst(MathF.PI)),
+            G => HandleSolo<float>(input, ReturnConst(GAMMA)),
             _ => ReturnConst(Single.Parse(input))
         };
         private MatrixCopy<float> BreakPower(string input)
@@ -2913,7 +2913,7 @@ namespace Fraljiculator
             for (int j = 1; j < split.Length; j++)
             {
                 Action<Matrix<float>, Matrix<float>>? op = signs[j - 1] == '*' ? Multiply : signs[j - 1] == '/' ? Divide : null;
-                if (op != null) op(PowerCore(split[j]).matrix, product); else ThrowException();
+                ThrowException(op == null); op(PowerCore(split[j]).matrix, product);
             }
             return new(product);
         }
@@ -2934,7 +2934,7 @@ namespace Fraljiculator
             for (int i = 1; i < split.Length; i++)
             {
                 Action<Matrix<float>, Matrix<float>>? op = signs[i] == '+' ? Plus : signs[i] == '-' ? Subtract : null;
-                if (op != null) op(MultiplyDivideCore(split[i]).matrix, sum); else ThrowException();
+                ThrowException(op == null); op(MultiplyDivideCore(split[i]).matrix, sum);
             }
             return new(sum);
         }
@@ -2946,7 +2946,7 @@ namespace Fraljiculator
             var (isInverse, mtx, copy) = (IsInverseFunc(start, input), bFValue.matrix, bFValue.copy);
             int handleSub(Func<float, float> func, int tagL)
             {
-                if (input[start - tagL] != FUNC_HEAD) ThrowException();
+                ThrowException(input[start - tagL] != FUNC_HEAD);
                 mtx = CopyMtx(bFValue); FuncSub(mtx, func); copy = false; return tagL;
             }
             tagL = input[start - 1] switch
@@ -2980,7 +2980,7 @@ namespace Fraljiculator
         {
             var (idx, end, split) = PrepareSeriesSub(input);
             (Func<string[], Matrix<float>>, int) handleSub(Func<string[], Matrix<float>> func, int tagL)
-            { if (input[idx - tagL] != FUNC_HEAD) ThrowException(); return (func, tagL); }
+            { ThrowException(input[idx - tagL] != FUNC_HEAD); return (func, tagL); }
             var (braFunc, tagL) = input[idx - 1] switch
             {
                 M_ => handleSub(Mod, 2),
