@@ -1241,7 +1241,7 @@ namespace Fraljiculator
         private void SetValuesForSelectedIndex(int index)
         {
             int _color = 3; string _general = "1.1", _thick = THICK_DEFAULT, _dense = DENSE_DEFAULT;
-            bool _points = false, _retain = false, _shade = false;
+            bool _points = false, _retain = false, _shade = false, _axes = true;
             int complexL = ReplaceTags.EX_COMPLEX.Length, realL = ReplaceTags.EX_REAL.Length,
                 curveL = ReplaceTags.EX_CURVES.Length;
 
@@ -1251,19 +1251,19 @@ namespace Fraljiculator
             if (index < complexL)
                 switch (index)
                 {
-                    case 0: _color = 4; _points = true; break;
+                    case 0: _general = "2"; _color = 4; _points = true; break;
                     case 1: _general = "1.2"; break;
                     case 2: _color = 2; _points = true; break;
                     case 3: _general = "pi/2"; _color = 4; break;
                     case 4: _general = "4"; _thick = "0.1"; _shade = true; break;
                     case 5: _general = "3"; break;
-                    case 6: _general = "0"; setDetails("-1.6", "0.6", "-1.1", "1.1"); break;
-                    case 7: _general = "2"; _color = 4; _shade = true; break;
+                    case 6: _general = "0"; setDetails("-1.6", "0.6", "-1.1", "1.1"); _axes = false; break;
+                    case 7: _general = "2"; _color = 0; _shade = true; break;
                 }
             else if (index > complexL && index < complexL + realL + 1)
                 switch (index - complexL - 1)
                 {
-                    case 0: _general = "4pi"; _thick = "0.1"; _color = 2; _points = true; break;
+                    case 0: _general = "10"; _color = 3; break;
                     case 1: _general = "2pi"; _color = 4; break;
                     case 2: _general = "2.5"; _thick = "0.3"; _color = 1; _points = true; break;
                     case 3: _general = "0"; setDetails("0", "1", "0", "1"); _thick = "0.2"; _color = 0; _retain = true; break;
@@ -1275,7 +1275,7 @@ namespace Fraljiculator
             else if (index > complexL + realL + 1 && index < complexL + realL + curveL + 2)
                 switch (index - complexL - realL - 2)
                 {
-                    case 0: _general = "5.5"; break;
+                    case 0: _general = "5"; break;
                     case 1: _general = "pi"; _thick = "0.5"; _dense = "10"; _color = 2; break;
                     case 2: _general = "3"; _color = 0; break;
                     case 3: _dense = "100"; _color = 1; break;
@@ -1288,7 +1288,7 @@ namespace Fraljiculator
             InputString.ReadOnly = false; // Necessary
 
             SetText(GeneralInput, _general); SetText(ThickInput, _thick); SetText(DenseInput, _dense);
-            CheckPoints.Checked = _points; CheckRetain.Checked = _retain; CheckShade.Checked = _shade;
+            CheckPoints.Checked = _points; CheckRetain.Checked = _retain; CheckShade.Checked = _shade; CheckCoor.Checked = _axes;
             CheckComplex.Checked = ComboExamples.SelectedIndex < complexL;
             ComboColoring.SelectedIndex = _color;
         }
@@ -2006,36 +2006,36 @@ namespace Fraljiculator
                 "iterateLoop", "loop", "func", "polar", "param" ];
         public static readonly string[] EX_COMPLEX =
             [
-                "F(1-10i,0.5i,i,zzzzz,100)",
+                "(z-1)/(z+1)",
                 "z^(1+10i)cos((z-1)/(z^13+z+1))",
-                "sum(1/(-z^n+1)-1,n,1,100)",
+                "sum(1/(-z^n+1),n,1,100)-100",
                 "prod(exp(2/(e(-k/5)z-1)+1),k,1,5)",
                 "coc(iterate((1/Z+Z){0},z,k,1,1000),e(0.02))",
-                "iterate(exp(z^Z),z,k,1,100)",
-                "iterateLoop(ZZ+z,0,k,1,20)",
+                "iterate(exp(zZ),z,k,1,100)",
+                "iterateLoop(ZZ+z,0,k,1,30)",
                 "comp(zz,sin(zZ),cos(z/Z))"
             ];
         public static readonly string[] EX_REAL =
             [
-                "cos(xy)-cos(x)-cos(y)",
+                "nCr(x,y)",
                 "min(sin(xy),tan(x),tan(y))",
-                "xround(y)-yround(x)",
-                "y-x|IterateLoop(x^X,x,k,1,30,y-X)",
-                "iterate1(kx/X+X/(y+k),sin(x+y),k,1,3)",
-                "iterate2(k/X+k/Y,XY,sin(x+y),cos(x-y),k,1,10,2)",
+                "ceil(x)round(y)-floor(y)round(x)",
+                "IterateLoop(x^X,1,k,1,30,y-X)",
+                "iterate1(x/X+X/y,xy,k,1,5)",
+                "iterate2(1/X+1/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
                 "comp1(xy,tan(X+x),Artanh(X-y))",
                 "comp2(xy,xx+yy,sin(X+Y),cos(X-Y),2)"
             ];
         public static readonly string[] EX_CURVES =
             [
-                "func(ga(x,100),0.0001)",
+                "func(zeta(x,50))",
                 "func(sum(sin(x2^k)/2^k,k,0,100),-pi,pi,0.001)",
-                "func(beta(sinh(x),cosh(x),100),-2,2,0.00001)",
+                "func(beta(sinh(x),cosh(x)),-2,2,0.00001)",
                 "polar(sqrt(cos(2theta)),theta,0,2pi,0.0001)",
                 "polar(cos(5k)cos(7k),k,0,2pi,0.001)",
                 "loop(polar(0.1jcos(5k+0.7jpi),k,0,pi),j,1,10)",
-                "param(cos(17k),cos(19k),k,0,pi,0.0001)",
-                "loop(param(cos(m)^k,sin(m)^k,m,0,p/2),k,1,10)"
+                "param(sin(7k),cos(9k),k,0,2pi,0.001)",
+                "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,5)"
             ];
         public static readonly char FUNC_HEAD = '~', UNDERLINE = '_', DOLLAR = _D_;
         public static readonly string FUNC = "α", POLAR = "β", PARAM = "γ", ITLOOP = "δ",
