@@ -1,4 +1,6 @@
-/// DATE: 2023.4~5, 2024.9~11, 2025.1; DESIGNER: Fraljimetry; PRECISION: System.Single (float)
+/// DATE: 2023.4~5, 2024.9~11, 2025.1, 2026.1
+/// DESIGNER: Fraljimetry
+/// PRECISION: System.Single (float)
 
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
@@ -834,10 +836,10 @@ namespace Fraljiculator
         {
             if (NoInput()) return;
             Clipboard.SetText(InputString.Text); // Problematic on JSX's PC
-            BlockInput(true); Cursor.Hide();
+            BlockInput(true); // Cursor.Hide();
             StartTimers();
             await Task.Run(() => { Thread.CurrentThread.Priority = ThreadPriority.Highest; runClick(); });
-            BlockInput(false); Cursor.Show();
+            BlockInput(false); // Cursor.Show();
         }
         private void StartTimers()
         {
@@ -1692,6 +1694,7 @@ namespace Fraljiculator
         private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
             FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
             FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
+
         private static float scale_factor;
         private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
         private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1916,7 +1919,7 @@ namespace Fraljiculator
     public class RealComplex : MyString
     {
         protected static readonly float GAMMA = 0.57721566f;
-        protected static readonly int THRESHOLD = 10, STEP = 1; // THRESHOLD: breaking long expressions; STEP: copying pattern
+        protected static readonly int THRESHOLD = 10, STEP = 1; // THRESHOLD: breaking long expressions; STEP: the chunk size
         public static readonly string SUB_CHARS = ":;";
         protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', CB = '{', _D_ = '$', E = 'e', E_ = 'E',
             _F = 'f', F_ = 'F', _F_ = '!', G = 'g', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l', M_ = 'M',
@@ -1924,19 +1927,20 @@ namespace Fraljiculator
             SB = '[', SP = '#', _T = 't', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'Z';
         public unsafe static int[] GetArithProg(int length, int diff)
         {
-            int[] progression = new int[length];
+            if (length == 0) return []; int[] progression = new int[length];
             fixed (int* ptr = progression)
             { int* _ptr = ptr; for (int i = 0, j = 0; i < length; i++, _ptr++, j += diff) *_ptr = j; } // _ptr is necessary
             return progression;
         }
-        protected static void Initialize<TEntry>(int rows, int columns, ref int[]? rowOffs, ref int[]? copyInitPos,
-            ref int resInitPos, ref uint colBytes, ref uint strdBytes, ref uint resBytes)
+        protected static void Initialize<TEntry>(int rows, int columns, ref int rowChk, ref int[]? rowOffs, ref uint colBytes,
+            ref int strd, ref int[]? strdInit, ref uint strdBytes, ref int res, ref int resInit, ref uint resBytes)
         {
-            rowOffs = GetArithProg(rows, columns);
-            copyInitPos = rows >= STEP ? GetArithProg(rows / STEP, STEP) : [];
-            resInitPos = rows >= STEP ? copyInitPos[^1] + STEP : 0;
+            rowChk = rows / STEP; rowOffs = GetArithProg(rows, columns);
+            strd = columns * STEP; strdInit = GetArithProg(rowChk, STEP);
+            resInit = rowChk * STEP; res = rows - resInit;
+
             int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
-            colBytes = getBytes(1); strdBytes = getBytes(STEP); resBytes = getBytes(rows - resInitPos);
+            colBytes = getBytes(1); strdBytes = getBytes(STEP); resBytes = getBytes(res);
         } // Fields for optimization
         public static void For(int start, int end, Action<int> action) { for (int i = start; i <= end; i++) action(i); }
         protected static Matrix<float> ChooseMode(string mode, Matrix<float> m1, Matrix<float> m2, int[] rowOffs, int columns)
@@ -2008,7 +2012,7 @@ namespace Fraljiculator
                 "prod(exp(2/(e(-k/5)z-1)+1),k,1,5)",
                 "coc(iterate((1/Z+Z){0},z,k,1,1000),e(0.02))",
                 "iterate(exp(z^Z),z,k,1,100)",
-                "iterateLoop(ZZ+z,0,k,1,100)",
+                "iterateLoop(ZZ+z,0,k,1,20)",
                 "comp(zz,sin(zZ),cos(z/Z))"
             ];
         public static readonly string[] EX_REAL =
@@ -2188,9 +2192,9 @@ namespace Fraljiculator
     public sealed class ComplexSub : RecoverMultiply
     {
         #region Fields & Constructors
-        private readonly uint colBytes, strdBytes, resBytes; // Sizes of copy chunks
-        private readonly int rows, columns, resInitPos;
-        private readonly int[] rowOffs, copyInitPos; // For row extraction
+        private readonly uint colBytes, strdBytes, resBytes; // Sizes of chunks
+        private readonly int rows, columns, rowChk, strd, res, resInit; // Lengths of chunks
+        private readonly int[] rowOffs, strdInit; // rowOffs: for row extraction
         private readonly bool useList; // Whether to use constMtx or not
         private readonly Matrix<Complex> z;
         private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
@@ -2209,7 +2213,8 @@ namespace Fraljiculator
             this.input = Recover(input, true); braValues = new MatrixCopy<Complex>[CountChars(this.input, "(")];
             if (z != null) this.z = (Matrix<Complex>)z; if (Z != null) this.Z = (Matrix<Complex>)Z;
             this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
-            Initialize<Complex>(rows, columns, ref rowOffs, ref copyInitPos, ref resInitPos, ref colBytes, ref strdBytes, ref resBytes);
+            Initialize<Complex>(rows, columns, ref rowChk, ref rowOffs, ref colBytes,
+                ref strd, ref strdInit, ref strdBytes, ref res, ref resInit, ref resBytes);
         }
         public ComplexSub(string input, Matrix<float> xCoor, Matrix<float> yCoor, int rows, int columns)
             : this(input, InitilizeZ(xCoor, yCoor, rows, columns), null, null, rows, columns) { } // Special for complex
@@ -2226,11 +2231,11 @@ namespace Fraljiculator
             {
                 Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
                 Matrix<Complex> product = MtxOne(), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
-                Parallel.For(0, rows, p =>
+                void hypergeometric(int p, int col)
                 {
                     Complex* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
                         _aPtr = _a.RowPtr(p), _bPtr = _b.RowPtr(p), _cPtr = _c.RowPtr(p), initialPtr = initial.RowPtr(p);
-                    for (int q = 0; q < columns; q++, productPtr++, sumPtr++, _aPtr++, _bPtr++, _cPtr++, initialPtr++)
+                    for (int q = 0; q < col; q++, productPtr++, sumPtr++, _aPtr++, _bPtr++, _cPtr++, initialPtr++)
                     {
                         for (int i = 0; i <= n; i++)
                         {
@@ -2238,7 +2243,8 @@ namespace Fraljiculator
                             *sumPtr += *productPtr;
                         }
                     }
-                });
+                }
+                Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
         private unsafe Matrix<Complex> Gamma(string[] split)
@@ -2247,15 +2253,16 @@ namespace Fraljiculator
             return HandleMatrix(output =>
             {
                 Matrix<Complex> product = MtxOne(), initial = ObtainValue(split[0]);
-                Parallel.For(0, rows, p =>
+                void gamma(int p, int col)
                 {
                     Complex* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < columns; q++, productPtr++, initialPtr++, outputPtr++)
+                    for (int q = 0; q < col; q++, productPtr++, initialPtr++, outputPtr++)
                     {
                         for (int i = 1; i <= n; i++) { Complex temp = *initialPtr / i; *productPtr *= Complex.Exp(temp) / (1 + temp); }
                         *outputPtr = *productPtr * Complex.Exp(-*initialPtr * GAMMA) / *initialPtr;
                     }
-                });
+                }
+                Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Gamma_function
         private unsafe Matrix<Complex> Beta(string[] split)
@@ -2265,16 +2272,17 @@ namespace Fraljiculator
             {
                 Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
                 Matrix<Complex> product = MtxOne(), input1 = obtain(0), input2 = obtain(1);
-                Parallel.For(0, rows, p =>
+                void beta(int p, int col)
                 {
                     Complex* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
                         input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < columns; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
+                    for (int q = 0; q < col; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
                     {
                         for (int i = 1; i <= n; i++) *productPtr *= 1 + *input1Ptr * *input2Ptr / ((i + *input1Ptr + *input2Ptr) * i);
                         *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                     }
-                });
+                }
+                Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Beta_function
         private unsafe Matrix<Complex> Zeta(string[] split)
@@ -2283,11 +2291,11 @@ namespace Fraljiculator
             return HandleMatrix(_sum =>
             {
                 Matrix<Complex> sum = MtxZero(), coeff = MtxOne(), _coeff = MtxOne(), initial = ObtainValue(split[0]);
-                Parallel.For(0, rows, p =>
+                void zeta(int p, int col)
                 {
                     Complex* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
                         coeffPtr = coeff.RowPtr(p), _coeffPtr = _coeff.RowPtr(p), initialPtr = initial.RowPtr(p);
-                    for (int q = 0; q < columns; q++, sumPtr++, _sumPtr++, coeffPtr++, _coeffPtr++, initialPtr++)
+                    for (int q = 0; q < col; q++, sumPtr++, _sumPtr++, coeffPtr++, _coeffPtr++, initialPtr++)
                     {
                         for (int i = 0; i <= n; i++)
                         {
@@ -2301,9 +2309,11 @@ namespace Fraljiculator
                         }
                         *_sumPtr /= 1 - Complex.Pow(2, 1 - *initialPtr);
                     }
-                });
+                }
+                Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
+        //
         private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
         {
             ThrowInvalidLengths(split, [validLength]);
@@ -2319,6 +2329,7 @@ namespace Fraljiculator
         private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, MtxZero(), b => { Plus(b.Obtain(), b.Z); });
         private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, MtxOne(), b => { Multiply(b.Obtain(), b.Z); });
         private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
+        //
         private Matrix<Complex> Composite(string[] split)
         {
             Matrix<Complex> _value = ObtainValue(split[0]);
@@ -2368,51 +2379,79 @@ namespace Fraljiculator
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe Matrix<Complex> Copy(Matrix<Complex> src) => HandleMatrix(dest =>
         {
-            Parallel.For(0, rows / STEP, p => { int _p = copyInitPos[p]; Unsafe.CopyBlock(dest.RowPtr(_p), src.RowPtr(_p), strdBytes); });
-            if (resBytes != 0) Unsafe.CopyBlock(dest.RowPtr(resInitPos), src.RowPtr(resInitPos), resBytes);
+            void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
+            Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
         }); // Passing matrices to mutable variables
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Negate(Matrix<Complex> _value) => Parallel.For(0, rows, p =>
+        private unsafe void Negate(Matrix<Complex> _value)
         {
-            Complex* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < columns; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
-        });
+            void negate(int p, int col)
+            {
+                Complex* _valuePtr = _value.RowPtr(p);
+                for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
+            }
+            Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Plus(Matrix<Complex> src, Matrix<Complex> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Plus(Matrix<Complex> src, Matrix<Complex> dest)
         {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
-        });
+            void plus(int p, int col)
+            {
+                Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
+            }
+            Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Subtract(Matrix<Complex> src, Matrix<Complex> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Subtract(Matrix<Complex> src, Matrix<Complex> dest)
         {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
-        });
+            void subtract(int p, int col)
+            {
+                Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
+            }
+            Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Multiply(Matrix<Complex> src, Matrix<Complex> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Multiply(Matrix<Complex> src, Matrix<Complex> dest)
         {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
-        });
+            void multiply(int p, int col)
+            {
+                Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
+            }
+            Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Divide(Matrix<Complex> src, Matrix<Complex> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Divide(Matrix<Complex> src, Matrix<Complex> dest)
         {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
-        });
+            void divide(int p, int col)
+            {
+                Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
+            }
+            Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Power(Matrix<Complex> src, Matrix<Complex> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Power(Matrix<Complex> src, Matrix<Complex> dest)
         {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = Complex.Pow(*srcPtr, *destPtr);
-        });
+            void power(int p, int col)
+            {
+                Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = Complex.Pow(*srcPtr, *destPtr);
+            }
+            Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void FuncSub(Matrix<Complex> _value, Func<Complex, Complex> function) => Parallel.For(0, rows, p =>
+        private unsafe void FuncSub(Matrix<Complex> _value, Func<Complex, Complex> function)
         {
-            Complex* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < columns; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
-        });
+            void funcSub(int p, int col)
+            {
+                Complex* _valuePtr = _value.RowPtr(p);
+                for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
+            }
+            Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
+        }
         #endregion
 
         #region Assembly
@@ -2566,9 +2605,9 @@ namespace Fraljiculator
     public sealed class RealSub : RecoverMultiply
     {
         #region Fields & Constructors
-        private readonly uint colBytes, strdBytes, resBytes; // Sizes of copy chunks
-        private readonly int rows, columns, resInitPos;
-        private readonly int[] rowOffs, copyInitPos; // For row extraction
+        private readonly uint colBytes, strdBytes, resBytes; // Sizes of chunks
+        private readonly int rows, columns, rowChk, strd, res, resInit; // Lengths of chunks
+        private readonly int[] rowOffs, strdInit; // rowOffs: for row extraction
         private readonly bool useList; // Whether to use constMtx or not
         private readonly Matrix<float> x, y;
         private readonly Matrix<float>[] buffCocs; // To precompute repetitively used blocks
@@ -2588,7 +2627,8 @@ namespace Fraljiculator
             if (x != null) this.x = (Matrix<float>)x; if (y != null) this.y = (Matrix<float>)y;
             if (X != null) this.X = (Matrix<float>)X; if (Y != null) this.Y = (Matrix<float>)Y;
             this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
-            Initialize<float>(rows, columns, ref rowOffs, ref copyInitPos, ref resInitPos, ref colBytes, ref strdBytes, ref resBytes);
+            Initialize<float>(rows, columns, ref rowChk, ref rowOffs, ref colBytes,
+                ref strd, ref strdInit, ref strdBytes, ref res, ref resInit, ref resBytes);
         }
         private RealSub ObtainSub(string input, Matrix<float>? X, Matrix<float>? Y, Matrix<float>[]? buffCocs, bool useList = false)
             => new(input, x, y, X, Y, buffCocs, rows, columns, useList);
@@ -2606,17 +2646,19 @@ namespace Fraljiculator
             Combination(n + 1, r) - Combination(n, r - 1) :
             Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
         private static float Permutation(float n, float r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
+        //
         private unsafe Matrix<float> ProcessMCP(string[] split, Func<float, float, float> function)
         {
             ThrowInvalidLengths(split, [2]);
             return HandleMatrix(output =>
             {
                 Matrix<float> input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
-                Parallel.For(0, rows, p =>
+                void processMCP(int p, int col)
                 {
                     float* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < columns; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
-                });
+                    for (int q = 0; q < col; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
+                }
+                Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
             });
         }
         private unsafe Matrix<float> ProcessMinMax(string[] split, Func<float[], float> function)
@@ -2625,18 +2667,20 @@ namespace Fraljiculator
             for (int i = 0; i < split.Length; i++) _value[i] = ObtainValue(split[i]);
             return HandleMatrix(output =>
             {
-                Parallel.For(0, rows, p =>
+                void processMinMax(int p, int col)
                 {
                     Span<float> minMax = stackalloc float[split.Length];
                     float* outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < columns; q++, outputPtr++)
+                    for (int q = 0; q < col; q++, outputPtr++)
                     {
                         for (int i = 0; i < split.Length; i++) minMax[i] = _value[i][p, q];
                         *outputPtr = function(minMax.ToArray());
                     }
-                });
+                }
+                Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
             });
         }
+        //
         private Matrix<float> Mod(string[] split) => ProcessMCP(split, Mod);
         private Matrix<float> Combination(string[] split) => ProcessMCP(split, (a, b) => Combination(MathF.Floor(a), MathF.Floor(b)));
         private Matrix<float> Permutation(string[] split) => ProcessMCP(split, (a, b) => Permutation(MathF.Floor(a), MathF.Floor(b)));
@@ -2652,11 +2696,11 @@ namespace Fraljiculator
             {
                 Matrix<float> obtain(int index) => ObtainValue(split[index]);
                 Matrix<float> product = MtxOne(), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
-                Parallel.For(0, rows, p =>
+                void hypergeometric(int p, int col)
                 {
                     float* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
                         _aPtr = _a.RowPtr(p), _bPtr = _b.RowPtr(p), _cPtr = _c.RowPtr(p), initialPtr = initial.RowPtr(p);
-                    for (int q = 0; q < columns; q++, productPtr++, sumPtr++, _aPtr++, _bPtr++, _cPtr++, initialPtr++)
+                    for (int q = 0; q < col; q++, productPtr++, sumPtr++, _aPtr++, _bPtr++, _cPtr++, initialPtr++)
                     {
                         for (int i = 0; i <= n; i++)
                         {
@@ -2664,7 +2708,8 @@ namespace Fraljiculator
                             *sumPtr += *productPtr;
                         }
                     }
-                });
+                }
+                Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
         private unsafe Matrix<float> Gamma(string[] split)
@@ -2673,15 +2718,16 @@ namespace Fraljiculator
             return HandleMatrix(output =>
             {
                 Matrix<float> product = MtxOne(), initial = ObtainValue(split[0]);
-                Parallel.For(0, rows, p =>
+                void gamma(int p, int col)
                 {
                     float* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < columns; q++, productPtr++, initialPtr++, outputPtr++)
+                    for (int q = 0; q < col; q++, productPtr++, initialPtr++, outputPtr++)
                     {
                         for (int i = 1; i <= n; i++) { float temp = *initialPtr / i; *productPtr *= MathF.Exp(temp) / (1 + temp); }
                         *outputPtr = *productPtr * MathF.Exp(-*initialPtr * GAMMA) / *initialPtr;
                     }
-                });
+                }
+                Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Gamma_function
         private unsafe Matrix<float> Beta(string[] split)
@@ -2691,16 +2737,17 @@ namespace Fraljiculator
             {
                 Matrix<float> obtain(int index) => ObtainValue(split[index]);
                 Matrix<float> product = MtxOne(), input1 = obtain(0), input2 = obtain(1);
-                Parallel.For(0, rows, p =>
+                void beta(int p, int col)
                 {
                     float* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
                         input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < columns; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
+                    for (int q = 0; q < col; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
                     {
                         for (int i = 1; i <= n; i++) *productPtr *= 1 + *input1Ptr * *input2Ptr / ((i + *input1Ptr + *input2Ptr) * i);
                         *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                     }
-                });
+                }
+                Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Beta_function
         private unsafe Matrix<float> Zeta(string[] split)
@@ -2709,11 +2756,11 @@ namespace Fraljiculator
             return HandleMatrix(_sum =>
             {
                 Matrix<float> sum = MtxZero(), coeff = MtxOne(), _coeff = MtxOne(), initial = ObtainValue(split[0]);
-                Parallel.For(0, rows, p =>
+                void zeta(int p, int col)
                 {
                     float* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
                         coeffPtr = coeff.RowPtr(p), _coeffPtr = _coeff.RowPtr(p), initialPtr = initial.RowPtr(p);
-                    for (int q = 0; q < columns; q++, sumPtr++, _sumPtr++, coeffPtr++, _coeffPtr++, initialPtr++)
+                    for (int q = 0; q < col; q++, sumPtr++, _sumPtr++, coeffPtr++, _coeffPtr++, initialPtr++)
                     {
                         for (int i = 0; i <= n; i++)
                         {
@@ -2727,9 +2774,11 @@ namespace Fraljiculator
                         }
                         *_sumPtr /= 1 - MathF.Pow(2, 1 - *initialPtr);
                     }
-                });
+                }
+                Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
+        //
         private Matrix<float> ProcessSPI(string[] split, int validLength, Matrix<float> initMtx, Action<RealSub> action)
         {
             ThrowInvalidLengths(split, [validLength]);
@@ -2763,6 +2812,7 @@ namespace Fraljiculator
             });
             return ChooseMode(split[^1], buffer1.X, buffer1.Y, rowOffs, columns); // Or, alternatively, buffer2
         } // Special for real
+        //
         private Matrix<float> Composite1(string[] split)
         {
             Matrix<float> _value = ObtainValue(split[0]);
@@ -2813,51 +2863,79 @@ namespace Fraljiculator
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe Matrix<float> Copy(Matrix<float> src) => HandleMatrix(dest =>
         {
-            Parallel.For(0, rows / STEP, p => { int _p = copyInitPos[p]; Unsafe.CopyBlock(dest.RowPtr(_p), src.RowPtr(_p), strdBytes); });
-            if (resBytes != 0) Unsafe.CopyBlock(dest.RowPtr(resInitPos), src.RowPtr(resInitPos), resBytes);
+            void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
+            Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
         }); // Passing matrices to mutable variables
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Negate(Matrix<float> _value) => Parallel.For(0, rows, p =>
+        private unsafe void Negate(Matrix<float> _value)
         {
-            float* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < columns; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
-        });
+            void negate(int p, int col)
+            {
+                float* _valuePtr = _value.RowPtr(p);
+                for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
+            }
+            Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Plus(Matrix<float> src, Matrix<float> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Plus(Matrix<float> src, Matrix<float> dest)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
-        });
+            void plus(int p, int col)
+            {
+                float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
+            }
+            Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Subtract(Matrix<float> src, Matrix<float> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Subtract(Matrix<float> src, Matrix<float> dest)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
-        });
+            void subtract(int p, int col)
+            {
+                float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
+            }
+            Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Multiply(Matrix<float> src, Matrix<float> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Multiply(Matrix<float> src, Matrix<float> dest)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
-        });
+            void multiply(int p, int col)
+            {
+                float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
+            }
+            Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Divide(Matrix<float> src, Matrix<float> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Divide(Matrix<float> src, Matrix<float> dest)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
-        });
+            void divide(int p, int col)
+            {
+                float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
+            }
+            Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void Power(Matrix<float> src, Matrix<float> dest) => Parallel.For(0, rows, p =>
+        private unsafe void Power(Matrix<float> src, Matrix<float> dest)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = MathF.Pow(*srcPtr, *destPtr);
-        });
+            void power(int p, int col)
+            {
+                float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathF.Pow(*srcPtr, *destPtr);
+            }
+            Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
+        }
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe void FuncSub(Matrix<float> _value, Func<float, float> function) => Parallel.For(0, rows, p =>
+        private unsafe void FuncSub(Matrix<float> _value, Func<float, float> function)
         {
-            float* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < columns; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
-        });
+            void funcSub(int p, int col)
+            {
+                float* _valuePtr = _value.RowPtr(p);
+                for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
+            }
+            Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
+        }
         #endregion
 
         #region Assembly
@@ -3098,6 +3176,7 @@ namespace Fraljiculator
             var (mod, unit) = (MathF.Exp(-MathF.Tau * c.imaginary), MathF.SinCos(MathF.Tau * c.real));
             return new(mod * unit.Cos, mod * unit.Sin);
         } // Often used in analytic number theory, represented by 'q'
+        //
         public static Complex Sin(Complex c)
         {
             var (mod, unit) = (MathF.Exp(-c.imaginary), MathF.SinCos(c.real));
@@ -3128,6 +3207,7 @@ namespace Fraljiculator
             Complex _c = 2 / new Complex(1 + c.imaginary, -c.real); float re = _c.real - 1, im = _c.imaginary;
             return new(MathF.Atan2(im, re) / 2, -MathF.Log(re * re + im * im) / 4);
         }
+        //
         public static Complex Sinh(Complex c)
         {
             var (mod, unit) = (MathF.Exp(c.real), MathF.SinCos(c.imaginary));
@@ -3158,6 +3238,7 @@ namespace Fraljiculator
             Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); float re = _c.real - 1, im = _c.imaginary;
             return new(MathF.Log(re * re + im * im) / 4, MathF.Atan2(im, re) / 2);
         }
+        //
         public static Complex Sqrt(Complex c) => Pow(c, 0.5f);
         public static float Modulus(float x, float y) => Modulus(new(x, y));
         public static float Modulus(Complex c) => MathF.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
@@ -3169,6 +3250,7 @@ namespace Fraljiculator
     {
         private readonly TEntry[] matrix;
         private readonly int[] rowOffs; // For row extraction
+
         [MethodImpl(256)] // AggressiveInlining
         public Matrix(int[] rowOffs, int columns) { this.rowOffs = rowOffs; matrix = new TEntry[rowOffs[^1] + columns]; }
         [MethodImpl(256)] // AggressiveInlining
