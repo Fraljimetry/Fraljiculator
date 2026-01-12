@@ -1265,18 +1265,18 @@ namespace Fraljiculator
                 {
                     case 0: _general = "10"; _color = 3; break;
                     case 1: _general = "2pi"; _color = 4; break;
-                    case 2: _general = "2.5"; _thick = "0.3"; _color = 1; _points = true; break;
+                    case 2: _general = "4"; _color = 2; break;
                     case 3: _general = "0"; setDetails("0", "1", "0", "1"); _thick = "0.2"; _color = 0; _retain = true; break;
-                    case 4: _general = "10"; _thick = "0.1"; _color = 1; _points = true; break;
+                    case 4: _general = "0"; setDetails("-10", "0", "0", "10"); _thick = "0.1"; _color = 1; _points = true; break;
                     case 5: _general = "5"; _color = 1; break;
                     case 6: _general = "3"; break;
-                    case 7: _general = "4"; _thick = "0.05"; _color = 2; _points = true; break;
+                    case 7: _general = "3"; _thick = "0.05"; _color = 2; _points = true; break;
                 }
             else if (index > complexL + realL + 1 && index < complexL + realL + curveL + 2)
                 switch (index - complexL - realL - 2)
                 {
                     case 0: _general = "5"; break;
-                    case 1: _general = "pi"; _thick = "0.5"; _dense = "10"; _color = 2; break;
+                    case 1: _general = "pi"; _thick = "0.5"; _dense = "2"; _color = 2; break;
                     case 2: _general = "3"; _color = 0; break;
                     case 3: _dense = "100"; _color = 1; break;
                     case 4: _thick = "0.5"; break;
@@ -1694,7 +1694,6 @@ namespace Fraljiculator
         private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
             FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
             FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-
         private static float scale_factor;
         private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
         private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1840,7 +1839,8 @@ namespace Fraljiculator
         #region Replacement
         private static string Extract(string input, int start, int end) => input.AsSpan(start, end - start + 1).ToString();
         protected static string BraFreePart(string input, int start, int end) => Extract(input, start + 1, end - 1);
-        protected static string TryBraNum(string input) => BraFreePart(input, 0, input.Length - 1);
+        protected static string TryBraNum(string input, char c1, char c2)
+        { ThrowException(input[0] != c1 || input[^1] != c2); return BraFreePart(input, 0, input.Length - 1); }
         public static string Replace(string origStr, string subStr, int start, int end)
             => String.Create(start + subStr.Length + origStr.Length - end - 1, (origStr, subStr, start, end), (span, state) =>
             {
@@ -2008,7 +2008,7 @@ namespace Fraljiculator
             [
                 "(z-1)/(z+1)",
                 "z^(1+10i)cos((z-1)/(z^13+z+1))",
-                "sum(1/(-z^n+1),n,1,100)-100",
+                "sum(1/(1-z^n),n,1,100)-100",
                 "prod(exp(2/(e(-k/5)z-1)+1),k,1,5)",
                 "coc(iterate((1/Z+Z){0},z,k,1,1000),e(0.02))",
                 "iterate(exp(zZ),z,k,1,100)",
@@ -2023,14 +2023,14 @@ namespace Fraljiculator
                 "IterateLoop(x^X,1,k,1,30,y-X)",
                 "iterate1(x/X+X/y,xy,k,1,5)",
                 "iterate2(1/X+1/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
-                "comp1(xy,tan(X+x),Artanh(X-y))",
+                "comp1(xy,tan(Xx),Artanh(X-y))",
                 "comp2(xy,xx+yy,sin(X+Y),cos(X-Y),2)"
             ];
         public static readonly string[] EX_CURVES =
             [
                 "func(zeta(x,50))",
                 "func(sum(sin(x2^k)/2^k,k,0,100),-pi,pi,0.001)",
-                "func(beta(sinh(x),cosh(x)),-2,2,0.00001)",
+                "func(beta(sinh(x),cosh(x)),-2,2,0.0001)",
                 "polar(sqrt(cos(2theta)),theta,0,2pi,0.0001)",
                 "polar(cos(5k)cos(7k),k,0,2pi,0.001)",
                 "loop(polar(0.1jcos(5k+0.7jpi),k,0,pi),j,1,10)",
@@ -2461,8 +2461,8 @@ namespace Fraljiculator
         {
             _Z => HandleSolo<Complex>(input, new(z, true)),
             Z_ => HandleSolo<Complex>(input, new(Z, true)),
-            CB => new(buffCocs[Int32.Parse(TryBraNum(input))], true),
-            SB => braValues[Int32.Parse(TryBraNum(input))],
+            CB => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
+            SB => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
             I => HandleSolo<Complex>(input, ReturnConst(Complex.I)), // Special for complex
             E => HandleSolo<Complex>(input, ReturnConst(new(MathF.E))),
             P => HandleSolo<Complex>(input, ReturnConst(new(MathF.PI))),
@@ -2947,8 +2947,8 @@ namespace Fraljiculator
             _Y => HandleSolo<float>(input, new(y, true)),
             X_ => HandleSolo<float>(input, new(X, true)),
             Y_ => HandleSolo<float>(input, new(Y, true)),
-            CB => new(buffCocs[Int32.Parse(TryBraNum(input))], true),
-            SB => braValues[Int32.Parse(TryBraNum(input))],
+            CB => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
+            SB => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
             E => HandleSolo<float>(input, ReturnConst(MathF.E)),
             P => HandleSolo<float>(input, ReturnConst(MathF.PI)),
             G => HandleSolo<float>(input, ReturnConst(GAMMA)),
