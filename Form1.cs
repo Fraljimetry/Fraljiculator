@@ -694,8 +694,8 @@ namespace Fraljiculator
         private static Color ObtainColorBase(float argument, float alpha, int decay) // alpha: brightness
         {
             if (IllegalRatio(alpha)) return Color.Empty; // Necessary
-            float temp = argument * 3 / MathF.PI; int proportion, region = argument < 0 ? -1 : (int)temp;
-            if (region == 6) region = proportion = 0; else proportion = Frac(255, temp - region);
+            float _argument = argument * 3 / MathF.PI; int proportion, region = argument < 0 ? -1 : (int)_argument;
+            if (region == 6) region = proportion = 0; else proportion = Frac(255, _argument - region);
 
             Color getArgb(int r, int g, int b) => Argb(decay, r, g, b);
             return region switch
@@ -2638,7 +2638,7 @@ namespace Fraljiculator
         #endregion
 
         #region Basic Calculations
-        public static float Factorial(float n) => n < 0 ? Single.NaN : MathF.Floor(n) == 0 ? 1 : MathF.Floor(n) * Factorial(n - 1);
+        public static float Factorial(float n) => n < 0 ? Single.NaN : n == 0 ? 1 : n * Factorial(n - 1);
         private static float Mod(float a, float n) => n != 0 ? a % MathF.Abs(n) : Single.NaN;
         private static float Combination(float n, float r)
             => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n > 0 ?
@@ -2682,8 +2682,8 @@ namespace Fraljiculator
         }
         //
         private Matrix<float> Mod(string[] split) => ProcessMCP(split, Mod);
-        private Matrix<float> Combination(string[] split) => ProcessMCP(split, (a, b) => Combination(MathF.Floor(a), MathF.Floor(b)));
-        private Matrix<float> Permutation(string[] split) => ProcessMCP(split, (a, b) => Permutation(MathF.Floor(a), MathF.Floor(b)));
+        private Matrix<float> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathF.Floor(n), MathF.Floor(r)));
+        private Matrix<float> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathF.Floor(n), MathF.Floor(r)));
         private Matrix<float> Max(string[] split) => ProcessMinMax(split, _value => _value.Max());
         private Matrix<float> Min(string[] split) => ProcessMinMax(split, _value => _value.Min());
         #endregion // Special for real
@@ -3042,7 +3042,7 @@ namespace Fraljiculator
                 _L => handleSub(MathF.Log, 2),
                 E_ => handleSub(MathF.Exp, 2),
                 _Q => handleSub(MathF.Sqrt, 2),
-                _F_ => handleSub(Factorial, 2),
+                _F_ => handleSub(r => Factorial(MathF.Floor(r)), 2),
                 _D_ => input[start - 2] switch
                 {
                     _F => handleSub(MathF.Floor, 3),
