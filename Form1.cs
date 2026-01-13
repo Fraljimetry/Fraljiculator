@@ -1938,7 +1938,6 @@ namespace Fraljiculator
             rowChk = rows / STEP; rowOffs = GetArithProg(rows, columns);
             strd = columns * STEP; strdInit = GetArithProg(rowChk, STEP);
             resInit = rowChk * STEP; res = rows - resInit;
-
             int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
             colBytes = getBytes(1); strdBytes = getBytes(STEP); resBytes = getBytes(res);
         } // Fields for optimization
@@ -2639,7 +2638,8 @@ namespace Fraljiculator
 
         #region Basic Calculations
         public static float Factorial(float n) => n < 0 ? Single.NaN : n == 0 ? 1 : n * Factorial(n - 1);
-        private static float Mod(float a, float n) => n != 0 ? a % MathF.Abs(n) : Single.NaN;
+        private static float SafeSign(float r) => Single.IsNaN(r) ? Single.NaN : MathF.Sign(r);
+        private static float Mod(float n, float r) => r != 0 ? n % MathF.Abs(r) : Single.NaN;
         private static float Combination(float n, float r)
             => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n > 0 ?
             Combination(n - 1, r - 1) + Combination(n - 1, r) : r > 0 ?
@@ -3048,7 +3048,7 @@ namespace Fraljiculator
                     _F => handleSub(MathF.Floor, 3),
                     _C => handleSub(MathF.Ceiling, 3),
                     _R => handleSub(MathF.Round, 3),
-                    _S => handleSub(r => MathF.Sign(r), 3) // Automatic conversion from int to float
+                    _S => handleSub(SafeSign, 3) // Since MathF.Sign do no accept Single.NaN
                 }, // Special for real
                 _ => tagL
             };
