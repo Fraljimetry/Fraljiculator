@@ -1117,9 +1117,9 @@ namespace Fraljiculator
                 "\r\nIterateLoop (f(x,y,X,k), g(x,y), k, int a, int b, h(x,y,X,k))" +
                 "\r\n\r\nIterateLoop (f(z,Z,k), g(z), k, int a, int b) & " +
                 "\r\nIterateLoop (f(z,Z,k), g(z), k, int a, int b, h(z,Z,k))" +
-                $"\r\n\r\n{GetComment("Displaying each roll of iteration.")}" +
+                $"\r\n\r\n{GetComment("Displaying each loop of iteration.")}" +
                 $"\r\n\r\n... | ... | ...{TAB}{GetComment("Displaying one by one.")}");
-            content += subTitleContent("CONSTANTS", "\r\n\r\npi & p, e, gamma & ga & g, i");
+            content += subTitleContent("CONSTANTS", "\r\n\r\npi, e, gamma & ga, i");
             content += subTitleContent("SHORTCUTS", "\r\n");
 
             static string getShortcuts(string key, int blank, string meaning) => $"\r\n[{key}]" + new string('\t', blank) + meaning + ";";
@@ -1145,7 +1145,7 @@ namespace Fraljiculator
         private static string GetProfile()
         {
             string content = "Dear math lovers & mathematicians:" +
-                "\r\n\r\nHi! I'm Fralji, a content creator on Bilibili since July, 2021, right before entering college." +
+                "\r\n\r\nHi! I'm Fralji, a content creator on Bilibili since July, 2021, when I was a pre-freshman before entering college." +
                 "\r\n\r\nI aim to deliver unique lectures on many branches of mathematics. " +
                 "If you have any problem on the usage of this application, or anything concerning math, please reach to me via:";
             content += AddContact("Bilibili", "355884223", String.Empty);
@@ -1163,77 +1163,77 @@ namespace Fraljiculator
         //
         private void InputLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("FORMULA INPUT",
         [
-            "Space and enter keys are both OK. Unaccepted keys are banned, removed if pasted from the clipboard.",
-            "Excessive ellipses of multiplication may result in ambiguity. Ex. \"gammax\" will produce a \"max\"."
+            "Space and Enter keys are both acceptable. Unsupported keys are blocked, and removed if pasted from the clipboard.",
+            "Excessive omission of multiplication may cause misinterpretation. For example, \"gammax\" will be parsed as \"max\"."
         ]);
         private void AtLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("SAVING ADDRESS",
         [
-            "Create a file for snapshot storage and paste the address here. It will be checked.",
-            "PNG snapshots & history lists will be named in the respective formats: " +
+            "Create a file for snapshot storage and paste its address here. It will be validated.",
+            "PNG snapshots and history lists will be named in the following formats: " +
             "\"yyyy_ddd_hh_mm_ss_No.#\" and \"yyyy_ddd_hh_mm_ss_stockpile\"."
         ]);
         private void GeneralLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("GENERAL SCOPE",
         [
-            "The detailed scope effectuates only if the general scope is set to \"0\".",
-            "Any legitimate variable-free algebraic expressions are acceptable, checked as in the input box."
+            "The detailed scope takes effect only when the general scope is set to \"0\".",
+            "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the input box."
         ]);
         private void DetailLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DETAILED SCOPE",
         [
-            "Reversing the endpoints to create the mirror effect is NOT supported.",
-            "Any legitimate variable-free algebraic expressions are acceptable, checked as in the input box."
+            "Creating a mirror effect by reversing endpoints is NOT supported.",
+            "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the input box."
         ]);
         private void ThickLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("MAGNITUDE",
         [
-            "Representing: (i) Width of planar curves, (ii) Size of special points, (iii) Decay rates of translucence.",
-            "It should be appropriate according to the scale. Examples have been tweaked with much effort."
+            "Represents: (i) Width of planar curves, (ii) Size of special points, (iii) Decay rates of translucence.",
+            "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
         ]);
         private void DenseLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DENSITY",
         [
-            "The density refers to:\r\n(i) Density of contours (real & complex),\r\n(ii) Relative speed of planar curves.",
-            "It should be appropriate according to the scale. Examples have been tweaked with much effort."
+            "Represents:\r\n(i) Density of contours (real and complex),\r\n(ii) Relative speed of planar curves.",
+            "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
         ]);
         private void DraftLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("HISTORY LIST",
         [
-            "The input will be saved both in this box and in the clipboard.",
-            "Clicked points, along with the time of snapshots & history storage, will also be recorded in detail."
+            "The input will be saved both in this box and to the clipboard.",
+            "Clicked points, along with the timestamps of snapshots and history entries, will also be recorded in detail."
         ]);
 
         private void ExampleLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("EXAMPLES",
         [
-            "These examples serve to inform you of the multifarious legitimate grammar.",
-            "Some renderings are elegant while others are chaotic. Elegance take time to explore and appreciate. Enjoy yourself!"
+            "These examples illustrate the wide variety of supported input formats.",
+            "Some renderings are elegant while others are chaotic. Elegance takes time to explore and appreciate. Enjoy!"
         ]);
         private void FunctionLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("FUNCTIONS",
         [
-            "The two combo boxes contain regular and special operations respectively, the latter having complicated grammar.",
-            "Select something in the input box and choose here to substitute your selection."
+            "The two combo boxes contain regular and special operations respectively, the latter having more complex grammar.",
+            "Select something in the input box and choose an item here to substitute your selection."
         ]);
         private void ModeLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("COLORING MODES",
         [
-            "The spectrum of colors represents:\r\n(i) Arguments of meromorphic functions," +
+            "The color spectrum represents:\r\n(i) Arguments of meromorphic functions," +
             "\r\n(ii) Values of two-variable functions,\r\n(iii) Parameterizations of planar curves.",
-            "The first three modes have swappable colorations, while the last two do not."
+            "The first three modes support swappable color schemes, while the last two do not."
         ]);
         private void ContourLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("CONTOUR MODES",
         [
-            "Both options apply to the complex version ONLY, for the contouring of meromorphic functions.",
-            "Only the Polar option admits translucent display, representing the decay rate of modulus."
+            "Both options apply ONLY to the complex version, for contouring meromorphic functions.",
+            "Only the Polar option supports translucent display, representing the decay rate of the modulus."
         ]);
 
         private void PointNumLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("PIXELS",
         [
-            "Logging the number of points / line segments in the previous loop, almost proportional to time and iteration.",
-            "Nullity often results from constancy, divergence, or undefinedness."
+            "Logs the number of points or line segments in the previous loop, roughly proportional to time and iteration count.",
+            "A value of zero often results from constancy, divergence, or undefined behavior."
         ]);
         private void TimeLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DURATION",
         [
-            "The auto snapshot cannot capture updates here on time, but it will be saved in the history list along with the pixels.",
-            "This value is a precious embodiment of optimization, refered for appropriate iterations and others."
+            "The auto-snapshot cannot capture updates here in real time, but the value will be saved in the history list.",
+            "This value is a valuable indicator of optimization, referenced for choosing appropriate iterations and other settings."
         ]);
         private void PreviewLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("MICROCOSM",
         [
-            "Since graphing cannot pause manually during the process, a preview of results is necessary for time estimation.",
-            "It differs from the main graph only in sharpness. Graphing here is around 20 times faster (less after optimization)."
+            "Since graphing cannot be paused manually during execution, a preview is necessary for estimating computation time.",
+            "It differs from the main graph only in sharpness. Graphing here is roughly 20 times faster (less after optimization)."
         ]);
         #endregion
 
@@ -1784,7 +1784,7 @@ namespace Fraljiculator
         public static readonly string[] FUNC_NAMES = AddSuffix(["func", "Func", "polar", "Polar", "param", "Param"]);
         public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]);
         private static readonly List<string> CONFUSION = ["zeta", "Zeta"];
-        private static readonly char SUB_CHAR = ';';
+        protected static readonly string SUB_CHARS = ":;";
 
         #region Reckoning
         protected static int CountChars(ReadOnlySpan<char> input, string charsToCheck)
@@ -1873,7 +1873,7 @@ namespace Fraljiculator
             return result.ToString();
         } // To prevent the interior ',' from interfering with exterior splitting
         private static string[] ReplaceRecover(string input)
-            => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
+            => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHARS[0]), ",").Select(part => part.Replace(SUB_CHARS[0], ','))];
         protected static string ReplaceSubstrings(string input, List<string> substrings, string substitution)
            => System.Text.RegularExpressions.Regex.Replace(input, String.Join("|", substrings), substitution);
         public static string ReplaceConfusion(string input) => ReplaceSubstrings(input, CONFUSION, String.Empty);
@@ -1919,12 +1919,12 @@ namespace Fraljiculator
     public class RealComplex : MyString
     {
         protected static readonly float GAMMA = 0.57721566f;
-        protected static readonly int THRESHOLD = 10, STEP = 1; // THRESHOLD: breaking long expressions; STEP: the chunk size
-        public static readonly string SUB_CHARS = ":;";
-        protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', CB = '{', _D_ = '$', E = 'e', E_ = 'E',
-            _F = 'f', F_ = 'F', _F_ = '!', G = 'g', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l', M_ = 'M',
-            MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'p', P_ = 'P', _Q = 'q', _R = 'r', _S = 's', S_ = 'S',
-            SB = '[', SP = '#', _T = 't', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'Z';
+        protected static readonly int THRESHOLD = 10, STEP = 1; // THRESHOLD: breaking long expressions; STEP: referring to chunks
+        protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
+            _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
+            M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r',
+            _S = 's', S_ = 'S', SP = '#', _T = 't', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
+
         public unsafe static int[] GetArithProg(int length, int diff)
         {
             if (length == 0) return []; int[] progression = new int[length];
@@ -2038,7 +2038,7 @@ namespace Fraljiculator
                 "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,5)"
             ];
         public static readonly char FUNC_HEAD = '~', UNDERLINE = '_', DOLLAR = _D_;
-        public static readonly string FUNC = "α", POLAR = "β", PARAM = "γ", ITLOOP = "δ",
+        public static readonly string FUNC = "φ", POLAR = "ψ", PARAM = "ρ", ITLOOP = "ι",
             LOG = _L.ToString(), EXP = E_.ToString(), SQRT = _Q.ToString(), ABS = _A.ToString(), FACT = _F_.ToString(),
             SIN = _S.ToString(), COS = _C.ToString(), TAN = _T.ToString(), // This should come first
             AS = String.Concat(_A, SIN), AC = String.Concat(_A, COS), AT = String.Concat(_A, TAN),
@@ -2461,8 +2461,8 @@ namespace Fraljiculator
         {
             _Z => HandleSolo<Complex>(input, new(z, true)),
             Z_ => HandleSolo<Complex>(input, new(Z, true)),
-            CB => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
-            SB => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
+            '{' => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
+            '[' => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
             I => HandleSolo<Complex>(input, ReturnConst(Complex.I)), // Special for complex
             E => HandleSolo<Complex>(input, ReturnConst(new(MathF.E))),
             P => HandleSolo<Complex>(input, ReturnConst(new(MathF.PI))),
@@ -2947,8 +2947,8 @@ namespace Fraljiculator
             _Y => HandleSolo<float>(input, new(y, true)),
             X_ => HandleSolo<float>(input, new(X, true)),
             Y_ => HandleSolo<float>(input, new(Y, true)),
-            CB => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
-            SB => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
+            '{' => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
+            '[' => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
             E => HandleSolo<float>(input, ReturnConst(MathF.E)),
             P => HandleSolo<float>(input, ReturnConst(MathF.PI)),
             G => HandleSolo<float>(input, ReturnConst(GAMMA)),
