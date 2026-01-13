@@ -2052,8 +2052,8 @@ namespace Fraljiculator
             COMP = J_.ToString(), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP),
             CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP),
             PI = P.ToString(), _GA = G.ToString();
-        private static Dictionary<string, string> Concat(Dictionary<string, string> s1, Dictionary<string, string> s2)
-            => s1.Concat(s2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
+        private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
+            => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
         private static readonly Dictionary<string, string> COMMON_STANDARD = new()
         {
             { "log", LOG }, { "Log", LOG }, { "ln", LOG }, { "Ln", LOG },
