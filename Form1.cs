@@ -3278,4 +3278,3 @@ namespace Fraljiculator
         public readonly Matrix<TEntry> matrix = matrix;
     } /// Constant matrices for recycling
 }
-
