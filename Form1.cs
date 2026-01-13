@@ -2035,7 +2035,7 @@ namespace Fraljiculator
                 "polar(cos(5k)cos(7k),k,0,2pi,0.001)",
                 "loop(polar(0.1jcos(5k+0.7jpi),k,0,pi),j,1,10)",
                 "param(sin(7k),cos(9k),k,0,2pi,0.001)",
-                "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,5)"
+                "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,10)"
             ];
         public static readonly char FUNC_HEAD = '~', UNDERLINE = '_', DOLLAR = _D_;
         public static readonly string FUNC = "φ", POLAR = "ψ", PARAM = "ρ", ITLOOP = "ι",
