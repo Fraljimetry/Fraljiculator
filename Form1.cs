@@ -14,7 +14,7 @@ namespace Fraljiculator
     /// </summary>
     public partial class Graph : Form
     {
-        // 1.PREPARATIONS
+        // 1. PREPARATIONS
         #region Fields
         private static System.Media.SoundPlayer ClickPlayer;
         private static WMPLib.WindowsMediaPlayer MediaPlayer;
@@ -33,7 +33,7 @@ namespace Fraljiculator
             COMBO_BLUE = Argb(192, 255, 255), FOCUS_GRAY = Color.LightGray, BACKDROP_GRAY = Argb(64, 64, 64),
             CONTROL_GRAY = Argb(105, 105, 105), GRID_GRAY = Argb(75, 255, 255, 255), READONLY_GRAY = Color.Gainsboro,
             UPPER_GOLD = Color.Gold, LOWER_BLUE = Color.RoyalBlue, ZERO_BLUE = Color.Lime, POLE_PURPLE = Color.Magenta;
-
+        //
         private static float scale_factor, title_elapsed, pause_pos, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
         private static readonly float GRID_WIDTH_1 = 3f, GRID_WIDTH_2 = 2f, CURVE_WIDTH_LIMIT = 20f, STRIDE = 0.25f, MOD = 0.25f,
             ARG = MathF.PI / 12, STRIDE_REAL = 1f, EPS_REAL = 0.015f, EPS_COMPLEX = 0.015f, SIZE_REAL = 0.5f, DECAY = 0.2f, DEPTH = 2f,
@@ -48,7 +48,7 @@ namespace Fraljiculator
         private static int[] borders; // = [ x_left, x_right, y_up, y_down ];
         private static Matrix<Complex> output_complex;
         private static Matrix<float> output_real;
-
+        //
         private static bool is_flashing, is_paused = true, is_complex = true, delete_point = true, delete_coor, swap_colors,
             is_auto, freeze_graph, clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking,
             error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound;
@@ -324,7 +324,7 @@ namespace Fraljiculator
         }
         #endregion
 
-        // 2.GRAPHING
+        // 2. GRAPHING
         #region Numerics
         private static float GetRatioRow(int[] borders) => Get_Row() / GetRow(borders);
         private static float GetRatioColumn(int[] borders) => Get_Column() / GetColumn(borders);
@@ -492,6 +492,7 @@ namespace Fraljiculator
         private void Real3(Matrix<float> output, (float, float) mM) => RealLoop123(output, Color.Black, Color.White, 3, mM);
         private void Real4(Matrix<float> output, (float, float) mM) => RealLoop45(output, true, mM);
         private void Real5(Matrix<float> output, (float, float) mM) => RealLoop45(output, false, mM);
+
         private void ComplexComputation()
         {
             bool isReIm = contour_mode == 1;
@@ -722,7 +723,7 @@ namespace Fraljiculator
         }
         #endregion
 
-        // 3.INTERACTIONS
+        // 3. INTERACTIONS
         #region Mouse Move & Mouse Down
         private void Graph_MouseMove(object sender, MouseEventArgs e)
         {
@@ -1335,7 +1336,7 @@ namespace Fraljiculator
         }
         #endregion
 
-        // 4.SPECIAL EFFECTS
+        // 4. SPECIAL EFFECTS
         #region Click & Mouse Down & Text Changed
         private void Delete_Click(int[] borders, bool isMain)
         {
@@ -1689,17 +1690,21 @@ namespace Fraljiculator
     } /// The visualization interface
     public class MyMessageBox : Form
     {
+        #region Fields
         private static Button btnOk;
         private static TextBox txtMessage;
         private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
             FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
             FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
+        //
         private static float scale_factor;
         private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
         private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
         private static bool is_resized;
         private static readonly string MSG_FONT = "Microsoft YaHei UI", BTN_FONT = "Microsoft YaHei UI", BTN_TXT = "OK";
+        #endregion
 
+        #region Methods
         private static void BtnOk_MouseEnterLeave(bool isEnter)
         {
             if (isEnter ? is_resized : !is_resized) return; // To prevent repetitive call
@@ -1712,7 +1717,7 @@ namespace Fraljiculator
         private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
         private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
         private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
-
+        //
         private void SetUpForm(int width, int height)
         {
             FormBorderStyle = FormBorderStyle.None; TopMost = true; Size = new(width, height);
@@ -1766,13 +1771,14 @@ namespace Fraljiculator
             msgBox.Setup(message, width, height, txtColor, btnColor, btnTxtColor);
             msgBox.ShowDialog();
         }
-
+        //
         public static void ShowFormal(string message, int width, int height)
             => Display(message, width, height, FORMAL_FONT, FORMAL_BUTTON, Color.White);
         public static void ShowCustom(string message, int width, int height)
             => Display(message, width, height, CUSTOM_FONT, CUSTOM_BUTTON, Color.White);
         public static void ShowException(string message, int width, int height)
             => Display(message, width, height, EXCEPTION_FONT, EXCEPTION_BUTTON, Color.White);
+        #endregion
     } /// Customized box construction
 
     /// <summary>
@@ -1784,7 +1790,7 @@ namespace Fraljiculator
         public static readonly string[] FUNC_NAMES = AddSuffix(["func", "Func", "polar", "Polar", "param", "Param"]);
         public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]);
         private static readonly List<string> CONFUSION = ["zeta", "Zeta"];
-        protected static readonly string SUB_CHARS = ":;";
+        protected static readonly string SUB_CHARS = ":;"; // Replacing ",^+-*/"
 
         #region Reckoning
         protected static int CountChars(ReadOnlySpan<char> input, string charsToCheck)
@@ -1863,11 +1869,7 @@ namespace Fraljiculator
             {
                 if (result[i] != ReplaceTags.UNDERLINE) continue;
                 int endIndex = PairedParenthesis(input, i + 1);
-                for (int j = i + 1; j < endIndex; j++)
-                {
-                    if (result[j] != origChar) continue;
-                    result.Remove(j, 1).Insert(j, subChar);
-                }
+                for (int j = i + 1; j < endIndex; j++) if (result[j] == origChar) result.Remove(j, 1).Insert(j, subChar);
                 i = endIndex;
             } // Sensitive
             return result.ToString();
@@ -1884,16 +1886,10 @@ namespace Fraljiculator
             => ReplaceRecover(BraFreePart(input, input.IndexOf('('), PairedParenthesis(input, input.IndexOf('('))));
         public static string[] SplitByChars(string input, string delimiters)
         {
-            HashSet<char> delimiterSet = [.. delimiters];
-            List<string> segments = [];
-            StringBuilder segmentBuilder = new();
+            HashSet<char> delimiterSet = [.. delimiters]; List<string> segments = []; StringBuilder segmentBuilder = new();
             for (int i = 0; i < input.Length; i++)
             {
-                if (delimiterSet.Contains(input[i]))
-                {
-                    segments.Add(segmentBuilder.ToString());
-                    segmentBuilder.Clear();
-                }
+                if (delimiterSet.Contains(input[i])) { segments.Add(segmentBuilder.ToString()); segmentBuilder.Clear(); }
                 else segmentBuilder.Append(input[i]);
             }
             segments.Add(segmentBuilder.ToString());
@@ -1965,9 +1961,9 @@ namespace Fraljiculator
                 if (!signs.Contains(result[i])) continue;
                 if (++flag % THRESHOLD == 0)
                 {
-                    char subChar = result[i] == signs[0] ? SUB_CHARS[0] : SUB_CHARS[1]; // Necessary
+                    char subChar = result[i] == signs[0] ? SUB_CHARS[0] : result[i] == signs[1] ? SUB_CHARS[1] : '\0'; // Necessary
                     result.Remove(i, 1).Insert(i, subChar);
-                    signsBuilder.Append(result[i]);
+                    signsBuilder.Append(subChar);
                 }
             }
             return (SplitByChars(result.ToString(), SUB_CHARS), signsBuilder);
@@ -2045,6 +2041,7 @@ namespace Fraljiculator
             COMP = J_.ToString(), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP),
             CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP),
             PI = P.ToString(), _GA = G.ToString();
+
         private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
             => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
         private static readonly Dictionary<string, string> COMMON_STANDARD = new()
@@ -2112,6 +2109,7 @@ namespace Fraljiculator
             { "param", PARAM }, { "Param", PARAM },
             { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }
         }, UNDERLINE);
+
         private static Dictionary<string, string> AddPrefixSuffix(Dictionary<string, string> dictionary)
         {
             Dictionary<string, string> _dictionary = [];
@@ -2142,6 +2140,7 @@ namespace Fraljiculator
         private static readonly string VAR_REAL = String.Concat(_X, _Y, X_, Y_), VAR_COMPLEX = String.Concat(_Z, Z_, I),
             CONST = String.Concat(E, P, G), ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
         private static readonly List<string> ENTER_BLANK = ["\n", "\r", " "];
+
         public static string Simplify(string input, bool isComplex = false)
         {
             ThrowException(!CheckParenthesis(input) || input.Contains(LR_BRA) || ContainsAny(input, BARRED_CHARS));
@@ -2151,11 +2150,12 @@ namespace Fraljiculator
         protected static string Recover(string input, bool isComplex)
         {
             int length = input.Length; if (length == 1) return input;
+            Func<char, bool> isVar = isComplex ? IsVarComplex : IsVarReal;
             StringBuilder recoveredInput = new(length * 2); // The longest possible length
             recoveredInput.Append(input[0]);
             for (int i = 1; i < length; i++) // Should not use parallel
             {
-                if (DecideRecovery(input[i - 1], input[i], isComplex ? IsVarComplex : IsVarReal)) recoveredInput.Append('*');
+                if (DecideRecovery(input[i - 1], input[i], isVar)) recoveredInput.Append('*');
                 recoveredInput.Append(input[i]);
             }
             return recoveredInput.ToString();
