@@ -1938,19 +1938,13 @@ namespace Fraljiculator
             rowChk = rows / STEP; rowOffs = GetArithProg(rows, columns);
             strd = columns * STEP; strdInit = GetArithProg(rowChk, STEP);
             resInit = rowChk * STEP; res = rows - resInit;
+
             int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
             colBytes = getBytes(1); strdBytes = getBytes(STEP); resBytes = getBytes(res);
         } // Fields for optimization
         public static void For(int start, int end, Action<int> action) { for (int i = start; i <= end; i++) action(i); }
         protected static Matrix<float> ChooseMode(string mode, Matrix<float> m1, Matrix<float> m2, int[] rowOffs, int columns)
-        {
-            switch (Char.Parse(mode))
-            {
-                case MODE_1: return m1;
-                case MODE_2: return m2;
-                default: ThrowException(); return new(rowOffs, columns); // Should not have happened
-            }
-        }
+            => Char.Parse(mode) switch { MODE_1 => m1, MODE_2 => m2 };
         protected static MatrixCopy<TEntry> HandleSolo<TEntry>(string input, MatrixCopy<TEntry> mc)
         { ThrowException(input.Length != 1); return mc; }
         protected static string[] PrepareBreakPower(string input, int THRESHOLD)
@@ -2483,6 +2477,7 @@ namespace Fraljiculator
         {
             if (!input.Contains('^')) return Transform(input);
             if (CountChars(input, "^") > THRESHOLD) return BreakPower(input);
+
             string[] split = SplitByChars(input, "^");
             Matrix<Complex> tower = CopyMtx(Transform(split[^1]));
             for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
@@ -2500,12 +2495,13 @@ namespace Fraljiculator
         {
             if (!ContainsAny(input, "*/")) return PowerCore(input);
             if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input);
+
             var (split, signs) = GetMultiplyDivideComponents(input);
             Matrix<Complex> product = CopyMtx(PowerCore(split[0]));
             for (int j = 1; j < split.Length; j++)
             {
-                Action<Matrix<Complex>, Matrix<Complex>>? op = signs[j - 1] == '*' ? Multiply : signs[j - 1] == '/' ? Divide : null;
-                ThrowException(op == null); op(PowerCore(split[j]).matrix, product);
+                Action<Matrix<Complex>, Matrix<Complex>> operation = signs[j - 1] switch { '*' => Multiply, '/' => Divide };
+                operation(PowerCore(split[j]).matrix, product);
             }
             return new(product);
         }
@@ -2521,12 +2517,13 @@ namespace Fraljiculator
         {
             if (!ContainsAny(input, "+-")) return MultiplyDivideCore(input);
             if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input);
+
             var (split, signs) = GetPlusSubtractComponents(input);
             Matrix<Complex> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
             for (int i = 1; i < split.Length; i++)
             {
-                Action<Matrix<Complex>, Matrix<Complex>>? op = signs[i] == '+' ? Plus : signs[i] == '-' ? Subtract : null;
-                ThrowException(op == null); op(MultiplyDivideCore(split[i]).matrix, sum);
+                Action<Matrix<Complex>, Matrix<Complex>> operation = signs[i] switch { '+' => Plus, '-' => Subtract };
+                operation(MultiplyDivideCore(split[i]).matrix, sum);
             }
             return new(sum);
         }
@@ -2969,6 +2966,7 @@ namespace Fraljiculator
         {
             if (!input.Contains('^')) return Transform(input);
             if (CountChars(input, "^") > THRESHOLD) return BreakPower(input);
+
             string[] split = SplitByChars(input, "^");
             Matrix<float> tower = CopyMtx(Transform(split[^1]));
             for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
@@ -2986,12 +2984,13 @@ namespace Fraljiculator
         {
             if (!ContainsAny(input, "*/")) return PowerCore(input);
             if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input);
+
             var (split, signs) = GetMultiplyDivideComponents(input);
             Matrix<float> product = CopyMtx(PowerCore(split[0]));
             for (int j = 1; j < split.Length; j++)
             {
-                Action<Matrix<float>, Matrix<float>>? op = signs[j - 1] == '*' ? Multiply : signs[j - 1] == '/' ? Divide : null;
-                ThrowException(op == null); op(PowerCore(split[j]).matrix, product);
+                Action<Matrix<float>, Matrix<float>> operation = signs[j - 1] switch { '*' => Multiply, '/' => Divide };
+                operation(PowerCore(split[j]).matrix, product);
             }
             return new(product);
         }
@@ -3007,12 +3006,13 @@ namespace Fraljiculator
         {
             if (!ContainsAny(input, "+-")) return MultiplyDivideCore(input);
             if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input);
+
             var (split, signs) = GetPlusSubtractComponents(input);
             Matrix<float> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
             for (int i = 1; i < split.Length; i++)
             {
-                Action<Matrix<float>, Matrix<float>>? op = signs[i] == '+' ? Plus : signs[i] == '-' ? Subtract : null;
-                ThrowException(op == null); op(MultiplyDivideCore(split[i]).matrix, sum);
+                Action<Matrix<float>, Matrix<float>> operation = signs[i] switch { '+' => Plus, '-' => Subtract };
+                operation(MultiplyDivideCore(split[i]).matrix, sum);
             }
             return new(sum);
         }
