@@ -1,4 +1,6 @@
-/// DATE: 2023.4~5, 2024.9~11, 2025.1, 2026.1; DESIGNER: Fraljimetry; PRECISION: System.Single (float)
+/// DATE: 2023.4~5, 2024.9~11, 2025.1, 2026.1
+/// DESIGNER: Fraljimetry
+/// PRECISION: System.Single (float)
 
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
@@ -339,15 +341,15 @@ namespace Fraljiculator
             static float seekM(Func<float, float, float> function, float* ptr, int length)
             {
                 float _value = Single.NaN;
-                for (int i = 0; i < length; i++)
-                { if (Single.IsNaN(ptr[i])) continue; if (Single.IsNaN(_value)) _value = ptr[i]; else _value = function(ptr[i], _value); }
+                for (int i = 0; i < length; i++, ptr++)
+                { if (Single.IsNaN(*ptr)) continue; if (Single.IsNaN(_value)) _value = *ptr; else _value = function(*ptr, _value); }
                 return _value;
             }
             Matrix<float> outputAtan = GetMatrix(rows, columns), minMax = GetMatrix(2, rows); // Necessary
             Parallel.For(0, rows, p =>
             {
                 float* destPtr = outputAtan.RowPtr(p), _destPtr = destPtr, srcPtr = output.RowPtr(p);
-                for (int q = 0; q < columns; q++) destPtr[q] = MathF.Atan(srcPtr[q]);
+                for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = MathF.Atan(*srcPtr);
                 minMax[0, p] = seekM(MathF.Min, _destPtr, columns);
                 minMax[1, p] = seekM(MathF.Max, _destPtr, columns);
             });
@@ -361,7 +363,7 @@ namespace Fraljiculator
             Parallel.For(0, rows, p =>
             {
                 float* xPtr = xCoor.RowPtr(p), yPtr = yCoor.RowPtr(p); int _xInit = xInit + p, _yInit = yInit; // Must NOT be pre-defined
-                for (int q = 0; q < columns; q++, _yInit++) (xPtr[q], yPtr[q]) = LinearTransform(_xInit, _yInit, _x, _y, borders);
+                for (int q = 0; q < columns; q++, xPtr++, yPtr++, _yInit++) (*xPtr, *yPtr) = LinearTransform(_xInit, _yInit, _x, _y, borders);
             });
             return (rows, columns, xCoor, yCoor);
         }
@@ -381,7 +383,7 @@ namespace Fraljiculator
             bmp.UnlockBits(bmpData);
         }
         private unsafe void SetPixelFast(byte* _ptr, Color color, ref int pixNum)
-        { pixNum++; _ptr[0] = color.B; _ptr[1] = color.G; _ptr[2] = color.R; _ptr[3] = color.A; }
+        { pixNum++; *_ptr = color.B; _ptr++; *_ptr = color.G; _ptr++; *_ptr = color.R; _ptr++; *_ptr = color.A; }
         private unsafe void RealSpecial(byte* _ptr, Color _zero, Color _pole, float _value, (float min, float max) mM, ref int pixNum)
         {
             if (_value < Single.Lerp(mM.min, mM.max, size_real)) SetPixelFast(_ptr, _zero, ref pixNum);
@@ -406,7 +408,7 @@ namespace Fraljiculator
                     for (int x = 0; x < xLen; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr, ref pixNum);
                     pixNums[y] = pixNum;
                 }); // Deliberate loop order
-                foreach (int num in pixNums) pixel_number += num;
+                fixed (int* ptr = pixNums) { int* _ptr = ptr; for (int y = 0; y < yLen; y++, _ptr++) pixel_number += *_ptr; }
             }
             finally { bmp.UnlockBits(bmpData); }
         }
@@ -548,7 +550,7 @@ namespace Fraljiculator
             if (is_checking) { _ = obtainCheck(input1); _ = obtainCheck(input2); return (partition, partition, length, true); }
 
             float* partPtr = partition.RowPtr();
-            for (int i = 0; i < _length; i++, steps += increment) partPtr[i] = steps;
+            for (int i = 0; i < _length; i++, partPtr++, steps += increment) *partPtr = steps;
             Matrix<float> obtain(string input) => new RealSub(input, partition, null, null, null, null, 1, _length).Obtain();
             return (obtain(input1), obtain(input2), length, false);
         }
@@ -564,11 +566,10 @@ namespace Fraljiculator
             Point pos = new(), posBuffer = new(); bool inRange, inRangeBuffer = false; int _ratio, _ratioBuffer = 0;
             float relativeSpeed = Obtain(DenseInput) / length, ratio; float* v1Ptr = value1.RowPtr(), v2Ptr = value2.RowPtr();
 
-            for (int steps = 0; steps <= length; steps++, segment_number++)
+            for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++, segment_number++)
             {
-                var (val1, val2) = (v1Ptr[steps], v2Ptr[steps]);
-                (pos.X, pos.Y) = (LinearTransformX(val1, borders), LinearTransformY(val2, borders));
-                inRange = val1 > scopes[0] && val1 < scopes[1] && val2 > scopes[3] && val2 < scopes[2];
+                (pos.X, pos.Y) = (LinearTransformX(*v1Ptr, borders), LinearTransformY(*v2Ptr, borders));
+                inRange = *v1Ptr > scopes[0] && *v1Ptr < scopes[1] && *v2Ptr > scopes[3] && *v2Ptr < scopes[2];
                 if (inRangeBuffer && inRange && posBuffer != pos)
                 {
                     ratio = relativeSpeed * steps % 1;
@@ -677,15 +678,15 @@ namespace Fraljiculator
         {
             if (NoInput()) return; // Necessary
             string[] split = MyString.SplitByChars(RecoverMultiply.Simplify(InputString.Text, is_complex), "|");
-            foreach (string input in split)
+            for (int loops = 0; loops < split.Length; loops++)
             {
-                bool containsTags(string s1, string s2) => MyString.ContainsAny(input, [s1, s2]);
+                bool containsTags(string s1, string s2) => MyString.ContainsAny(split[loops], [s1, s2]);
                 Action<string> displayMethod =    // Should not pull outside of the loop
                     containsTags(MyString.LOOP_NAMES[0], MyString.LOOP_NAMES[1]) ? DisplayLoop :
                     containsTags(MyString.FUNC_NAMES[0], MyString.FUNC_NAMES[1]) ? DisplayFunction :
                     containsTags(MyString.FUNC_NAMES[2], MyString.FUNC_NAMES[3]) ? DisplayPolar :
                     containsTags(MyString.FUNC_NAMES[4], MyString.FUNC_NAMES[5]) ? DisplayParam : DisplayRendering;
-                displayMethod(input);
+                displayMethod(split[loops]);
             }
         }
         #endregion
@@ -1785,7 +1786,7 @@ namespace Fraljiculator
     /// </summary>
     public class MyString
     {
-        private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; } // No foreach
+        private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; }
         public static readonly string[] FUNC_NAMES = AddSuffix(["func", "Func", "polar", "Polar", "param", "Param"]);
         public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]);
         private static readonly List<string> CONFUSION = ["zeta", "Zeta"];
@@ -1923,7 +1924,8 @@ namespace Fraljiculator
         public unsafe static int[] GetArithProg(int length, int diff)
         {
             if (length == 0) return []; int[] progression = new int[length];
-            for (int i = 0, j = 0; i < length; i++, j += diff) progression[i] = j;
+            fixed (int* ptr = progression)
+            { int* _ptr = ptr; for (int i = 0, j = 0; i < length; i++, _ptr++, j += diff) *_ptr = j; } // _ptr is necessary
             return progression;
         }
         protected static void Initialize<TEntry>(int rows, int columns, ref int rowChk, ref int[]? rowOffs, ref uint colBytes,
@@ -2226,12 +2228,12 @@ namespace Fraljiculator
                 {
                     Complex* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
                         _aPtr = _a.RowPtr(p), _bPtr = _b.RowPtr(p), _cPtr = _c.RowPtr(p), initialPtr = initial.RowPtr(p);
-                    for (int q = 0; q < col; q++)
+                    for (int q = 0; q < col; q++, productPtr++, sumPtr++, _aPtr++, _bPtr++, _cPtr++, initialPtr++)
                     {
-                        for (int i = 0, j = -1; i <= n; i++, j++)
+                        for (int i = 0; i <= n; i++)
                         {
-                            if (i != 0) productPtr[q] *= initialPtr[q] * (j + _aPtr[q]) * (j + _bPtr[q]) / (j + _cPtr[q]) / i;
-                            sumPtr[q] += productPtr[q];
+                            if (i != 0) *productPtr *= *initialPtr * (i - 1 + *_aPtr) * (i - 1 + *_bPtr) / (i - 1 + *_cPtr) / i;
+                            *sumPtr += *productPtr;
                         }
                     }
                 }
@@ -2247,10 +2249,10 @@ namespace Fraljiculator
                 void gamma(int p, int col)
                 {
                     Complex* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < col; q++)
+                    for (int q = 0; q < col; q++, productPtr++, initialPtr++, outputPtr++)
                     {
-                        for (int i = 1; i <= n; i++) { Complex tmp = initialPtr[q] / i; productPtr[q] *= Complex.Exp(tmp) / (1 + tmp); }
-                        outputPtr[q] = productPtr[q] * Complex.Exp(-initialPtr[q] * GAMMA) / initialPtr[q];
+                        for (int i = 1; i <= n; i++) { Complex temp = *initialPtr / i; *productPtr *= Complex.Exp(temp) / (1 + temp); }
+                        *outputPtr = *productPtr * Complex.Exp(-*initialPtr * GAMMA) / *initialPtr;
                     }
                 }
                 Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
@@ -2267,11 +2269,10 @@ namespace Fraljiculator
                 {
                     Complex* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
                         input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < col; q++)
+                    for (int q = 0; q < col; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
                     {
-                        for (int i = 1; i <= n; i++)
-                            productPtr[q] *= 1 + input1Ptr[q] * input2Ptr[q] / ((i + input1Ptr[q] + input2Ptr[q]) * i);
-                        outputPtr[q] = (input1Ptr[q] + input2Ptr[q]) / (input1Ptr[q] * input2Ptr[q]) / productPtr[q];
+                        for (int i = 1; i <= n; i++) *productPtr *= 1 + *input1Ptr * *input2Ptr / ((i + *input1Ptr + *input2Ptr) * i);
+                        *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                     }
                 }
                 Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
@@ -2287,19 +2288,19 @@ namespace Fraljiculator
                 {
                     Complex* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
                         coeffPtr = coeff.RowPtr(p), _coeffPtr = _coeff.RowPtr(p), initialPtr = initial.RowPtr(p);
-                    for (int q = 0; q < col; q++)
+                    for (int q = 0; q < col; q++, sumPtr++, _sumPtr++, coeffPtr++, _coeffPtr++, initialPtr++)
                     {
                         for (int i = 0; i <= n; i++)
                         {
-                            coeffPtr[q] *= 0.5f; _coeffPtr[q] = Complex.ONE; sumPtr[q] = Complex.ZERO;
-                            for (int j = 0, k = 1; j <= i; j++, k++)
+                            *coeffPtr *= 0.5f; *_coeffPtr = Complex.ONE; *sumPtr = Complex.ZERO;
+                            for (int j = 0; j <= i; j++)
                             {
-                                sumPtr[q] += _coeffPtr[q] * Complex.Pow(k, -initialPtr[q]);
-                                _coeffPtr[q] *= (float)(j - i) / (float)k; // (float) is not redundant
+                                *sumPtr += *_coeffPtr * Complex.Pow(j + 1, -*initialPtr);
+                                *_coeffPtr *= (float)(j - i) / (float)(j + 1); // (float) is not redundant
                             }
-                            sumPtr[q] *= coeffPtr[q]; _sumPtr[q] += sumPtr[q];
+                            *sumPtr *= *coeffPtr; *_sumPtr += *sumPtr;
                         }
-                        _sumPtr[q] /= 1 - Complex.Pow(2, 1 - initialPtr[q]);
+                        *_sumPtr /= 1 - Complex.Pow(2, 1 - *initialPtr);
                     }
                 }
                 Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
@@ -2347,7 +2348,7 @@ namespace Fraljiculator
             Parallel.For(0, rows, p =>
             {
                 Complex* zPtr = z.RowPtr(p); float* xCoorPtr = xCoor.RowPtr(p), yCoorPtr = yCoor.RowPtr(p);
-                for (int q = 0; q < columns; q++) zPtr[q] = new(xCoorPtr[q], yCoorPtr[q]);
+                for (int q = 0; q < columns; q++, zPtr++, xCoorPtr++, yCoorPtr++) *zPtr = new(*xCoorPtr, *yCoorPtr);
             });
             return z;
         } // Special for complex
@@ -2360,7 +2361,7 @@ namespace Fraljiculator
                     return new(HandleMatrix(output =>
                     {
                         Complex* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
-                        for (int q = 0; q < columns; q++) outputPtr[q] = _const;
+                        for (int q = 0; q < columns; q++, outputPtr++) *outputPtr = _const;
                         Parallel.For(1, rows, p => { Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes); });
                     }));
                 case 2: constMtx.Add(new(_const, Const(_const).matrix)); return new(constMtx[^1].matrix, true);
@@ -2380,7 +2381,7 @@ namespace Fraljiculator
             void negate(int p, int col)
             {
                 Complex* _valuePtr = _value.RowPtr(p);
-                for (int q = 0; q < col; q++) _valuePtr[q] = -_valuePtr[q];
+                for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
             }
             Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
         }
@@ -2390,7 +2391,7 @@ namespace Fraljiculator
             void plus(int p, int col)
             {
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] += srcPtr[q];
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
             }
             Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
         }
@@ -2400,7 +2401,7 @@ namespace Fraljiculator
             void subtract(int p, int col)
             {
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] -= srcPtr[q];
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
             }
             Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
         }
@@ -2410,7 +2411,7 @@ namespace Fraljiculator
             void multiply(int p, int col)
             {
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] *= srcPtr[q];
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
             }
             Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
         }
@@ -2420,7 +2421,7 @@ namespace Fraljiculator
             void divide(int p, int col)
             {
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] /= srcPtr[q];
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
             }
             Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
         }
@@ -2430,7 +2431,7 @@ namespace Fraljiculator
             void power(int p, int col)
             {
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] = Complex.Pow(srcPtr[q], destPtr[q]);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = Complex.Pow(*srcPtr, *destPtr);
             }
             Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
         }
@@ -2440,7 +2441,7 @@ namespace Fraljiculator
             void funcSub(int p, int col)
             {
                 Complex* _valuePtr = _value.RowPtr(p);
-                for (int q = 0; q < col; q++) _valuePtr[q] = function(_valuePtr[q]);
+                for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
             }
             Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
         }
@@ -2652,7 +2653,7 @@ namespace Fraljiculator
                 void processMCP(int p, int col)
                 {
                     float* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < col; q++) outputPtr[q] = function(input1Ptr[q], input2Ptr[q]);
+                    for (int q = 0; q < col; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
                 }
                 Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
             });
@@ -2696,12 +2697,12 @@ namespace Fraljiculator
                 {
                     float* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
                         _aPtr = _a.RowPtr(p), _bPtr = _b.RowPtr(p), _cPtr = _c.RowPtr(p), initialPtr = initial.RowPtr(p);
-                    for (int q = 0; q < col; q++)
+                    for (int q = 0; q < col; q++, productPtr++, sumPtr++, _aPtr++, _bPtr++, _cPtr++, initialPtr++)
                     {
-                        for (int i = 0, j = -1; i <= n; i++, j++)
+                        for (int i = 0; i <= n; i++)
                         {
-                            if (i != 0) productPtr[q] *= initialPtr[q] * (j + _aPtr[q]) * (j + _bPtr[q]) / (j + _cPtr[q]) / i;
-                            sumPtr[q] += productPtr[q];
+                            if (i != 0) *productPtr *= *initialPtr * (i - 1 + *_aPtr) * (i - 1 + *_bPtr) / (i - 1 + *_cPtr) / i;
+                            *sumPtr += *productPtr;
                         }
                     }
                 }
@@ -2717,10 +2718,10 @@ namespace Fraljiculator
                 void gamma(int p, int col)
                 {
                     float* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < col; q++)
+                    for (int q = 0; q < col; q++, productPtr++, initialPtr++, outputPtr++)
                     {
-                        for (int i = 1; i <= n; i++) { float tmp = initialPtr[q] / i; productPtr[q] *= MathF.Exp(tmp) / (1 + tmp); }
-                        outputPtr[q] = productPtr[q] * MathF.Exp(-initialPtr[q] * GAMMA) / initialPtr[q];
+                        for (int i = 1; i <= n; i++) { float temp = *initialPtr / i; *productPtr *= MathF.Exp(temp) / (1 + temp); }
+                        *outputPtr = *productPtr * MathF.Exp(-*initialPtr * GAMMA) / *initialPtr;
                     }
                 }
                 Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
@@ -2737,11 +2738,10 @@ namespace Fraljiculator
                 {
                     float* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
                         input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
-                    for (int q = 0; q < col; q++)
+                    for (int q = 0; q < col; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
                     {
-                        for (int i = 1; i <= n; i++)
-                            productPtr[q] *= 1 + input1Ptr[q] * input2Ptr[q] / ((i + input1Ptr[q] + input2Ptr[q]) * i);
-                        outputPtr[q] = (input1Ptr[q] + input2Ptr[q]) / (input1Ptr[q] * input2Ptr[q]) / productPtr[q];
+                        for (int i = 1; i <= n; i++) *productPtr *= 1 + *input1Ptr * *input2Ptr / ((i + *input1Ptr + *input2Ptr) * i);
+                        *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                     }
                 }
                 Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
@@ -2757,19 +2757,19 @@ namespace Fraljiculator
                 {
                     float* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
                         coeffPtr = coeff.RowPtr(p), _coeffPtr = _coeff.RowPtr(p), initialPtr = initial.RowPtr(p);
-                    for (int q = 0; q < col; q++)
+                    for (int q = 0; q < col; q++, sumPtr++, _sumPtr++, coeffPtr++, _coeffPtr++, initialPtr++)
                     {
                         for (int i = 0; i <= n; i++)
                         {
-                            coeffPtr[q] *= 0.5f; _coeffPtr[q] = 1; sumPtr[q] = 0;
-                            for (int j = 0, k = 1; j <= i; j++, k++)
+                            *coeffPtr *= 0.5f; *_coeffPtr = 1; *sumPtr = 0;
+                            for (int j = 0; j <= i; j++)
                             {
-                                sumPtr[q] += _coeffPtr[q] * MathF.Pow(k, -initialPtr[q]);
-                                _coeffPtr[q] *= (float)(j - i) / (float)k; // (float) is not redundant
+                                *sumPtr += *_coeffPtr * MathF.Pow(j + 1, -*initialPtr);
+                                *_coeffPtr *= (float)(j - i) / (float)(j + 1); // (float) is not redundant
                             }
-                            sumPtr[q] *= coeffPtr[q]; _sumPtr[q] += sumPtr[q];
+                            *sumPtr *= *coeffPtr; *_sumPtr += *sumPtr;
                         }
-                        _sumPtr[q] /= 1 - MathF.Pow(2, 1 - initialPtr[q]);
+                        *_sumPtr /= 1 - MathF.Pow(2, 1 - *initialPtr);
                     }
                 }
                 Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
@@ -2820,7 +2820,7 @@ namespace Fraljiculator
         {
             ThrowException(Int32.IsEvenInteger(split.Length));
             Matrix<float> value1 = ObtainValue(split[0]), value2 = ObtainValue(split[1]), temp1, temp2;
-            for (int i = 0, j = 2, length = split.Length / 2 - 1; i < length; i++)
+            for (int i = 0, j = 2; i < split.Length / 2 - 1; i++)
             {
                 temp1 = value1; temp2 = value2; // Necessary
                 Matrix<float> obtainValue() => ObtainSub(split[j++], temp1, temp2, buffCocs).Obtain();
@@ -2849,7 +2849,7 @@ namespace Fraljiculator
                     return new(HandleMatrix(output =>
                     {
                         float* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
-                        for (int q = 0; q < columns; q++) outputPtr[q] = _const;
+                        for (int q = 0; q < columns; q++, outputPtr++) *outputPtr = _const;
                         Parallel.For(1, rows, p => { Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes); });
                     }));
                 case 2: constMtx.Add(new(_const, Const(_const).matrix)); return new(constMtx[^1].matrix, true);
@@ -2869,7 +2869,7 @@ namespace Fraljiculator
             void negate(int p, int col)
             {
                 float* _valuePtr = _value.RowPtr(p);
-                for (int q = 0; q < col; q++) _valuePtr[q] = -_valuePtr[q];
+                for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
             }
             Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
         }
@@ -2879,7 +2879,7 @@ namespace Fraljiculator
             void plus(int p, int col)
             {
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] += srcPtr[q];
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
             }
             Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
         }
@@ -2889,7 +2889,7 @@ namespace Fraljiculator
             void subtract(int p, int col)
             {
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] -= srcPtr[q];
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
             }
             Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
         }
@@ -2899,7 +2899,7 @@ namespace Fraljiculator
             void multiply(int p, int col)
             {
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] *= srcPtr[q];
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
             }
             Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
         }
@@ -2909,7 +2909,7 @@ namespace Fraljiculator
             void divide(int p, int col)
             {
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] /= srcPtr[q];
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
             }
             Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
         }
@@ -2919,7 +2919,7 @@ namespace Fraljiculator
             void power(int p, int col)
             {
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-                for (int q = 0; q < col; q++) destPtr[q] = MathF.Pow(srcPtr[q], destPtr[q]);
+                for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathF.Pow(*srcPtr, *destPtr);
             }
             Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
         }
@@ -2929,7 +2929,7 @@ namespace Fraljiculator
             void funcSub(int p, int col)
             {
                 float* _valuePtr = _value.RowPtr(p);
-                for (int q = 0; q < col; q++) _valuePtr[q] = function(_valuePtr[q]);
+                for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
             }
             Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
         }
@@ -3263,7 +3263,7 @@ namespace Fraljiculator
             set => Access(matrix, Access(rowOffs, row) + column) = value;
         }
         [MethodImpl(256)] // AggressiveInlining
-        public readonly unsafe TEntry* RowPtr(int row = 0) { fixed (TEntry* ptr = &Access(matrix, Access(rowOffs, row))) return ptr; }
+        public readonly unsafe TEntry* RowPtr(int row = 0) { fixed (TEntry* ptr = &Access(matrix, Access(rowOffs, row))) { return ptr; } }
         [MethodImpl(256)] // AggressiveInlining
         private static ref T Access<T>(T[] array, int index) => ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index);
     } /// Optimized real or complex matrices
