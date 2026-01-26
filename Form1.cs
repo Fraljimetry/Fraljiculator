@@ -1,6 +1,4 @@
 /// DATE: 2023.4~5, 2024.9~11, 2025.1, 2026.1
-/// DESIGNER: Fraljimetry
-/// PRECISION: System.Single (float)
 
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
@@ -1934,7 +1932,6 @@ namespace Fraljiculator
             rowChk = rows / STEP; rowOffs = GetArithProg(rows, columns);
             strd = columns * STEP; strdInit = GetArithProg(rowChk, STEP);
             resInit = rowChk * STEP; res = rows - resInit;
-
             int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
             colBytes = getBytes(1); strdBytes = getBytes(STEP); resBytes = getBytes(res);
         } // Fields for optimization
@@ -2223,7 +2220,7 @@ namespace Fraljiculator
             return HandleMatrix(sum =>
             {
                 Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
-                Matrix<Complex> product = MtxOne(), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
+                Matrix<Complex> product = Matrix(1), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
                 void hypergeometric(int p, int col)
                 {
                     Complex* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
@@ -2245,7 +2242,7 @@ namespace Fraljiculator
             int n = ThrowReturnLengths(split, 1, 100);
             return HandleMatrix(output =>
             {
-                Matrix<Complex> product = MtxOne(), initial = ObtainValue(split[0]);
+                Matrix<Complex> product = Matrix(1), initial = ObtainValue(split[0]);
                 void gamma(int p, int col)
                 {
                     Complex* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
@@ -2256,7 +2253,7 @@ namespace Fraljiculator
                     }
                 }
                 Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
-            });
+            }, false);
         } // Reference: https://en.wikipedia.org/wiki/Gamma_function
         private unsafe Matrix<Complex> Beta(string[] split)
         {
@@ -2264,7 +2261,7 @@ namespace Fraljiculator
             return HandleMatrix(output =>
             {
                 Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
-                Matrix<Complex> product = MtxOne(), input1 = obtain(0), input2 = obtain(1);
+                Matrix<Complex> product = Matrix(1), input1 = obtain(0), input2 = obtain(1);
                 void beta(int p, int col)
                 {
                     Complex* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
@@ -2276,14 +2273,14 @@ namespace Fraljiculator
                     }
                 }
                 Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
-            });
+            }, false);
         } // Reference: https://en.wikipedia.org/wiki/Beta_function
         private unsafe Matrix<Complex> Zeta(string[] split)
         {
             int n = ThrowReturnLengths(split, 1, 50);
             return HandleMatrix(_sum =>
             {
-                Matrix<Complex> sum = MtxZero(), coeff = MtxOne(), _coeff = MtxOne(), initial = ObtainValue(split[0]);
+                Matrix<Complex> sum = MtxUninit(), coeff = Matrix(1), _coeff = MtxUninit(), initial = ObtainValue(split[0]);
                 void zeta(int p, int col)
                 {
                     Complex* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
@@ -2319,8 +2316,8 @@ namespace Fraljiculator
             { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), true); resetCount(); action(buffer); });
             return buffer.Z;
         } // Meticulously optimized
-        private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, MtxZero(), b => { Plus(b.Obtain(), b.Z); });
-        private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, MtxOne(), b => { Multiply(b.Obtain(), b.Z); });
+        private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Matrix(0), b => { Plus(b.Obtain(), b.Z); });
+        private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Matrix(1), b => { Multiply(b.Obtain(), b.Z); });
         private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
         //
         private Matrix<Complex> Composite(string[] split)
@@ -2338,9 +2335,10 @@ namespace Fraljiculator
         #endregion
 
         #region Elements
-        private Matrix<Complex> MtxZero() => new(rowOffs, columns);
-        private Matrix<Complex> MtxOne() => Const(Complex.ONE).matrix;
-        private Matrix<Complex> HandleMatrix(Action<Matrix<Complex>> action) { Matrix<Complex> mtx = MtxZero(); action(mtx); return mtx; }
+        private Matrix<Complex> MtxUninit() => new(rowOffs, columns);
+        private Matrix<Complex> Matrix(int _const) => Const(new(_const)).matrix;
+        private Matrix<Complex> HandleMatrix(Action<Matrix<Complex>> action, bool zeroing = true)
+        { Matrix<Complex> mtx = zeroing ? Matrix(0) : MtxUninit(); action(mtx); return mtx; }
         [MethodImpl(512)] // AggressiveOptimization
         public unsafe static Matrix<Complex> InitilizeZ(Matrix<float> xCoor, Matrix<float> yCoor, int rows, int columns)
         {
@@ -2363,10 +2361,10 @@ namespace Fraljiculator
                         Complex* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
                         for (int q = 0; q < columns; q++, outputPtr++) *outputPtr = _const;
                         Parallel.For(1, rows, p => { Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes); });
-                    }));
+                    }, false));
                 case 2: constMtx.Add(new(_const, Const(_const).matrix)); return new(constMtx[^1].matrix, true);
                 case 3: return _const.Equals(constMtx[countCst]._const) ? new(constMtx[countCst++].matrix, true) : Const(_const);
-                default: ThrowException(); return new(MtxZero()); // Should not have happened
+                default: ThrowException(); return new(MtxUninit()); // Should not have happened
             }
         } // Sensitive
         [MethodImpl(512)] // AggressiveOptimization
@@ -2374,7 +2372,7 @@ namespace Fraljiculator
         {
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
             Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
-        }); // Passing matrices to mutable variables
+        }, false); // Passing matrices to mutable variables
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe void Negate(Matrix<Complex> _value)
         {
@@ -2656,7 +2654,7 @@ namespace Fraljiculator
                     for (int q = 0; q < col; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
                 }
                 Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
-            });
+            }, false);
         }
         private unsafe Matrix<float> ProcessMinMax(string[] split, Func<float[], float> function)
         {
@@ -2675,7 +2673,7 @@ namespace Fraljiculator
                     }
                 }
                 Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
-            });
+            }, false);
         }
         //
         private Matrix<float> Mod(string[] split) => ProcessMCP(split, Mod);
@@ -2692,7 +2690,7 @@ namespace Fraljiculator
             return HandleMatrix(sum =>
             {
                 Matrix<float> obtain(int index) => ObtainValue(split[index]);
-                Matrix<float> product = MtxOne(), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
+                Matrix<float> product = Matrix(1), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
                 void hypergeometric(int p, int col)
                 {
                     float* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
@@ -2714,7 +2712,7 @@ namespace Fraljiculator
             int n = ThrowReturnLengths(split, 1, 100);
             return HandleMatrix(output =>
             {
-                Matrix<float> product = MtxOne(), initial = ObtainValue(split[0]);
+                Matrix<float> product = Matrix(1), initial = ObtainValue(split[0]);
                 void gamma(int p, int col)
                 {
                     float* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
@@ -2725,7 +2723,7 @@ namespace Fraljiculator
                     }
                 }
                 Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
-            });
+            }, false);
         } // Reference: https://en.wikipedia.org/wiki/Gamma_function
         private unsafe Matrix<float> Beta(string[] split)
         {
@@ -2733,7 +2731,7 @@ namespace Fraljiculator
             return HandleMatrix(output =>
             {
                 Matrix<float> obtain(int index) => ObtainValue(split[index]);
-                Matrix<float> product = MtxOne(), input1 = obtain(0), input2 = obtain(1);
+                Matrix<float> product = Matrix(1), input1 = obtain(0), input2 = obtain(1);
                 void beta(int p, int col)
                 {
                     float* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
@@ -2745,14 +2743,14 @@ namespace Fraljiculator
                     }
                 }
                 Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
-            });
+            }, false);
         } // Reference: https://en.wikipedia.org/wiki/Beta_function
         private unsafe Matrix<float> Zeta(string[] split)
         {
             int n = ThrowReturnLengths(split, 1, 50);
             return HandleMatrix(_sum =>
             {
-                Matrix<float> sum = MtxZero(), coeff = MtxOne(), _coeff = MtxOne(), initial = ObtainValue(split[0]);
+                Matrix<float> sum = MtxUninit(), coeff = Matrix(1), _coeff = MtxUninit(), initial = ObtainValue(split[0]);
                 void zeta(int p, int col)
                 {
                     float* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
@@ -2788,8 +2786,8 @@ namespace Fraljiculator
             { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), false); resetCount(); action(buffer); });
             return buffer.X;
         } // Meticulously optimized
-        private Matrix<float> Sum(string[] split) => ProcessSPI(split, 4, MtxZero(), b => { Plus(b.Obtain(), b.X); });
-        private Matrix<float> Product(string[] split) => ProcessSPI(split, 4, MtxOne(), b => { Multiply(b.Obtain(), b.X); });
+        private Matrix<float> Sum(string[] split) => ProcessSPI(split, 4, Matrix(0), b => { Plus(b.Obtain(), b.X); });
+        private Matrix<float> Product(string[] split) => ProcessSPI(split, 4, Matrix(1), b => { Multiply(b.Obtain(), b.X); });
         private Matrix<float> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
         private Matrix<float> Iterate2(string[] split)
         {
@@ -2837,9 +2835,10 @@ namespace Fraljiculator
         #endregion
 
         #region Elements
-        private Matrix<float> MtxZero() => new(rowOffs, columns);
-        private Matrix<float> MtxOne() => Const(1).matrix;
-        private Matrix<float> HandleMatrix(Action<Matrix<float>> action) { Matrix<float> mtx = MtxZero(); action(mtx); return mtx; }
+        private Matrix<float> MtxUninit() => new(rowOffs, columns);
+        private Matrix<float> Matrix(int _const) => Const(_const).matrix;
+        private Matrix<float> HandleMatrix(Action<Matrix<float>> action, bool zeroing = true)
+        { Matrix<float> mtx = zeroing ? Matrix(0) : MtxUninit(); action(mtx); return mtx; }
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe MatrixCopy<float> Const(float _const, int mode = 1)
         {
@@ -2851,10 +2850,10 @@ namespace Fraljiculator
                         float* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
                         for (int q = 0; q < columns; q++, outputPtr++) *outputPtr = _const;
                         Parallel.For(1, rows, p => { Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes); });
-                    }));
+                    }, false));
                 case 2: constMtx.Add(new(_const, Const(_const).matrix)); return new(constMtx[^1].matrix, true);
                 case 3: return _const.Equals(constMtx[countCst]._const) ? new(constMtx[countCst++].matrix, true) : Const(_const);
-                default: ThrowException(); return new(MtxZero()); // Should not have happened
+                default: ThrowException(); return new(MtxUninit()); // Should not have happened
             }
         } // Sensitive
         [MethodImpl(512)] // AggressiveOptimization
@@ -2862,7 +2861,7 @@ namespace Fraljiculator
         {
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
             Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
-        }); // Passing matrices to mutable variables
+        }, false); // Passing matrices to mutable variables
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe void Negate(Matrix<float> _value)
         {
@@ -3252,7 +3251,8 @@ namespace Fraljiculator
         private readonly int[] rowOffs; // For row extraction
 
         [MethodImpl(256)] // AggressiveInlining
-        public Matrix(int[] rowOffs, int columns) { this.rowOffs = rowOffs; matrix = new TEntry[rowOffs[^1] + columns]; }
+        public Matrix(int[] rowOffs, int columns)
+        { this.rowOffs = rowOffs; matrix = GC.AllocateUninitializedArray<TEntry>(rowOffs[^1] + columns); }
         [MethodImpl(256)] // AggressiveInlining
         public Matrix(TEntry x) { matrix = [x]; rowOffs = [0]; } // Special for real
         public TEntry this[int row, int column]
