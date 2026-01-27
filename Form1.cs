@@ -1788,7 +1788,7 @@ namespace Fraljiculator
         public static readonly string[] FUNC_NAMES = AddSuffix(["func", "Func", "polar", "Polar", "param", "Param"]);
         public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]);
         private static readonly List<string> CONFUSION = ["zeta", "Zeta"];
-        protected static readonly string SUB_CHARS = ":;"; // Replacing ",^+-*/"
+        protected static readonly char SUB_CHAR = ';'; // Replacing ','
 
         #region Reckoning
         protected static int CountChars(ReadOnlySpan<char> input, string charsToCheck)
@@ -1873,7 +1873,7 @@ namespace Fraljiculator
             return result.ToString();
         } // To prevent the interior ',' from interfering with exterior splitting
         private static string[] ReplaceRecover(string input)
-            => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHARS[0]), ",").Select(part => part.Replace(SUB_CHARS[0], ','))];
+            => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
         protected static string ReplaceSubstrings(string input, List<string> substrings, string substitution)
            => System.Text.RegularExpressions.Regex.Replace(input, String.Join("|", substrings), substitution);
         public static string ReplaceConfusion(string input) => ReplaceSubstrings(input, CONFUSION, String.Empty);
@@ -1913,7 +1913,7 @@ namespace Fraljiculator
     public class RealComplex : MyString
     {
         protected static readonly float GAMMA = 0.57721566f;
-        protected static readonly int THRESHOLD = 10, STEP = 1; // THRESHOLD: breaking long expressions; STEP: referring to chunks
+        protected static readonly int STEP = 1; // referring to chunks
         protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
             _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
             M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r',
@@ -1940,31 +1940,6 @@ namespace Fraljiculator
             => Char.Parse(mode) switch { MODE_1 => m1, MODE_2 => m2 };
         protected static MatrixCopy<TEntry> HandleSolo<TEntry>(string input, MatrixCopy<TEntry> mc)
         { ThrowException(input.Length != 1); return mc; }
-        protected static string[] PrepareBreakPower(string input, int THRESHOLD)
-        {
-            StringBuilder result = new(input);
-            for (int i = 0, flag = 0; i < result.Length; i++)
-            {
-                if (result[i] != '^') continue;
-                if (++flag % THRESHOLD == 0) result.Remove(i, 1).Insert(i, SUB_CHARS[0]);
-            }
-            return SplitByChars(result.ToString(), SUB_CHARS[0].ToString());
-        }
-        protected static (string[], StringBuilder) PrepareBreakPSMD(string input, string signs, int THRESHOLD)
-        {
-            StringBuilder signsBuilder = new(), result = new(input);
-            for (int i = 0, flag = 0; i < result.Length; i++)
-            {
-                if (!signs.Contains(result[i])) continue;
-                if (++flag % THRESHOLD == 0)
-                {
-                    char subChar = result[i] == signs[0] ? SUB_CHARS[0] : result[i] == signs[1] ? SUB_CHARS[1] : '\0'; // Necessary
-                    result.Remove(i, 1).Insert(i, subChar);
-                    signsBuilder.Append(subChar);
-                }
-            }
-            return (SplitByChars(result.ToString(), SUB_CHARS), signsBuilder);
-        }
         private static StringBuilder GetSignsBuilder(string input, string signs)
         {
             StringBuilder signsBuilder = new();
@@ -2189,10 +2164,9 @@ namespace Fraljiculator
         private readonly Matrix<Complex> z;
         private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
-        private readonly List<Matrix<Complex>> recycMtcs = [];
-        private readonly List<ConstantMatrix<Complex>> cstMtcs = [];
+        private readonly List<ConstMatrix<Complex>> cstMtcs = [];
 
-        private int countBra, countCst, countRecyc; // countBra: parentheses; countCst: constants; countRecyc: reusable matrices
+        private int countBra, countCst; // countBra: parentheses, countCst: constants
         private bool readList; // Reading or writing cstMtcs
         private string input;
         private Matrix<Complex> Z; // For substitution
@@ -2235,6 +2209,7 @@ namespace Fraljiculator
                         }
                     }
                 }
+                if (rowChk == 1) { hypergeometric(0, columns); return; }
                 Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
@@ -2253,6 +2228,7 @@ namespace Fraljiculator
                         *outputPtr = *productPtr * Complex.Exp(-*initialPtr * GAMMA) / *initialPtr;
                     }
                 }
+                if (rowChk == 1) { gamma(0, columns); return; }
                 Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Gamma_function
@@ -2273,6 +2249,7 @@ namespace Fraljiculator
                         *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                     }
                 }
+                if (rowChk == 1) { beta(0, columns); return; }
                 Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Beta_function
@@ -2301,6 +2278,7 @@ namespace Fraljiculator
                         *_sumPtr /= 1 - Complex.Pow(2, 1 - *initialPtr);
                     }
                 }
+                if (rowChk == 1) { zeta(0, columns); return; }
                 Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2309,8 +2287,8 @@ namespace Fraljiculator
             ThrowInvalidLengths(split, [validLength]);
             ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, validLength - 3, 0), initMtx, buffCocs, true);
 
-            void resetCount() => buffer.countBra = buffer.countCst = buffer.countRecyc = 0;
-            buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs and recycMtcs
+            void resetCount() => buffer.countBra = buffer.countCst = 0;
+            buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
 
             For(RealSub.ToInt(split[validLength - 2]), RealSub.ToInt(split[validLength - 1]), i =>
             { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), true); resetCount(); action(buffer); });
@@ -2318,7 +2296,7 @@ namespace Fraljiculator
         } // Meticulously optimized
         private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
         private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
-        private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { Copy(b.Obtain(), b.Z); });
+        private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
         private Matrix<Complex> Composite(string[] split)
         {
             Matrix<Complex> _value = ObtainValue(split[0]);
@@ -2346,13 +2324,14 @@ namespace Fraljiculator
             return z;
         } // Special for complex
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe Matrix<Complex> Copy(Matrix<Complex> src, Matrix<Complex> dest) => HandleMtx(dest, dest =>
+        private unsafe Matrix<Complex> Copy(Matrix<Complex> src) => HandleMtx(UninitMtx(), dest =>
         {
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
+            if (rowChk == 1) { copy(0, colBytes); return; }
             Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
         });
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe Matrix<Complex> Const(Complex _const, bool recyc = false) => HandleMtx(recyc ? RecycMtx() : UninitMtx(), output =>
+        private unsafe Matrix<Complex> Const(Complex _const) => HandleMtx(UninitMtx(), output =>
         {
             Complex* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
             for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const;
@@ -2367,6 +2346,7 @@ namespace Fraljiculator
                 Complex* _valuePtr = _value.RowPtr(p);
                 for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
             }
+            if (rowChk == 1) { negate(0, columns); return; }
             Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2377,6 +2357,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
             }
+            if (rowChk == 1) { plus(0, columns); return; }
             Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2387,6 +2368,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
             }
+            if (rowChk == 1) { subtract(0, columns); return; }
             Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2397,6 +2379,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
             }
+            if (rowChk == 1) { multiply(0, columns); return; }
             Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2407,6 +2390,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
             }
+            if (rowChk == 1) { divide(0, columns); return; }
             Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2417,6 +2401,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = Complex.Pow(*srcPtr, *destPtr);
             }
+            if (rowChk == 1) { power(0, columns); return; }
             Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2427,26 +2412,21 @@ namespace Fraljiculator
                 Complex* _valuePtr = _value.RowPtr(p);
                 for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
             }
+            if (rowChk == 1) { funcSub(0, columns); return; }
             Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
         }
         #endregion
 
         #region Assembly
-        private Matrix<Complex> HandleMtx(Matrix<Complex> mtx, Action<Matrix<Complex>> action) { action(mtx); return mtx; }
         private Matrix<Complex> UninitMtx() => new(rowOffs, columns);
-        private Matrix<Complex> RecycMtx() => recycMtcs[countRecyc++];
-        private Matrix<Complex> CopyMtx(MatrixCopy<Complex> mc)
-        {
-            if (!useList) return mc.copy ? Copy(mc.matrix, UninitMtx()) : mc.matrix;
-            if (!readList) { recycMtcs.Add(UninitMtx()); return recycMtcs[^1]; }
-            return mc.copy ? Copy(mc.matrix, RecycMtx()) : mc.matrix;
-        } // Sensitive
+        private Matrix<Complex> HandleMtx(Matrix<Complex> mtx, Action<Matrix<Complex>> action) { action(mtx); return mtx; }
+        private Matrix<Complex> CopyMtx(MatrixCopy<Complex> mc) => mc.copy ? Copy(mc.matrix) : mc.matrix;
         private MatrixCopy<Complex> ConstMtx(Complex _const)
         {
             if (!useList) return new(Const(_const));
-            if (!readList) { recycMtcs.Add(UninitMtx()); cstMtcs.Add(new(_const, Const(_const))); return new(cstMtcs[^1].matrix, true); }
-            ConstantMatrix<Complex> cm = cstMtcs[countCst];
-            bool equal = _const.Equals(cm._const); Matrix<Complex> mtx = equal ? cm.matrix : Const(_const, true); countCst++;
+            if (!readList) { cstMtcs.Add(new(_const, Const(_const))); return new(cstMtcs[^1].matrix, true); }
+            ConstMatrix<Complex> cm = cstMtcs[countCst];
+            bool equal = _const.Equals(cm._const); Matrix<Complex> mtx = equal ? cm.matrix : Const(_const); countCst++;
             return new(mtx, equal);
         } // Sensitive
         private MatrixCopy<Complex> Transform(string input) => input[0] switch
@@ -2461,40 +2441,17 @@ namespace Fraljiculator
             G => HandleSolo<Complex>(input, ConstMtx(new(GAMMA))),
             _ => ConstMtx(new(Single.Parse(input)))
         };
-        private MatrixCopy<Complex> BreakPower(string input)
-        {
-            string[] chunks = PrepareBreakPower(input, THRESHOLD);
-            Matrix<Complex> tower = CopyMtx(PowerCore(chunks[^1]));
-            for (int k = chunks.Length - 2; k >= 0; k--)
-            {
-                string[] split = SplitByChars(chunks[k], "^"); // Special for "^"
-                for (int m = split.Length - 1; m >= 0; m--) Power(Transform(split[m]).matrix, tower);
-            }
-            return new(tower);
-        }
         private MatrixCopy<Complex> PowerCore(string input)
         {
             if (!input.Contains('^')) return Transform(input);
-            if (CountChars(input, "^") > THRESHOLD) return BreakPower(input);
-
             string[] split = SplitByChars(input, "^");
             Matrix<Complex> tower = CopyMtx(Transform(split[^1]));
             for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
             return new(tower);
         }
-        private MatrixCopy<Complex> BreakMultiplyDivide(string input)
-        {
-            var (chunks, signs) = PrepareBreakPSMD(String.Concat('*', input), "*/", THRESHOLD);
-            Matrix<Complex> product = CopyMtx(MultiplyDivideCore(TrimStartChar(chunks[0], '*')));
-            for (int j = 1; j < chunks.Length; j++)
-                Multiply(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat("1/", chunks[j])).matrix, product);
-            return new(product);
-        }
         private MatrixCopy<Complex> MultiplyDivideCore(string input)
         {
             if (!ContainsAny(input, "*/")) return PowerCore(input);
-            if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input);
-
             var (split, signs) = GetMultiplyDivideComponents(input);
             Matrix<Complex> product = CopyMtx(PowerCore(split[0]));
             for (int j = 1; j < split.Length; j++)
@@ -2504,19 +2461,9 @@ namespace Fraljiculator
             }
             return new(product);
         }
-        private MatrixCopy<Complex> BreakPlusSubtract(string input)
-        {
-            var (chunks, signs) = PrepareBreakPSMD(input[0] == '-' ? input : String.Concat('+', input), "+-", THRESHOLD);
-            Matrix<Complex> sum = CopyMtx(PlusSubtractCore(TrimStartChar(chunks[0], '+')));
-            for (int i = 1; i < chunks.Length; i++)
-                Plus(PlusSubtractCore(signs[i - 1] == SUB_CHARS[0] ? chunks[i] : String.Concat('-', chunks[i])).matrix, sum);
-            return new(sum);
-        }
         private MatrixCopy<Complex> PlusSubtractCore(string input)
         {
             if (!ContainsAny(input, "+-")) return MultiplyDivideCore(input);
-            if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input);
-
             var (split, signs) = GetPlusSubtractComponents(input);
             Matrix<Complex> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
             for (int i = 1; i < split.Length; i++)
@@ -2607,10 +2554,9 @@ namespace Fraljiculator
         private readonly Matrix<float> x, y;
         private readonly Matrix<float>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<float>[] braValues; // To store values between parenthesis pairs
-        private readonly List<Matrix<float>> recycMtcs = [];
-        private readonly List<ConstantMatrix<float>> cstMtcs = [];
+        private readonly List<ConstMatrix<float>> cstMtcs = [];
 
-        private int countBra, countCst, countRecyc; // countBra: parentheses; countCst: constants; countRecyc: reusable matrices
+        private int countBra, countCst; // countBra: parentheses, countCst: constants
         private bool readList; // Reading or writing cstMtcs
         private string input;
         private Matrix<float> X, Y; // For substitution
@@ -2654,6 +2600,7 @@ namespace Fraljiculator
                     float* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
                     for (int q = 0; q < col; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
                 }
+                if (rowChk == 1) { processMCP(0, columns); return; }
                 Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
             });
         }
@@ -2673,6 +2620,7 @@ namespace Fraljiculator
                         *outputPtr = function(minMax.ToArray());
                     }
                 }
+                if (rowChk == 1) { processMinMax(0, columns); return; }
                 Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
             });
         }
@@ -2704,6 +2652,7 @@ namespace Fraljiculator
                         }
                     }
                 }
+                if (rowChk == 1) { hypergeometric(0, columns); return; }
                 Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
@@ -2722,6 +2671,7 @@ namespace Fraljiculator
                         *outputPtr = *productPtr * MathF.Exp(-*initialPtr * GAMMA) / *initialPtr;
                     }
                 }
+                if (rowChk == 1) { gamma(0, columns); return; }
                 Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Gamma_function
@@ -2742,6 +2692,7 @@ namespace Fraljiculator
                         *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                     }
                 }
+                if (rowChk == 1) { beta(0, columns); return; }
                 Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Beta_function
@@ -2770,6 +2721,7 @@ namespace Fraljiculator
                         *_sumPtr /= 1 - MathF.Pow(2, 1 - *initialPtr);
                     }
                 }
+                if (rowChk == 1) { zeta(0, columns); return; }
                 Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2778,8 +2730,8 @@ namespace Fraljiculator
             ThrowInvalidLengths(split, [validLength]);
             RealSub buffer = ObtainSub(ReplaceLoop(split, 0, validLength - 3, 0), initMtx, null, buffCocs, true);
 
-            void resetCount() => buffer.countBra = buffer.countCst = buffer.countRecyc = 0;
-            buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs and recycMtcs
+            void resetCount() => buffer.countBra = buffer.countCst = 0;
+            buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
 
             For(ToInt(split[validLength - 2]), ToInt(split[validLength - 1]), i =>
             { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), false); resetCount(); action(buffer); });
@@ -2787,24 +2739,24 @@ namespace Fraljiculator
         } // Meticulously optimized
         private Matrix<float> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
         private Matrix<float> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
-        private Matrix<float> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { Copy(b.Obtain(), b.X); });
+        private Matrix<float> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
         private Matrix<float> Iterate2(string[] split)
         {
             ThrowInvalidLengths(split, [8]);
-            RealSub obtain(int idx) => ObtainSub(ReplaceLoop(split, idx, 4, 0), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
-            RealSub buf1 = obtain(0), buf2 = obtain(1);
+            RealSub obtain(int i) => ObtainSub(ReplaceLoop(split, i, 4, 0), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
+            RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<float> temp1, temp2;
 
-            void resetCount() => buf1.countBra = buf1.countCst = buf1.countRecyc = buf2.countBra = buf2.countCst = buf2.countRecyc = 0;
-            buf1.Obtain(); buf2.Obtain(); resetCount(); buf1.readList = buf2.readList = true;
+            void resetCount() => buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
+            buffer1.Obtain(); buffer2.Obtain(); resetCount(); buffer1.readList = buffer2.readList = true; // To precompute cstMtcs
 
             string obtainInput(int s, int i) => Recover(ReplaceLoop(split, s, 4, i), false);
             For(ToInt(split[5]), ToInt(split[6]), i =>
             {
-                buf1.input = obtainInput(0, i); buf2.input = obtainInput(1, i);
-                resetCount(); Copy(buf1.Obtain(), buf1.X); Copy(buf2.Obtain(), buf2.Y); // Necessary
-                Copy(buf1.X, buf2.X); Copy(buf2.Y, buf1.Y);
+                buffer1.input = obtainInput(0, i); buffer2.input = obtainInput(1, i);
+                resetCount(); temp1 = buffer1.Obtain(); temp2 = buffer2.Obtain(); // Necessary
+                buffer1.X = buffer2.X = temp1; buffer1.Y = buffer2.Y = temp2;
             });
-            return ChooseMode(split[^1], buf1.X, buf1.Y, rowOffs, columns); // Or, alternatively, buf2
+            return ChooseMode(split[^1], buffer1.X, buffer1.Y, rowOffs, columns); // Or, alternatively, buffer2
         } // Special for real
         private Matrix<float> Composite1(string[] split)
         {
@@ -2834,13 +2786,14 @@ namespace Fraljiculator
 
         #region Elements
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe Matrix<float> Copy(Matrix<float> src, Matrix<float> dest) => HandleMtx(dest, dest =>
+        private unsafe Matrix<float> Copy(Matrix<float> src) => HandleMtx(UninitMtx(), dest =>
         {
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
+            if (rowChk == 1) { copy(0, colBytes); return; }
             Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
         });
         [MethodImpl(512)] // AggressiveOptimization
-        private unsafe Matrix<float> Const(float _const, bool recyc = false) => HandleMtx(recyc ? RecycMtx() : UninitMtx(), output =>
+        private unsafe Matrix<float> Const(float _const) => HandleMtx(UninitMtx(), output =>
         {
             float* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
             for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const;
@@ -2855,6 +2808,7 @@ namespace Fraljiculator
                 float* _valuePtr = _value.RowPtr(p);
                 for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
             }
+            if (rowChk == 1) { negate(0, columns); return; }
             Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2865,6 +2819,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
             }
+            if (rowChk == 1) { plus(0, columns); return; }
             Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2875,6 +2830,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
             }
+            if (rowChk == 1) { subtract(0, columns); return; }
             Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2885,6 +2841,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
             }
+            if (rowChk == 1) { multiply(0, columns); return; }
             Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2895,6 +2852,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
             }
+            if (rowChk == 1) { divide(0, columns); return; }
             Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2905,6 +2863,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathF.Pow(*srcPtr, *destPtr);
             }
+            if (rowChk == 1) { power(0, columns); return; }
             Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2915,26 +2874,21 @@ namespace Fraljiculator
                 float* _valuePtr = _value.RowPtr(p);
                 for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
             }
+            if (rowChk == 1) { funcSub(0, columns); return; }
             Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
         }
         #endregion
 
         #region Assembly
-        private Matrix<float> HandleMtx(Matrix<float> mtx, Action<Matrix<float>> action) { action(mtx); return mtx; }
         private Matrix<float> UninitMtx() => new(rowOffs, columns);
-        private Matrix<float> RecycMtx() => recycMtcs[countRecyc++];
-        private Matrix<float> CopyMtx(MatrixCopy<float> mc)
-        {
-            if (!useList) return mc.copy ? Copy(mc.matrix, UninitMtx()) : mc.matrix;
-            if (!readList) { recycMtcs.Add(UninitMtx()); return recycMtcs[^1]; }
-            return mc.copy ? Copy(mc.matrix, RecycMtx()) : mc.matrix;
-        } // Sensitive
+        private Matrix<float> HandleMtx(Matrix<float> mtx, Action<Matrix<float>> action) { action(mtx); return mtx; }
+        private Matrix<float> CopyMtx(MatrixCopy<float> mc) => mc.copy ? Copy(mc.matrix) : mc.matrix;
         private MatrixCopy<float> ConstMtx(float _const)
         {
             if (!useList) return new(Const(_const));
-            if (!readList) { recycMtcs.Add(UninitMtx()); cstMtcs.Add(new(_const, Const(_const))); return new(cstMtcs[^1].matrix, true); }
-            ConstantMatrix<float> cm = cstMtcs[countCst];
-            bool equal = _const.Equals(cm._const); Matrix<float> mtx = equal ? cm.matrix : Const(_const, true); countCst++;
+            if (!readList) { cstMtcs.Add(new(_const, Const(_const))); return new(cstMtcs[^1].matrix, true); }
+            ConstMatrix<float> cm = cstMtcs[countCst];
+            bool equal = _const.Equals(cm._const); Matrix<float> mtx = equal ? cm.matrix : Const(_const); countCst++;
             return new(mtx, equal);
         } // Sensitive
         private MatrixCopy<float> Transform(string input) => input[0] switch
@@ -2950,40 +2904,17 @@ namespace Fraljiculator
             G => HandleSolo<float>(input, ConstMtx(GAMMA)),
             _ => ConstMtx(Single.Parse(input))
         };
-        private MatrixCopy<float> BreakPower(string input)
-        {
-            string[] chunks = PrepareBreakPower(input, THRESHOLD);
-            Matrix<float> tower = CopyMtx(PowerCore(chunks[^1]));
-            for (int k = chunks.Length - 2; k >= 0; k--)
-            {
-                string[] split = SplitByChars(chunks[k], "^"); // Special for "^"
-                for (int m = split.Length - 1; m >= 0; m--) Power(Transform(split[m]).matrix, tower);
-            }
-            return new(tower);
-        }
         private MatrixCopy<float> PowerCore(string input)
         {
             if (!input.Contains('^')) return Transform(input);
-            if (CountChars(input, "^") > THRESHOLD) return BreakPower(input);
-
             string[] split = SplitByChars(input, "^");
             Matrix<float> tower = CopyMtx(Transform(split[^1]));
             for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
             return new(tower);
         }
-        private MatrixCopy<float> BreakMultiplyDivide(string input)
-        {
-            var (chunks, signs) = PrepareBreakPSMD(String.Concat('*', input), "*/", THRESHOLD);
-            Matrix<float> product = CopyMtx(MultiplyDivideCore(TrimStartChar(chunks[0], '*')));
-            for (int j = 1; j < chunks.Length; j++)
-                Multiply(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat("1/", chunks[j])).matrix, product);
-            return new(product);
-        }
         private MatrixCopy<float> MultiplyDivideCore(string input)
         {
             if (!ContainsAny(input, "*/")) return PowerCore(input);
-            if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input);
-
             var (split, signs) = GetMultiplyDivideComponents(input);
             Matrix<float> product = CopyMtx(PowerCore(split[0]));
             for (int j = 1; j < split.Length; j++)
@@ -2993,19 +2924,9 @@ namespace Fraljiculator
             }
             return new(product);
         }
-        private MatrixCopy<float> BreakPlusSubtract(string input)
-        {
-            var (chunks, signs) = PrepareBreakPSMD(input[0] == '-' ? input : String.Concat('+', input), "+-", THRESHOLD);
-            Matrix<float> sum = CopyMtx(PlusSubtractCore(TrimStartChar(chunks[0], '+')));
-            for (int i = 1; i < chunks.Length; i++)
-                Plus(PlusSubtractCore(signs[i - 1] == SUB_CHARS[0] ? chunks[i] : String.Concat('-', chunks[i])).matrix, sum);
-            return new(sum);
-        }
         private MatrixCopy<float> PlusSubtractCore(string input)
         {
             if (!ContainsAny(input, "+-")) return MultiplyDivideCore(input);
-            if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input);
-
             var (split, signs) = GetPlusSubtractComponents(input);
             Matrix<float> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
             for (int i = 1; i < split.Length; i++)
@@ -3175,7 +3096,6 @@ namespace Fraljiculator
             var (mod, unit) = (MathF.Exp(-MathF.Tau * c.imaginary), MathF.SinCos(MathF.Tau * c.real));
             return new(mod * unit.Cos, mod * unit.Sin);
         } // Often used in analytic number theory, represented by 'q'
-        //
         public static Complex Sin(Complex c)
         {
             var (mod, unit) = (MathF.Exp(-c.imaginary), MathF.SinCos(c.real));
@@ -3206,7 +3126,6 @@ namespace Fraljiculator
             Complex _c = 2 / new Complex(1 + c.imaginary, -c.real); float re = _c.real - 1, im = _c.imaginary;
             return new(MathF.Atan2(im, re) / 2, -MathF.Log(re * re + im * im) / 4);
         }
-        //
         public static Complex Sinh(Complex c)
         {
             var (mod, unit) = (MathF.Exp(c.real), MathF.SinCos(c.imaginary));
@@ -3237,7 +3156,6 @@ namespace Fraljiculator
             Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); float re = _c.real - 1, im = _c.imaginary;
             return new(MathF.Log(re * re + im * im) / 4, MathF.Atan2(im, re) / 2);
         }
-        //
         public static Complex Sqrt(Complex c) => Pow(c, 0.5f);
         public static float Modulus(float x, float y) => Modulus(new(x, y));
         public static float Modulus(Complex c) => MathF.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
@@ -3272,7 +3190,7 @@ namespace Fraljiculator
         public readonly Matrix<TEntry> matrix = matrix;
         public readonly bool copy = copy;
     } /// Matrices to be copied or not
-    public readonly struct ConstantMatrix<TEntry>(TEntry _const, Matrix<TEntry> matrix)
+    public readonly struct ConstMatrix<TEntry>(TEntry _const, Matrix<TEntry> matrix)
     {
         public readonly TEntry _const = _const;
         public readonly Matrix<TEntry> matrix = matrix;
