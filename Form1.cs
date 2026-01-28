@@ -675,17 +675,18 @@ namespace Fraljiculator
         private void DisplayOnScreen()
         {
             if (NoInput()) return; // Necessary
-            string[] split = MyString.SplitByChars(RecoverMultiply.Simplify(InputString.Text, is_complex), "|");
+            string[] split = MyString.SplitByChars(InputString.Text, "|");
             for (int loops = 0; loops < split.Length; loops++)
             {
                 CheckComplex.Checked = MyString.ContainsAny(MyString.ReplaceConfusion(split[loops]), RecoverMultiply._ZZ_);
-                bool containsTags(string s1, string s2) => MyString.ContainsAny(split[loops], [s1, s2]);
+                string component = RecoverMultiply.Simplify(split[loops], is_complex);
+                bool containsTags(string[] str) => MyString.ContainsAny(component, str);
                 Action<string> displayMethod =    // Should not pull outside of the loop
-                    containsTags(MyString.LOOP_NAMES[0], MyString.LOOP_NAMES[1]) ? DisplayLoop :
-                    containsTags(MyString.FUNC_NAMES[0], MyString.FUNC_NAMES[1]) ? DisplayFunction :
-                    containsTags(MyString.FUNC_NAMES[2], MyString.FUNC_NAMES[3]) ? DisplayPolar :
-                    containsTags(MyString.FUNC_NAMES[4], MyString.FUNC_NAMES[5]) ? DisplayParam : DisplayRendering;
-                displayMethod(split[loops]);
+                    containsTags(MyString.LOOP_NAMES) ? DisplayLoop :
+                    containsTags(MyString.FUNC_NAMES) ? DisplayFunction :
+                    containsTags(MyString.POLAR_NAMES) ? DisplayPolar :
+                    containsTags(MyString.PARAM_NAMES) ? DisplayParam : DisplayRendering;
+                displayMethod(component);
             }
         }
         #endregion
@@ -762,7 +763,7 @@ namespace Fraljiculator
             SetText(ModulusDisplay, trimForMove(Complex.Modulus(xCoor, yCoor)));
             SetText(AngleDisplay, MyString.GetAngle(xCoor, yCoor));
 
-            if (!MyString.ContainsAny(InputString.Text, MyString.FUNC_NAMES))
+            if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
             {
                 if (is_complex)
                 {
@@ -780,7 +781,7 @@ namespace Fraljiculator
                 Modulus = trimForDown(Complex.Modulus(xCoor, yCoor)), Angle = MyString.GetAngle(xCoor, yCoor);
 
             string message = String.Empty;
-            if (!MyString.ContainsAny(InputString.Text, MyString.FUNC_NAMES))
+            if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
             {
                 message += "\r\n\r\n";
                 var (x, y) = (e.X - AddOne(borders[0]), e.Y - AddOne(borders[2]));
@@ -1714,7 +1715,6 @@ namespace Fraljiculator
         private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
         private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
         private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
-        //
         private void SetUpForm(int width, int height)
         {
             FormBorderStyle = FormBorderStyle.None; TopMost = true; Size = new(width, height);
@@ -1768,7 +1768,6 @@ namespace Fraljiculator
             msgBox.Setup(message, width, height, txtColor, btnColor, btnTxtColor);
             msgBox.ShowDialog();
         }
-        //
         public static void ShowFormal(string message, int width, int height)
             => Display(message, width, height, FORMAL_FONT, FORMAL_BUTTON, Color.White);
         public static void ShowCustom(string message, int width, int height)
@@ -1784,9 +1783,9 @@ namespace Fraljiculator
     public class MyString
     {
         private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; }
-        public static readonly string[] FUNC_NAMES = AddSuffix(["func", "Func", "polar", "Polar", "param", "Param"]);
-        public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]);
-        private static readonly string[] CONFUSION = ["zeta", "Zeta"];
+        public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]), FUNC_NAMES = AddSuffix(["func", "Func"]),
+            POLAR_NAMES = AddSuffix(["polar", "Polar"]), PARAM_NAMES = AddSuffix(["param", "Param"]), ZETAS = AddSuffix(["zeta", "Zeta"]);
+        public static readonly string[] FPP_NAMES = FUNC_NAMES.Concat(POLAR_NAMES).Concat(PARAM_NAMES).ToArray();
         protected static readonly char SUB_CHAR = ';'; // Replacing ','
 
         #region Reckoning
@@ -1826,6 +1825,7 @@ namespace Fraljiculator
             { for (int i = start, j = -1; ; i--) { if (input[i] == ')') j = i; else if (input[i] == '(') return (i, j); } }
             static int pairedInnerBra(ReadOnlySpan<char> input, int start)
             { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
+
             int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
         } // Backward lookup for parenthesis pairs, extremely sensitive
         public static bool CheckParenthesis(ReadOnlySpan<char> input)
@@ -1873,7 +1873,7 @@ namespace Fraljiculator
             => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
         protected static string ReplaceSubstrings(string input, string[] substrings, string substitution)
         { foreach (string s in substrings) input = input.Replace(s, substitution); return input; }
-        public static string ReplaceConfusion(string input) => ReplaceSubstrings(input, CONFUSION, String.Empty);
+        public static string ReplaceConfusion(string input) => ReplaceSubstrings(input, ZETAS, "(");
         #endregion
 
         #region Miscellaneous
