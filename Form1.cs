@@ -678,6 +678,7 @@ namespace Fraljiculator
             string[] split = MyString.SplitByChars(RecoverMultiply.Simplify(InputString.Text, is_complex), "|");
             for (int loops = 0; loops < split.Length; loops++)
             {
+                CheckComplex.Checked = MyString.ContainsAny(MyString.ReplaceConfusion(split[loops]), RecoverMultiply._ZZ_);
                 bool containsTags(string s1, string s2) => MyString.ContainsAny(split[loops], [s1, s2]);
                 Action<string> displayMethod =    // Should not pull outside of the loop
                     containsTags(MyString.LOOP_NAMES[0], MyString.LOOP_NAMES[1]) ? DisplayLoop :
@@ -1453,7 +1454,6 @@ namespace Fraljiculator
                 return tbx.Text.Length - caretPosition;
             }
             int pos = removeSomeKeys(InputString); // Necessary
-            CheckComplex.Checked = MyString.ContainsAny(MyString.ReplaceConfusion(InputString.Text), RecoverMultiply._ZZ_);
             CheckValidityCore(() =>
             {
                 InputString.BackColor = InputLabel.ForeColor = ERROR_RED;
