@@ -1787,23 +1787,22 @@ namespace Fraljiculator
         private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; }
         public static readonly string[] FUNC_NAMES = AddSuffix(["func", "Func", "polar", "Polar", "param", "Param"]);
         public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]);
-        private static readonly List<string> CONFUSION = ["zeta", "Zeta"];
+        private static readonly string[] CONFUSION = ["zeta", "Zeta"];
         protected static readonly char SUB_CHAR = ';'; // Replacing ','
 
         #region Reckoning
-        protected static int CountChars(ReadOnlySpan<char> input, string charsToCheck)
+        protected static int CountChars(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck)
         {
-            HashSet<char> charSet = [.. charsToCheck]; // Fast lookup
-            int count = 0; foreach (char c in input) if (charSet.Contains(c)) count++;
+            int count = 0, offset = 0;
+            do
+            {
+                int idx = input.Slice(offset).IndexOfAny(charsToCheck); if (idx < 0) break;
+                count++; offset += idx + 1;
+            } while (offset < input.Length); // To avoid slicing past the end
             return count;
         }
         protected static (int, int, int, int) PrepareLoop(ReadOnlySpan<char> input) => (CountChars(input, "("), input.Length - 1, -1, 0);
-        public static bool ContainsAny(ReadOnlySpan<char> input, string charsToCheck)
-        {
-            HashSet<char> charSet = [.. charsToCheck]; // Fast lookup
-            foreach (char c in input) if (charSet.Contains(c)) return true;
-            return false;
-        }
+        public static bool ContainsAny(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck) => input.IndexOfAny(charsToCheck) >= 0;
         public static bool ContainsAny(string input, ReadOnlySpan<string> stringsToCheck)
         {
             foreach (string s in stringsToCheck) if (input.Contains(s)) return true;
@@ -1817,7 +1816,7 @@ namespace Fraljiculator
             for (int i = start + 1, count = 1; ; i++)
             { if (input[i] == '(') count++; else if (input[i] == ')') count--; if (count == 0) return i; }
         }
-        protected static (int, int, string[]) PrepareSeriesSub(string input)
+        protected static (int, int, string[]) PrepareSeriesSub(ReadOnlySpan<char> input)
         {
             int i = input.IndexOf(ReplaceTags.UNDERLINE), end = PairedParenthesis(input, i + 1);
             return (i, end, ReplaceRecover(BraFreePart(input, i + 1, end)));
@@ -1828,7 +1827,6 @@ namespace Fraljiculator
             { for (int i = start, j = -1; ; i--) { if (input[i] == ')') j = i; else if (input[i] == '(') return (i, j); } }
             static int pairedInnerBra(ReadOnlySpan<char> input, int start)
             { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
-
             int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
         } // Backward lookup for parenthesis pairs, extremely sensitive
         public static bool CheckParenthesis(ReadOnlySpan<char> input)
@@ -1841,9 +1839,9 @@ namespace Fraljiculator
         #endregion
 
         #region Replacement
-        private static string Extract(string input, int start, int end) => input.AsSpan(start, end - start + 1).ToString();
-        protected static string BraFreePart(string input, int start, int end) => Extract(input, start + 1, end - 1);
-        protected static string TryBraNum(string input, char c1, char c2)
+        private static string Extract(ReadOnlySpan<char> input, int start, int end) => input.Slice(start, end - start + 1).ToString();
+        protected static string BraFreePart(ReadOnlySpan<char> input, int start, int end) => Extract(input, start + 1, end - 1);
+        protected static string TryBraNum(ReadOnlySpan<char> input, char c1, char c2)
         { ThrowException(input[0] != c1 || input[^1] != c2); return BraFreePart(input, 0, input.Length - 1); }
         public static string Replace(string origStr, string subStr, int start, int end)
             => String.Create(start + subStr.Length + origStr.Length - end - 1, (origStr, subStr, start, end), (span, state) =>
@@ -1862,44 +1860,45 @@ namespace Fraljiculator
         private static string ReplaceInterior(string input, char origChar, char subChar)
         {
             if (!input.Contains(ReplaceTags.UNDERLINE)) return input;
-            StringBuilder result = new(input);
-            for (int i = 0; i < result.Length; i++)
+            StringBuilder buffer = new(input);
+            for (int i = 0; i < buffer.Length; i++)
             {
-                if (result[i] != ReplaceTags.UNDERLINE) continue;
+                if (buffer[i] != ReplaceTags.UNDERLINE) continue;
                 int endIndex = PairedParenthesis(input, i + 1);
-                for (int j = i + 1; j < endIndex; j++) if (result[j] == origChar) result.Remove(j, 1).Insert(j, subChar);
+                for (int j = i + 1; j < endIndex; j++) if (buffer[j] == origChar) buffer[j] = subChar;
                 i = endIndex;
             } // Sensitive
-            return result.ToString();
+            return buffer.ToString();
         } // To prevent the interior ',' from interfering with exterior splitting
         private static string[] ReplaceRecover(string input)
             => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
-        protected static string ReplaceSubstrings(string input, List<string> substrings, string substitution)
-           => System.Text.RegularExpressions.Regex.Replace(input, String.Join("|", substrings), substitution);
+        protected static string ReplaceSubstrings(string input, string[] substrings, string substitution)
+        { foreach (string s in substrings) input = input.Replace(s, substitution); return input; }
         public static string ReplaceConfusion(string input) => ReplaceSubstrings(input, CONFUSION, String.Empty);
         #endregion
 
         #region Miscellaneous
-        public static string[] SplitString(string input)
+        public static string[] SplitString(ReadOnlySpan<char> input)
             => ReplaceRecover(BraFreePart(input, input.IndexOf('('), PairedParenthesis(input, input.IndexOf('('))));
-        public static string[] SplitByChars(string input, string delimiters)
+        public static string[] SplitByChars(ReadOnlySpan<char> input, ReadOnlySpan<char> delimiters)
         {
-            HashSet<char> delimiterSet = [.. delimiters]; List<string> segments = []; StringBuilder segmentBuilder = new();
-            for (int i = 0; i < input.Length; i++)
+            Span<bool> lookup = stackalloc bool[1024]; // ASCII + Greek
+            foreach (char d in delimiters) lookup[d] = true;
+            List<string> segments = []; StringBuilder segmentBuilder = new();
+            foreach (char c in input)
             {
-                if (delimiterSet.Contains(input[i])) { segments.Add(segmentBuilder.ToString()); segmentBuilder.Clear(); }
-                else segmentBuilder.Append(input[i]);
+                if (lookup[c]) { segments.Add(segmentBuilder.ToString()); segmentBuilder.Clear(); }
+                else segmentBuilder.Append(c);
             }
             segments.Add(segmentBuilder.ToString());
             return [.. segments]; // Collection expression (.NET 8.0)
         }
-        protected static string TrimStartChar(string input, char startChar)
+        protected static string TrimStartChar(ReadOnlySpan<char> input, char startChar)
         {
-            int startIndex = 0, length = input.Length;
-            while (startIndex < length && input[startIndex] == startChar) startIndex++;
-            if (startIndex == length) return String.Empty;
-            StringBuilder result = new(length - startIndex);
-            return result.Append(input, startIndex, length - startIndex).ToString();
+            int startIndex = 0;
+            while (startIndex < input.Length && input[startIndex] == startChar) startIndex++;
+            if (startIndex == input.Length) return String.Empty;
+            return input.Slice(startIndex).ToString();
         }
         public static string TrimLargeNum(float input, float threshold)
             => MathF.Abs(input) < threshold ? input.ToString("#0.000000") : input.ToString("E3");
@@ -1913,7 +1912,7 @@ namespace Fraljiculator
     public class RealComplex : MyString
     {
         protected static readonly float GAMMA = 0.57721566f;
-        protected static readonly int STEP = 1; // referring to chunks
+        protected static readonly int STEP = 1; // A tunable chunk size
         protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
             _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
             M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r',
@@ -1929,11 +1928,12 @@ namespace Fraljiculator
         protected static void Initialize<TEntry>(int rows, int columns, ref int rowChk, ref int[]? rowOffs, ref uint colBytes,
             ref int strd, ref int[]? strdInit, ref uint strdBytes, ref int res, ref int resInit, ref uint resBytes)
         {
-            rowChk = rows / STEP; rowOffs = GetArithProg(rows, columns);
-            strd = columns * STEP; strdInit = GetArithProg(rowChk, STEP);
-            resInit = rowChk * STEP; res = rows - resInit;
+            int step = Int32.Min(rows, STEP); // Necessary to ensure rowChk > 0
+            rowChk = rows / step; rowOffs = GetArithProg(rows, columns);
+            strd = columns * step; strdInit = GetArithProg(rowChk, step);
+            resInit = rowChk * step; res = rows - resInit;
             int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
-            colBytes = getBytes(1); strdBytes = getBytes(STEP); resBytes = getBytes(res);
+            colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
         } // Fields for optimization
         public static void For(int start, int end, Action<int> action) { for (int i = start; i <= end; i++) action(i); }
         protected static Matrix<float> ChooseMode(string mode, Matrix<float> m1, Matrix<float> m2, int[] rowOffs, int columns)
@@ -2111,7 +2111,7 @@ namespace Fraljiculator
             BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", FUNC, POLAR, PARAM, ITLOOP);
         private static readonly string VAR_REAL = String.Concat(_X, _Y, X_, Y_), VAR_COMPLEX = String.Concat(_Z, Z_, I),
             CONST = String.Concat(E, P, G), ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
-        private static readonly List<string> ENTER_BLANK = ["\n", "\r", " "];
+        private static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
 
         public static string Simplify(string input, bool isComplex = false)
         {
@@ -2209,7 +2209,7 @@ namespace Fraljiculator
                         }
                     }
                 }
-                if (rowChk == 1) { hypergeometric(0, columns); return; }
+                if (rows == 1) { hypergeometric(0, columns); return; }
                 Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
@@ -2228,7 +2228,7 @@ namespace Fraljiculator
                         *outputPtr = *productPtr * Complex.Exp(-*initialPtr * GAMMA) / *initialPtr;
                     }
                 }
-                if (rowChk == 1) { gamma(0, columns); return; }
+                if (rows == 1) { gamma(0, columns); return; }
                 Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Gamma_function
@@ -2249,7 +2249,7 @@ namespace Fraljiculator
                         *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                     }
                 }
-                if (rowChk == 1) { beta(0, columns); return; }
+                if (rows == 1) { beta(0, columns); return; }
                 Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Beta_function
@@ -2278,7 +2278,7 @@ namespace Fraljiculator
                         *_sumPtr /= 1 - Complex.Pow(2, 1 - *initialPtr);
                     }
                 }
-                if (rowChk == 1) { zeta(0, columns); return; }
+                if (rows == 1) { zeta(0, columns); return; }
                 Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2327,14 +2327,14 @@ namespace Fraljiculator
         private unsafe Matrix<Complex> Copy(Matrix<Complex> src) => HandleMtx(UninitMtx(), dest =>
         {
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
-            if (rowChk == 1) { copy(0, colBytes); return; }
+            if (rows == 1) { copy(0, colBytes); return; }
             Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
         });
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe Matrix<Complex> Const(Complex _const) => HandleMtx(UninitMtx(), output =>
         {
             Complex* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
-            for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const;
+            for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const; if (rows == 1) return;
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
             Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
         });
@@ -2346,7 +2346,7 @@ namespace Fraljiculator
                 Complex* _valuePtr = _value.RowPtr(p);
                 for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
             }
-            if (rowChk == 1) { negate(0, columns); return; }
+            if (rows == 1) { negate(0, columns); return; }
             Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2357,7 +2357,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
             }
-            if (rowChk == 1) { plus(0, columns); return; }
+            if (rows == 1) { plus(0, columns); return; }
             Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2368,7 +2368,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
             }
-            if (rowChk == 1) { subtract(0, columns); return; }
+            if (rows == 1) { subtract(0, columns); return; }
             Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2379,7 +2379,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
             }
-            if (rowChk == 1) { multiply(0, columns); return; }
+            if (rows == 1) { multiply(0, columns); return; }
             Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2390,7 +2390,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
             }
-            if (rowChk == 1) { divide(0, columns); return; }
+            if (rows == 1) { divide(0, columns); return; }
             Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2401,7 +2401,7 @@ namespace Fraljiculator
                 Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = Complex.Pow(*srcPtr, *destPtr);
             }
-            if (rowChk == 1) { power(0, columns); return; }
+            if (rows == 1) { power(0, columns); return; }
             Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2412,7 +2412,7 @@ namespace Fraljiculator
                 Complex* _valuePtr = _value.RowPtr(p);
                 for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
             }
-            if (rowChk == 1) { funcSub(0, columns); return; }
+            if (rows == 1) { funcSub(0, columns); return; }
             Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
         }
         #endregion
@@ -2600,7 +2600,7 @@ namespace Fraljiculator
                     float* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
                     for (int q = 0; q < col; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
                 }
-                if (rowChk == 1) { processMCP(0, columns); return; }
+                if (rows == 1) { processMCP(0, columns); return; }
                 Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
             });
         }
@@ -2620,7 +2620,7 @@ namespace Fraljiculator
                         *outputPtr = function(minMax.ToArray());
                     }
                 }
-                if (rowChk == 1) { processMinMax(0, columns); return; }
+                if (rows == 1) { processMinMax(0, columns); return; }
                 Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
             });
         }
@@ -2652,7 +2652,7 @@ namespace Fraljiculator
                         }
                     }
                 }
-                if (rowChk == 1) { hypergeometric(0, columns); return; }
+                if (rows == 1) { hypergeometric(0, columns); return; }
                 Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
@@ -2671,7 +2671,7 @@ namespace Fraljiculator
                         *outputPtr = *productPtr * MathF.Exp(-*initialPtr * GAMMA) / *initialPtr;
                     }
                 }
-                if (rowChk == 1) { gamma(0, columns); return; }
+                if (rows == 1) { gamma(0, columns); return; }
                 Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Gamma_function
@@ -2692,7 +2692,7 @@ namespace Fraljiculator
                         *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                     }
                 }
-                if (rowChk == 1) { beta(0, columns); return; }
+                if (rows == 1) { beta(0, columns); return; }
                 Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Beta_function
@@ -2721,7 +2721,7 @@ namespace Fraljiculator
                         *_sumPtr /= 1 - MathF.Pow(2, 1 - *initialPtr);
                     }
                 }
-                if (rowChk == 1) { zeta(0, columns); return; }
+                if (rows == 1) { zeta(0, columns); return; }
                 Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
             });
         } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2789,14 +2789,14 @@ namespace Fraljiculator
         private unsafe Matrix<float> Copy(Matrix<float> src) => HandleMtx(UninitMtx(), dest =>
         {
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
-            if (rowChk == 1) { copy(0, colBytes); return; }
+            if (rows == 1) { copy(0, colBytes); return; }
             Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
         });
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe Matrix<float> Const(float _const) => HandleMtx(UninitMtx(), output =>
         {
             float* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
-            for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const;
+            for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const; if (rows == 1) return;
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
             Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
         });
@@ -2808,7 +2808,7 @@ namespace Fraljiculator
                 float* _valuePtr = _value.RowPtr(p);
                 for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
             }
-            if (rowChk == 1) { negate(0, columns); return; }
+            if (rows == 1) { negate(0, columns); return; }
             Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2819,7 +2819,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
             }
-            if (rowChk == 1) { plus(0, columns); return; }
+            if (rows == 1) { plus(0, columns); return; }
             Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2830,7 +2830,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
             }
-            if (rowChk == 1) { subtract(0, columns); return; }
+            if (rows == 1) { subtract(0, columns); return; }
             Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2841,7 +2841,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
             }
-            if (rowChk == 1) { multiply(0, columns); return; }
+            if (rows == 1) { multiply(0, columns); return; }
             Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2852,7 +2852,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
             }
-            if (rowChk == 1) { divide(0, columns); return; }
+            if (rows == 1) { divide(0, columns); return; }
             Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2863,7 +2863,7 @@ namespace Fraljiculator
                 float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
                 for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathF.Pow(*srcPtr, *destPtr);
             }
-            if (rowChk == 1) { power(0, columns); return; }
+            if (rows == 1) { power(0, columns); return; }
             Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
         }
         [MethodImpl(512)] // AggressiveOptimization
@@ -2874,7 +2874,7 @@ namespace Fraljiculator
                 float* _valuePtr = _value.RowPtr(p);
                 for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
             }
-            if (rowChk == 1) { funcSub(0, columns); return; }
+            if (rows == 1) { funcSub(0, columns); return; }
             Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
         }
         #endregion
