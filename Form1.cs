@@ -43,7 +43,7 @@ namespace Fraljiculator
             X_RIGHT_CHECK = 1922, Y_UP_CHECK = 1081, Y_DOWN_CHECK = 1082, REF_POS_1 = 9, REF_POS_2 = 27,
             WIDTH_IND = 22, HEIGHT_IND = 55, LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 200;
         private static float[] scopes; // WARNING: scopes[3] - scopes[2] < 0 < borders[3] - borders[2]
-        private static int[] borders; // = [ x_left, x_right, y_up, y_down ];
+        private static int[] borders; // = [ x_left, x_right, y_up, y_down ]
         private static Matrix<Complex> output_complex;
         private static Matrix<float> output_real;
         //
@@ -84,7 +84,7 @@ namespace Fraljiculator
         }
         public static void ReduceFontSizeByScale(Control parentCtrl, ref float scalingFactor)
         {
-            scalingFactor = Graphics.FromHwnd(IntPtr.Zero).DpiX / 96f / 1.5f; // Originally my PC was scaled to 150%
+            scalingFactor = Graphics.FromHwnd(IntPtr.Zero).DpiX / 96f / 1.5f; // Originally scaled to 150%
             foreach (Control ctrl in parentCtrl.Controls)
             {
                 ctrl.Font = new(ctrl.Font.FontFamily, ctrl.Font.Size / scalingFactor, ctrl.Font.Style);
@@ -124,7 +124,7 @@ namespace Fraljiculator
             };
             WaitTimer.Tick += (sender, e) =>
             {
-                ReverseBool(ref is_flashing); // Cannnot pass properties as reference
+                ReverseBool(ref is_flashing); // Cannot pass properties as reference
                 PictureWait.Visible = is_flashing;
             };
             DisplayTimer.Tick += (sender, e) =>
@@ -228,7 +228,7 @@ namespace Fraljiculator
         public static extern bool HideCaret(IntPtr hWnd); // Also used for Message Boxes
         protected override void WndProc(ref Message m) // Window Procedure
         {
-            const int WM_NCLBTNDOWN = 0x00A1, HTCAPTION = 0x0002; //Window Message, Non-Client Left Button Down, Hit Test Caption
+            const int WM_NCLBTNDOWN = 0x00A1, HTCAPTION = 0x0002; // Window Message, Non-Client Left Button Down, Hit Test Caption
             if (m.Msg == WM_NCLBTNDOWN && m.WParam.ToInt32() == HTCAPTION) return; // Preventing dragging the title bar
             base.WndProc(ref m);
         } // Overriding WndProc to customize window behavior
@@ -302,7 +302,7 @@ namespace Fraljiculator
             drawGrids(xGrid, yGrid, GRID_WIDTH_1);
             drawGrids(xGrid / GRID, yGrid / GRID, GRID_WIDTH_2);
 
-            var (x, y) = (LinearTransformX(0f, borders), LinearTransformY(0f, borders)); // Should not write "0.0" or "0"
+            var (x, y) = (LinearTransformX(0f, borders), LinearTransformY(0f, borders));
             if (y >= yInit && y < yEnd) graphics.DrawLine(AXES_PEN, xInit, y, xEnd, y);
             if (x >= xInit && x < xEnd) graphics.DrawLine(AXES_PEN, x, yEnd, x, yInit);
         }
@@ -835,10 +835,10 @@ namespace Fraljiculator
         {
             if (NoInput()) return;
             Clipboard.SetText(InputString.Text); // Problematic on JSX's PC
-            BlockInput(true); // Cursor.Hide();
+            BlockInput(true);
             StartTimers();
             await Task.Run(() => { Thread.CurrentThread.Priority = ThreadPriority.Highest; runClick(); });
-            BlockInput(false); // Cursor.Show();
+            BlockInput(false);
         }
         private void StartTimers()
         {
@@ -983,7 +983,7 @@ namespace Fraljiculator
             return e.KeyCode switch
             {
                 Keys.Escape => handleReturn(e => { ExecuteSuppress(Close, e); }),
-                Keys.Oemtilde => handleReturn(e => { ExecuteSuppress(() => PicturePlay_Click(null, e), e); }), // Problematic on other PCs
+                Keys.Oemtilde => handleReturn(e => { ExecuteSuppress(() => PicturePlay_Click(null, e), e); }),
                 Keys.Delete => handleReturn(e => { ExecuteSuppress(() => { Graph_DoubleClick(null, e); Delete_Click(e); }, e); }),
                 _ => false
             };
@@ -1327,7 +1327,7 @@ namespace Fraljiculator
         private void CheckAuto_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref is_auto);
         private void CheckEdit_CheckedChanged(object sender, EventArgs e)
         {
-            DraftBox.ReadOnly = !DraftBox.ReadOnly; // Cannnot pass properties as reference
+            DraftBox.ReadOnly = !DraftBox.ReadOnly; // Cannot pass properties as reference
             DraftBox.BackColor = DraftBox.ReadOnly ? Color.Black : SystemColors.ControlDarkDark;
             DraftBox.ForeColor = DraftBox.ReadOnly ? READONLY_GRAY : Color.White;
             DraftBox.ScrollBars = DraftBox.ReadOnly ? ScrollBars.None : ScrollBars.Vertical;
@@ -1694,7 +1694,6 @@ namespace Fraljiculator
         private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
             FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
             FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-        //
         private static float scale_factor;
         private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
         private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1736,7 +1735,7 @@ namespace Fraljiculator
             };
             txtMessage.SetBounds(BORDER, BORDER, width - BORDER * 2, height - BORDER - 2 * DIST - BTN_SIZE);
             txtMessage.SelectionStart = message.Length; txtMessage.SelectionLength = 0;
-            txtMessage.GotFocus += (sender, e) => { Graph.HideCaret(txtMessage.Handle); }; // This works well!
+            txtMessage.GotFocus += (sender, e) => { Graph.HideCaret(txtMessage.Handle); };
         }
         private void SetUpButton(int width, int height, Color btnColor, Color btnTxtColor)
         {
@@ -1808,7 +1807,7 @@ namespace Fraljiculator
             foreach (string s in stringsToCheck) if (input.Contains(s)) return true;
             return false;
         }
-        #endregion // Automatic conversion from string to ReadOnlySpan<char>, from string[] to ReadOnlySpan<string>
+        #endregion // Automatic conversion from string to ReadOnlySpan<char> and from string[] to ReadOnlySpan<string>
 
         #region Parentheses
         private static int PairedParenthesis(ReadOnlySpan<char> input, int start)
@@ -2157,14 +2156,14 @@ namespace Fraljiculator
     public sealed class ComplexSub : RecoverMultiply
     {
         #region Fields & Constructors
-        private readonly uint colBytes, strdBytes, resBytes; // Sizes of chunks
+        private readonly uint colBytes, strdBytes, resBytes; // Byte lengths of chunks
         private readonly int rows, columns, rowChk, strd, res, resInit; // Lengths of chunks
-        private readonly int[] rowOffs, strdInit; // rowOffs: for row extraction
+        private readonly int[] rowOffs, strdInit; // For row extraction
         private readonly bool useList; // Whether to use cstMtcs or not
         private readonly Matrix<Complex> z;
         private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
-        private readonly List<ConstMatrix<Complex>> cstMtcs = [];
+        private readonly List<ConstMatrix<Complex>> cstMtcs = []; // To store reusable constant matrices
 
         private int countBra, countCst; // countBra: parentheses, countCst: constants
         private bool readList; // Reading or writing cstMtcs
@@ -2337,7 +2336,7 @@ namespace Fraljiculator
             for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const; if (rows == 1) return;
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
             Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
-        });
+        }); // Sensitive
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe void Negate(Matrix<Complex> _value)
         {
@@ -2495,7 +2494,7 @@ namespace Fraljiculator
                     _C => isInverse.hyper ? handleSub(Complex.Acosh, 4) : handleSub(Complex.Cosh, 3),
                     _T => isInverse.hyper ? handleSub(Complex.Atanh, 4) : handleSub(Complex.Tanh, 3)
                 },
-                _A => handleSub(c => new(Complex.Modulus(c)), 2), // Converting from float to Complex
+                _A => handleSub(c => new(Complex.Modulus(c)), 2), // Conversion from float to Complex
                 J_ => handleSub(Complex.Conjugate, 2), // Special for complex
                 _L => handleSub(Complex.Log, 2),
                 E_ => handleSub(Complex.Exp, 2),
@@ -2547,14 +2546,14 @@ namespace Fraljiculator
     public sealed class RealSub : RecoverMultiply
     {
         #region Fields & Constructors
-        private readonly uint colBytes, strdBytes, resBytes; // Sizes of chunks
+        private readonly uint colBytes, strdBytes, resBytes; // Byte lengths of chunks
         private readonly int rows, columns, rowChk, strd, res, resInit; // Lengths of chunks
-        private readonly int[] rowOffs, strdInit; // rowOffs: for row extraction
+        private readonly int[] rowOffs, strdInit; // For row extraction
         private readonly bool useList; // Whether to use cstMtcs or not
         private readonly Matrix<float> x, y;
         private readonly Matrix<float>[] buffCocs; // To precompute repetitively used blocks
         private readonly MatrixCopy<float>[] braValues; // To store values between parenthesis pairs
-        private readonly List<ConstMatrix<float>> cstMtcs = [];
+        private readonly List<ConstMatrix<float>> cstMtcs = []; // To store reusable constant matrices
 
         private int countBra, countCst; // countBra: parentheses, countCst: constants
         private bool readList; // Reading or writing cstMtcs
@@ -2580,7 +2579,8 @@ namespace Fraljiculator
         #endregion
 
         #region Basic Calculations
-        public static float Factorial(float n) => n < 0 ? Single.NaN : n == 0 ? 1 : n * Factorial(n - 1);
+        private static float FactorialBase(float n) => n < 0 ? Single.NaN : n == 0 ? 1 : n * FactorialBase(n - 1);
+        public static float Factorial(float r) => FactorialBase(MathF.Floor(r));
         private static float SafeSign(float r) => Single.IsNaN(r) ? Single.NaN : MathF.Sign(r);
         private static float Mod(float n, float r) => r != 0 ? n % MathF.Abs(r) : Single.NaN;
         private static float Combination(float n, float r)
@@ -2799,7 +2799,7 @@ namespace Fraljiculator
             for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const; if (rows == 1) return;
             void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
             Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
-        });
+        }); // Sensitive
         [MethodImpl(512)] // AggressiveOptimization
         private unsafe void Negate(Matrix<float> _value)
         {
@@ -2962,13 +2962,13 @@ namespace Fraljiculator
                 _L => handleSub(MathF.Log, 2),
                 E_ => handleSub(MathF.Exp, 2),
                 _Q => handleSub(MathF.Sqrt, 2),
-                _F_ => handleSub(r => Factorial(MathF.Floor(r)), 2),
+                _F_ => handleSub(Factorial, 2),
                 _D_ => input[start - 2] switch
                 {
                     _F => handleSub(MathF.Floor, 3),
                     _C => handleSub(MathF.Ceiling, 3),
                     _R => handleSub(MathF.Round, 3),
-                    _S => handleSub(SafeSign, 3) // Since MathF.Sign do no accept Single.NaN
+                    _S => handleSub(SafeSign, 3) // Since MathF.Sign does not accept Single.NaN
                 }, // Special for real
                 _ => tagL
             };
