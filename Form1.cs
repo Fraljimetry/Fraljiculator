@@ -39,11 +39,11 @@ namespace Fraljiculator
         private static int display_elapsed, x_left, x_right, y_up, y_down, color_mode, contour_mode,
             loop_number, chosen_number, export_number, pixel_number, segment_number;
         private static readonly int X_LEFT_MAC = 620, X_RIGHT_MAC = 1520, Y_UP_MAC = 45, Y_DOWN_MAC = 945,
-            X_LEFT_MIC = 1565, X_RIGHT_MIC = 1765, Y_UP_MIC = 745, Y_DOWN_MIC = 945, X_LEFT_CHECK = 1921,
-            X_RIGHT_CHECK = 1922, Y_UP_CHECK = 1081, Y_DOWN_CHECK = 1082, REF_POS_1 = 9, REF_POS_2 = 27,
-            WIDTH_IND = 22, HEIGHT_IND = 55, LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 200;
-        private static float[] scopes; // WARNING: scopes[3] - scopes[2] < 0 < borders[3] - borders[2]
-        private static int[] borders; // = [ x_left, x_right, y_up, y_down ]
+            X_LEFT_MIC = 1565, X_RIGHT_MIC = 1765, Y_UP_MIC = 745, Y_DOWN_MIC = 945, X_LEFT_CHECK = 1921, X_RIGHT_CHECK = 1922,
+            Y_UP_CHECK = 1081, Y_DOWN_CHECK = 1082, REF_POS_1 = 9, REF_POS_2 = 27, WIDTH_IND = 22, HEIGHT_IND = 55,
+            LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 200;
+        private static float[] scopes; // Corresponding to tbxDetails = { X_Left, X_Right, Y_Left, Y_Right }
+        private static int[] borders; // = [x_left, x_right, y_up, y_down]
         private static Matrix<Complex> output_complex;
         private static Matrix<float> output_real;
         //
@@ -185,7 +185,7 @@ namespace Fraljiculator
             FillEmpty(GeneralInput, GENERAL_DEFAULT);
             FillEmpty(ThickInput, THICK_DEFAULT); FillEmpty(DenseInput, DENSE_DEFAULT);
 
-            TextBox[] tbxDetails = { X_Left, X_Right, Y_Right, Y_Left }; // Crucial ordering
+            TextBox[] tbxDetails = { X_Left, X_Right, Y_Left, Y_Right }; // Crucial ordering
             if (autoFill) foreach (var tbx in tbxDetails) FillEmpty(tbx, ZERO);
 
             float _dense = Obtain(DenseInput), _thick = Obtain(ThickInput);
@@ -198,7 +198,7 @@ namespace Fraljiculator
             if (!GeneralInput_Undo())
             {
                 float _scope = Obtain(GeneralInput);
-                scopes = [-_scope, _scope, _scope, -_scope]; // Remind the signs
+                scopes = [-_scope, _scope, -_scope, _scope]; // Remind the signs
                 for (int i = 0; i < tbxDetails.Length; i++) SetText(tbxDetails[i], scopes[i].ToString("#0.0000"));
             }
             else for (int i = 0; i < tbxDetails.Length; i++) scopes[i] = Obtain(tbxDetails[i]);
@@ -243,12 +243,12 @@ namespace Fraljiculator
             (x == 0 ? -1 : x > 0 ? 0 : MathF.PI) : (y > 0 ? MathF.Atan2(y, x) : MathF.Atan2(y, x) + MathF.Tau); // Sensitive checking
         private static int Frac(int input, float alpha) => (int)(input * alpha);
         private static bool IllegalRatio(float ratio) => ratio < 0 || ratio > 1;
-        private static int GetRow(int[] borders) => borders[1] - borders[0];
-        private static int GetColumn(int[] borders) => borders[3] - borders[2];
-        private static float Get_Row() => scopes[1] - scopes[0];
-        private static float Get_Column() => scopes[3] - scopes[2]; // The sign convention varies from place to place
+        private static int RowBorders(int[] borders) => borders[1] - borders[0];
+        private static int ColumnBorders(int[] borders) => borders[3] - borders[2];
+        private static float RowScopes() => scopes[1] - scopes[0];
+        private static float ColumnScopes() => scopes[3] - scopes[2]; // The sign convention varies from place to place
         private static bool InvalidScopesX() => scopes[0] >= scopes[1];
-        private static bool InvalidScopesY() => scopes[3] >= scopes[2];
+        private static bool InvalidScopesY() => scopes[2] >= scopes[3];
         private static int[] GetBorders(int mode) => mode switch
         {
             1 => [X_LEFT_MAC, X_RIGHT_MAC, Y_UP_MAC, Y_DOWN_MAC],
@@ -257,7 +257,7 @@ namespace Fraljiculator
         };
         private static Matrix<float> GetMatrix(int rows, int columns) => new(RealComplex.GetArithProg(rows, columns), columns);
         private static Rectangle GetRect(int[] borders, int margin = 0)
-            => new(borders[0] + margin, borders[2] + margin, GetRow(borders) - margin, GetColumn(borders) - margin);
+            => new(borders[0] + margin, borders[2] + margin, RowBorders(borders) - margin, ColumnBorders(borders) - margin);
         private static Bitmap GetBitmap(bool isMain) => isMain ? bmp_mac : bmp_mic;
         private static ref bool ReturnAxesDrawn(bool isMain) => ref (isMain ? ref axes_drawn_mac : ref axes_drawn_mic);
         private static void SetAxesDrawn(bool isMain, bool drawn = false) { ReturnAxesDrawn(isMain) = drawn; }
@@ -283,12 +283,12 @@ namespace Fraljiculator
             bdp_painted = true; // To prevent calling Graph_Paint afterwards
             var (xInit, yInit, xEnd, yEnd) = (AddOne(borders[0]), AddOne(borders[2]), borders[1], borders[3]);
             static float calculateGrid(float range) => MathF.Pow(GRID, MathF.Floor(MathF.Log(range / 2, GRID)));
-            var (xGrid, yGrid) = (calculateGrid(Get_Row()), calculateGrid(-Get_Column())); // Remind the minus sign
+            var (xGrid, yGrid) = (calculateGrid(RowScopes()), calculateGrid(ColumnScopes()));
 
             void drawGrids(float xGrid, float yGrid, float penWidth)
             {
                 Pen gridPen = new(GRID_GRAY, penWidth);
-                RealComplex.For((int)MathF.Floor(scopes[3] / yGrid), (int)MathF.Ceiling(scopes[2] / yGrid), i =>
+                RealComplex.For((int)MathF.Floor(scopes[2] / yGrid), (int)MathF.Ceiling(scopes[3] / yGrid), i =>
                 {
                     int pos = LinearTransformY(i * yGrid, borders);
                     if (pos >= yInit && pos < yEnd) graphics.DrawLine(gridPen, xInit, pos, xEnd, pos);
@@ -317,19 +317,19 @@ namespace Fraljiculator
         private void DrawScrollBar((float x, float y) xyCoor)
         {
             int range = VScrollBarX.Maximum - VScrollBarX.Minimum;
-            VScrollBarX.Value = Frac(range, (xyCoor.x - scopes[0]) / Get_Row());
-            VScrollBarY.Value = Frac(range, (xyCoor.y - scopes[3]) / -Get_Column()); // Remind the minus sign
+            VScrollBarX.Value = Frac(range, (xyCoor.x - scopes[0]) / RowScopes());
+            VScrollBarY.Value = Frac(range, (xyCoor.y - scopes[2]) / ColumnScopes());
         }
         #endregion
 
         // 2. GRAPHING
         #region Numerics
-        private static float GetRatioRow(int[] borders) => Get_Row() / GetRow(borders);
-        private static float GetRatioColumn(int[] borders) => Get_Column() / GetColumn(borders);
+        private static float GetRatioRow(int[] borders) => RowScopes() / RowBorders(borders);
+        private static float GetRatioColumn(int[] borders) => -ColumnScopes() / ColumnBorders(borders); // Remind the minus sign
         private static int LinearTransformX(float x, int[] borders) => (int)(borders[0] + (x - scopes[0]) / GetRatioRow(borders));
-        private static int LinearTransformY(float y, int[] borders) => (int)(borders[2] + (y - scopes[2]) / GetRatioColumn(borders));
+        private static int LinearTransformY(float y, int[] borders) => (int)(borders[2] + (y - scopes[3]) / GetRatioColumn(borders));
         private static (float, float) LinearTransform(int x, int y, float xCoor, float yCoor, int[] borders)
-            => (scopes[0] + (x - borders[0]) * xCoor, scopes[2] + (y - borders[2]) * yCoor); // For optimization
+            => (scopes[0] + (x - borders[0]) * xCoor, scopes[3] + (y - borders[2]) * yCoor); // For optimization
         private static int LowIdx(float a, float m) => (int)MathF.Floor(a / m);
         private static float LowDist(float a, float m) => a - m * LowIdx(a, m);
         private static float LowRatio(float a, float m) => a == -0 ? 1 : LowDist(a, m) / m; // -0 is necessary
@@ -355,7 +355,7 @@ namespace Fraljiculator
         } // To find the min and max of the atan'ed matrix to prevent infinitude
         private unsafe static (int, int, Matrix<float>, Matrix<float>) GetRowColumnCoor()
         {
-            var (rows, columns) = (GetRow(borders), GetColumn(borders));
+            var (rows, columns) = (RowBorders(borders), ColumnBorders(borders));
             var (xCoor, yCoor) = (GetMatrix(rows, columns), GetMatrix(rows, columns));
             var (xInit, yInit, _x, _y) = (AddOne(borders[0]), AddOne(borders[2]), GetRatioRow(borders), GetRatioColumn(borders));
             Parallel.For(0, rows, p =>
@@ -483,7 +483,7 @@ namespace Fraljiculator
                 4 => Real4,
                 5 => Real5
             };
-            realOperation(output_real, FiniteExtremities(output_real, GetRow(borders), GetColumn(borders)));
+            realOperation(output_real, FiniteExtremities(output_real, RowBorders(borders), ColumnBorders(borders)));
         }
         private void Real1(Matrix<float> output, (float, float) mM) => RealLoop123(output, ZERO_BLUE, POLE_PURPLE, 1, mM);
         private void Real2(Matrix<float> output, (float, float) mM) => RealLoop123(output, ZERO_BLUE, POLE_PURPLE, 2, mM);
@@ -567,7 +567,7 @@ namespace Fraljiculator
             for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++, segment_number++)
             {
                 (pos.X, pos.Y) = (LinearTransformX(*v1Ptr, borders), LinearTransformY(*v2Ptr, borders));
-                inRange = *v1Ptr > scopes[0] && *v1Ptr < scopes[1] && *v2Ptr > scopes[3] && *v2Ptr < scopes[2];
+                inRange = *v1Ptr > scopes[0] && *v1Ptr < scopes[1] && *v2Ptr > scopes[2] && *v2Ptr < scopes[3];
                 if (inRangeBuffer && inRange && posBuffer != pos)
                 {
                     ratio = relativeSpeed * steps % 1;
