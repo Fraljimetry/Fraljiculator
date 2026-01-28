@@ -1960,43 +1960,43 @@ public class ReplaceTags : RealComplex
 {
     public static readonly string[] FUNCTIONS =
         [ "floor", "ceil", "round", "sgn", "F", "gamma", "beta", "zeta", "mod", "nCr", "nPr",
-                "max", "min", "log", "exp", "sqrt", "abs", "factorial", "arsinh", "arcosh", "artanh",
-                "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "conjugate", "e" ];
+            "max", "min", "log", "exp", "sqrt", "abs", "factorial", "arsinh", "arcosh", "artanh",
+            "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "conjugate", "e" ];
     public static readonly string[] SPECIALS =
         [ "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2", "cocoon",
-                "iterateLoop", "loop", "func", "polar", "param" ];
+            "iterateLoop", "loop", "func", "polar", "param" ];
     public static readonly string[] EX_COMPLEX =
         [
             "(z-1)/(z+1)",
-                "z^(1+10i)cos((z-1)/(z^13+z+1))",
-                "sum(1/(1-z^n),n,1,100)-100",
-                "prod(exp(2/(e(-k/5)z-1)+1),k,1,5)",
-                "coc(iterate((1/Z+Z){0},z,k,1,1000),e(0.02))",
-                "iterate(exp(zZ),z,k,1,100)",
-                "iterateLoop(ZZ+z,0,k,1,30)",
-                "comp(zz,sin(zZ),cos(z/Z))"
+            "z^(1+10i)cos((z-1)/(z^13+z+1))",
+            "sum(1/(1-z^n),n,1,100)-100",
+            "prod(exp(2/(e(-k/5)z-1)+1),k,1,5)",
+            "coc(iterate((1/Z+Z){0},z,k,1,1000),e(0.02))",
+            "iterate(exp(zZ),z,k,1,100)",
+            "iterateLoop(ZZ+z,0,k,1,30)",
+            "comp(zz,sin(zZ),cos(z/Z))"
         ];
     public static readonly string[] EX_REAL =
         [
             "nCr(x,y)",
-                "min(sin(xy),tan(x),tan(y))",
-                "ceil(x)round(y)-floor(y)round(x)",
-                "IterateLoop(x^X,1,k,1,30,y-X)",
-                "iterate1(x/X+X/y,xy,k,1,5)",
-                "iterate2(1/X+1/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
-                "comp1(xy,tan(Xx),Artanh(X-y))",
-                "comp2(xy,xx+yy,sin(X+Y),cos(X-Y),2)"
+            "min(sin(xy),tan(x),tan(y))",
+            "ceil(x)round(y)-floor(y)round(x)",
+            "IterateLoop(x^X,1,k,1,30,y-X)",
+            "iterate1(x/X+X/y,xy,k,1,5)",
+            "iterate2(1/X+1/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
+            "comp1(xy,tan(Xx),Artanh(X-y))",
+            "comp2(xy,xx+yy,sin(X+Y),cos(X-Y),2)"
         ];
     public static readonly string[] EX_CURVES =
         [
             "func(zeta(x,50))",
-                "func(sum(sin(x2^k)/2^k,k,0,100),-pi,pi,0.001)",
-                "func(beta(sinh(x),cosh(x)),-2,2,0.0001)",
-                "polar(sqrt(cos(2theta)),theta,0,2pi,0.0001)",
-                "polar(cos(5k)cos(7k),k,0,2pi,0.001)",
-                "loop(polar(0.1jcos(5k+0.7jpi),k,0,pi),j,1,10)",
-                "param(sin(7k),cos(9k),k,0,2pi,0.001)",
-                "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,10)"
+            "func(sum(sin(x2^k)/2^k,k,0,100),-pi,pi,0.001)",
+            "func(beta(sinh(x),cosh(x)),-2,2,0.0001)",
+            "polar(sqrt(cos(2theta)),theta,0,2pi,0.0001)",
+            "polar(cos(5k)cos(7k),k,0,2pi,0.001)",
+            "loop(polar(0.1jcos(5k+0.7jpi),k,0,pi),j,1,10)",
+            "param(sin(7k),cos(9k),k,0,2pi,0.001)",
+            "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,10)"
         ];
     public static readonly char FUNC_HEAD = '~', UNDERLINE = '_', DOLLAR = _D_;
     public static readonly string FUNC = "φ", POLAR = "ψ", PARAM = "ρ", ITLOOP = "ι",
