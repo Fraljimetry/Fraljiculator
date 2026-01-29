@@ -48,7 +48,7 @@ public partial class Graph : Form
     private static Matrix<float> output_real;
     //
     private static bool is_flashing, is_paused = true, is_complex = true, delete_point = true, delete_coor, swap_colors,
-        is_auto, freeze_graph, clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_check,
+        is_auto, freeze_graph, clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking,
         error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound;
     private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile",
         INPUT_DEFAULT = "z", GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO",
@@ -545,7 +545,7 @@ public partial class Graph : Form
         int length = (int)((end - start) / increment), _length = length + 2; // For safety
         Matrix<float> partition = GetMatrix(1, _length); float steps = start;
         float obtainCheck(string input) => RealSub.Obtain(input, steps); // Already simplified
-        if (is_check) { obtainCheck(input1); obtainCheck(input2); return (partition, partition, length, true); }
+        if (is_checking) { obtainCheck(input1); obtainCheck(input2); return (partition, partition, length, true); }
 
         float* partPtr = partition.RowPtr();
         for (int i = 0; i < _length; i++, partPtr++, steps += increment) *partPtr = steps;
@@ -616,7 +616,7 @@ public partial class Graph : Form
     }
     private void RunDisplayBase(Action computeAction)
     {
-        if (is_check) return; // Necessary
+        if (is_checking) return; // Necessary
         ClearBitmap(bmp_mac); ClearBitmap(bmp_mic); // Necessary courtesy of ZAL
         computeAction();
         DisplayBase(() => { graphics.DrawImage(GetBitmap(is_main), 0, 0); });
@@ -632,7 +632,7 @@ public partial class Graph : Form
     {
         var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
         int toInt(int index) => RealSub.ToInt(split[index]);
-        int int3 = toInt(3), int4 = is_check ? int3 : (int)MathF.Max(int3, toInt(4)); // Necessary
+        int int3 = toInt(3), int4 = is_checking ? int3 : (int)MathF.Max(int3, toInt(4)); // Necessary
         string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops);
         string obtainDisplayInput(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(5, loops) : defaultInput;
 
@@ -669,7 +669,7 @@ public partial class Graph : Form
             containsTag(ReplaceTags.POLAR) ? DisplayPolar :
             containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
         int toInt(int index) => RealSub.ToInt(split[index]);
-        int int2 = toInt(2), int3 = is_check ? int2 : (int)MathF.Max(int2, toInt(3)); // Necessary
+        int int2 = toInt(2), int3 = is_checking ? int2 : (int)MathF.Max(int2, toInt(3)); // Necessary
         for (int loops = int2; loops <= int3; loops++) displayMethod(MyString.ReplaceLoop(split, 0, 1, loops));
     }
     private void DisplayOnScreen()
@@ -678,7 +678,7 @@ public partial class Graph : Form
         string[] split = MyString.SplitByChars(InputString.Text, "|");
         for (int loops = 0; loops < split.Length; loops++)
         {
-            if (is_check) CheckComplex.Checked = MyString.ContainsAny(MyString.ReplaceZetas(split[loops]), RecoverMultiply._ZZ_);
+            if (is_checking) CheckComplex.Checked = MyString.ContainsAny(MyString.ReplaceZetas(split[loops]), RecoverMultiply._ZZ_);
             string component = RecoverMultiply.Simplify(split[loops], is_complex);
             bool containsTags(string[] str) => MyString.ContainsAny(component, str);
             Action<string> displayMethod =    // Should not pull outside of the loop
@@ -750,7 +750,7 @@ public partial class Graph : Form
         HandleMouseAction(e, borders, v => { DisplayMouseDown(e, v.Item1, v.Item2); });
     }
     //
-    private bool ActivateMoveDown() => activate_mouse && !error_input && !is_check && !NoInput();
+    private bool ActivateMoveDown() => activate_mouse && !error_input && !is_checking && !NoInput();
     private static void RunMouse(MouseEventArgs e, int[] b, Action<MouseEventArgs, int[]> action, Action? _action)
     { if (e.X > b[0] && e.X < b[1] && e.Y > b[2] && e.Y < b[3]) action(e, b); else _action?.Invoke(); }
     private static void CheckMoveDown(Action<int[]> checkMouse) => checkMouse(GetBorders(is_main ? 1 : 2));
@@ -818,7 +818,7 @@ public partial class Graph : Form
             SetTextboxButtonReadOnly(true);
 
             pixel_number = segment_number = export_number = 0;
-            error_input = error_address = is_check = false;
+            error_input = error_address = is_checking = false;
             clicked = true; loop_number++;
 
             PrepareSetDisplay(borders, isMain);
@@ -930,7 +930,7 @@ public partial class Graph : Form
     {
         try
         {
-            is_check = true;
+            is_checking = true;
             PrepareSetDisplay(GetBorders(3), false);
 
             bool noInput = NoInput(); // Should not return immediately if NoInput()
@@ -1393,7 +1393,7 @@ public partial class Graph : Form
         Label[] labels = [InputLabel, AtLabel, GeneralLabel, DetailLabel, X_Scope, Y_Scope, ThickLabel, DenseLabel,
                 ExampleLabel, FunctionLabel, ModeLabel, ContourLabel];
         foreach (var lbl in labels) lbl.ForeColor = Color.White;
-        PictureIncorrect.Visible = PictureCorrect.Visible = is_check = false;
+        PictureIncorrect.Visible = PictureCorrect.Visible = is_checking = false;
     }
     private void SubtitleBox_DoubleClick(object sender, EventArgs e)
     {
