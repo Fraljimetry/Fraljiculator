@@ -2305,7 +2305,7 @@ public sealed class ComplexSub : RecoverMultiply
     }
     private Matrix<Complex> Cocoon(string[] split)
     {
-        ComplexSub body = ObtainSub(split[0], null, new Matrix<Complex>[split.Length - 1]);
+        ComplexSub body = ObtainSub(split[0], Z, new Matrix<Complex>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
         return body.Obtain();
     } // For shallow and complicated composites
@@ -2576,7 +2576,7 @@ public sealed class RealSub : RecoverMultiply
         => new(input, x, y, X, Y, buffCocs, rows, columns, useList);
     private Matrix<float> ObtainValue(string input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
     public static float Obtain(string input, float x = 0) => new RealSub(input, new(x), null, null, null, null, 1, 1).Obtain()[0, 0];
-    public static int ToInt(string input) => (int)Obtain(input); // Often bound to MyString.For
+    public static int ToInt(string input) => (int)Obtain(input); // Often bound to RealComplex.For
     #endregion
 
     #region Basic Calculations
@@ -2779,7 +2779,7 @@ public sealed class RealSub : RecoverMultiply
     } // Special for real
     private Matrix<float> Cocoon(string[] split)
     {
-        RealSub body = ObtainSub(split[0], null, null, new Matrix<float>[split.Length - 1]);
+        RealSub body = ObtainSub(split[0], X, Y, new Matrix<float>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
         return body.Obtain();
     } // For shallow and complicated composites
