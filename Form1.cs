@@ -41,7 +41,7 @@ public partial class Graph : Form
     private static readonly int X_LEFT_MAC = 620, X_RIGHT_MAC = 1520, Y_UP_MAC = 45, Y_DOWN_MAC = 945,
         X_LEFT_MIC = 1565, X_RIGHT_MIC = 1765, Y_UP_MIC = 745, Y_DOWN_MIC = 945, X_LEFT_CHECK = 1921, X_RIGHT_CHECK = 1922,
         Y_UP_CHECK = 1081, Y_DOWN_CHECK = 1082, REF_POS_1 = 9, REF_POS_2 = 27, WIDTH_IND = 22, HEIGHT_IND = 55,
-        LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 200;
+        LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 200, THRESHOLD = 1000;
     private static float[] scopes; // Corresponding to tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]
     private static int[] borders; // = [x_left, x_right, y_up, y_down]
     private static Matrix<Complex> output_complex;
@@ -199,8 +199,8 @@ public partial class Graph : Form
         {
             float _scope = Obtain(GeneralInput);
             scopes = [-_scope, _scope, -_scope, _scope]; // Remind the signs
-            for (int i = 0; i < tbxDetails.Length; i++) SetText(tbxDetails[i], scopes[i].ToString("#0.0000"));
-        }
+            for (int i = 0; i < tbxDetails.Length; i++) SetText(tbxDetails[i], scopes[i].ToString("0.################"));
+        } // Never using scientific notation
         else for (int i = 0; i < tbxDetails.Length; i++) scopes[i] = Obtain(tbxDetails[i]);
         MyString.ThrowException(InvalidScopesX() || InvalidScopesY()); // The detailed exception is determined later
 
@@ -758,7 +758,7 @@ public partial class Graph : Form
         => actionHandler(LinearTransform(e.X, e.Y, GetRatioRow(borders), GetRatioColumn(borders), borders));
     private void DisplayMouseMove(MouseEventArgs e, float xCoor, float yCoor)
     {
-        static string trimForMove(float input) => MyString.TrimLargeNum(input, 1000000);
+        static string trimForMove(float input) => MyString.TrimExtremeNum(input, THRESHOLD);
         SetText(X_CoorDisplay, trimForMove(xCoor)); SetText(Y_CoorDisplay, trimForMove(yCoor));
         SetText(ModulusDisplay, trimForMove(Complex.Modulus(xCoor, yCoor)));
         SetText(AngleDisplay, MyString.GetAngle(xCoor, yCoor));
@@ -776,7 +776,7 @@ public partial class Graph : Form
     }
     private void DisplayMouseDown(MouseEventArgs e, float xCoor, float yCoor)
     {
-        static string trimForDown(float input) => MyString.TrimLargeNum(input, 100);
+        static string trimForDown(float input) => MyString.TrimExtremeNum(input, THRESHOLD);
         string _xCoor = trimForDown(xCoor), _yCoor = trimForDown(yCoor),
             Modulus = trimForDown(Complex.Modulus(xCoor, yCoor)), Angle = MyString.GetAngle(xCoor, yCoor);
 
@@ -1899,9 +1899,9 @@ public class MyString
         if (startIndex == input.Length) return String.Empty;
         return input.Slice(startIndex).ToString();
     }
-    public static string TrimLargeNum(float input, float threshold)
-        => MathF.Abs(input) < threshold ? input.ToString("#0.000000") : input.ToString("E3");
-    public static string GetAngle(float x, float y) => (Graph.ArgRGB(x, y) / MathF.PI).ToString("#0.00000") + " * PI";
+    public static string TrimExtremeNum(float input, float threshold)
+        => (MathF.Abs(input) < threshold && MathF.Abs(input) > 1 / threshold) ? input.ToString() : input.ToString("E3");
+    public static string GetAngle(float x, float y) => (Graph.ArgRGB(x, y) / MathF.PI).ToString("#0.000000") + " π";
     public static void ThrowException(bool error = true) { if (error) throw new Exception(); }
     public static void ThrowInvalidLengths(string[] split, int[] length) => ThrowException(!length.Contains(split.Length));
     protected static int ThrowReturnLengths(string[] split, int length, int iteration)
