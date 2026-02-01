@@ -1842,15 +1842,13 @@ public class MyString
     protected static string BraFreePart(ReadOnlySpan<char> input, int start, int end) => Extract(input, start + 1, end - 1);
     protected static string TryBraNum(ReadOnlySpan<char> input, char c1, char c2)
     { ThrowException(input[0] != c1 || input[^1] != c2); return BraFreePart(input, 0, input.Length - 1); }
-    public static string Replace(string origStr, string subStr, int start, int end)
-        => String.Create(start + subStr.Length + origStr.Length - end - 1, (origStr, subStr, start, end), (span, state) =>
+    public static string Replace(string orig, string sub, int start, int end)
+        => String.Create(start + sub.Length + orig.Length - end - 1, (start, end, sub.Length), (span, state) =>
         {
-            var (_origStr, _subStr, _start, _end) = state;
-            _origStr.AsSpan(0, _start).CopyTo(span); // Copying the beginning
-            _subStr.AsSpan().CopyTo(span[_start..]); // Copying the substitution
-            _origStr.AsSpan(_end + 1).CopyTo(span[(_start + _subStr.Length)..]); // Copying the remaining
+            var (_start, _end, _subLen) = state;
+            orig[.._start].CopyTo(span); sub.CopyTo(span[_start..]); orig[(_end + 1)..].CopyTo(span[(_start + _subLen)..]);
         });
-    public static string ReplaceLoop(string[] split, int origIdx, int subIdx, int i)
+    public static string ReplaceLoop(ReadOnlySpan<string> split, int origIdx, int subIdx, int i)
         => split[origIdx].Replace(split[subIdx], WrapBase(i, '(', ')'));
     protected static string ReplaceInput(string input, ref int countBra, int start, int end)
         => Replace(input, WrapBase(countBra++, '[', ']'), start, end);
@@ -1871,7 +1869,7 @@ public class MyString
     } // To prevent the interior ',' from interfering with exterior splitting
     private static string[] ReplaceRecover(string input)
         => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
-    protected static string ReplaceSubstrings(string input, string[] substrings, string substitution)
+    protected static string ReplaceSubstrings(string input, ReadOnlySpan<string> substrings, string substitution)
     { foreach (string s in substrings) input = input.Replace(s, substitution); return input; }
     public static string ReplaceZetas(string input) => ReplaceSubstrings(input, ZETAS, "(");
     #endregion
@@ -1903,8 +1901,8 @@ public class MyString
         => (MathF.Abs(input) < threshold && MathF.Abs(input) > 1 / threshold) ? input.ToString() : input.ToString("E3");
     public static string GetAngle(float x, float y) => (Graph.ArgRGB(x, y) / MathF.PI).ToString("#0.000000") + " π";
     public static void ThrowException(bool error = true) { if (error) throw new Exception(); }
-    public static void ThrowInvalidLengths(string[] split, int[] length) => ThrowException(!length.Contains(split.Length));
-    protected static int ThrowReturnLengths(string[] split, int length, int iteration)
+    public static void ThrowInvalidLengths(ReadOnlySpan<string> split, int[] lengths) => ThrowException(!lengths.Contains(split.Length));
+    protected static int ThrowReturnLengths(ReadOnlySpan<string> split, int length, int iteration)
     { ThrowInvalidLengths(split, [length, length + 1]); return split.Length == length ? iteration : RealSub.ToInt(split[^1]); }
     #endregion
 } /// String manipulations
@@ -1938,22 +1936,22 @@ public class RealComplex : MyString
     public static void For(int start, int end, Action<int> action) { for (int i = start; i <= end; i++) action(i); }
     protected static Matrix<float> ChooseMode(string mode, Matrix<float> m1, Matrix<float> m2, int[] rowOffs, int columns)
         => Char.Parse(mode) switch { MODE_1 => m1, MODE_2 => m2 };
-    protected static MatrixCopy<TEntry> HandleSolo<TEntry>(string input, MatrixCopy<TEntry> mc)
+    protected static MatrixCopy<TEntry> HandleSolo<TEntry>(ReadOnlySpan<char> input, MatrixCopy<TEntry> mc)
     { ThrowException(input.Length != 1); return mc; }
-    private static StringBuilder GetSignsBuilder(string input, string signs)
+    private static StringBuilder GetSignsBuilder(ReadOnlySpan<char> input, string signs)
     {
         StringBuilder signsBuilder = new();
         for (int i = 0; i < input.Length; i++) if (signs.Contains(input[i])) signsBuilder.Append(input[i]);
         return signsBuilder;
     }
-    protected static (string[], StringBuilder) GetPlusSubtractComponents(string input)
+    protected static (string[], StringBuilder) GetPlusSubtractComponents(ReadOnlySpan<char> input)
     {
-        bool minusHead = input[0] == '-'; input = TrimStartChar(input, '-');
-        return (SplitByChars(input, "+-"), GetSignsBuilder(String.Concat(minusHead ? '-' : '+', input), "+-"));
+        bool minusHead = input[0] == '-'; string _input = TrimStartChar(input, '-');
+        return (SplitByChars(_input, "+-"), GetSignsBuilder(String.Concat(minusHead ? '-' : '+', _input), "+-"));
     } // Sensitive
-    protected static (string[], StringBuilder) GetMultiplyDivideComponents(string input)
+    protected static (string[], StringBuilder) GetMultiplyDivideComponents(ReadOnlySpan<char> input)
         => (SplitByChars(input, "*/"), GetSignsBuilder(input, "*/"));
-    protected static (bool trig, bool hyper) IsInverseFunc(int start, string input)
+    protected static (bool trig, bool hyper) IsInverseFunc(int start, ReadOnlySpan<char> input)
         => (start > 1 ? input[start - 2] == _A : true, start > 2 ? input[start - 3] == _A : true); // Should not simplify
 } /// Commonalities for RealSub & ComplexSub
 public class ReplaceTags : RealComplex
@@ -2429,7 +2427,7 @@ public sealed class ComplexSub : RecoverMultiply
         bool equal = _const.Equals(cm._const); Matrix<Complex> mtx = equal ? cm.matrix : Const(_const); countCst++;
         return new(mtx, equal);
     } // Sensitive
-    private MatrixCopy<Complex> Transform(string input) => input[0] switch
+    private MatrixCopy<Complex> Transform(ReadOnlySpan<char> input) => input[0] switch
     {
         _Z => HandleSolo<Complex>(input, new(z, true)),
         Z_ => HandleSolo<Complex>(input, new(Z, true)),
@@ -2441,7 +2439,7 @@ public sealed class ComplexSub : RecoverMultiply
         G => HandleSolo<Complex>(input, ConstMtx(new(GAMMA))),
         _ => ConstMtx(new(Single.Parse(input)))
     };
-    private MatrixCopy<Complex> PowerCore(string input)
+    private MatrixCopy<Complex> PowerCore(ReadOnlySpan<char> input)
     {
         if (!input.Contains('^')) return Transform(input);
         string[] split = SplitByChars(input, "^");
@@ -2449,7 +2447,7 @@ public sealed class ComplexSub : RecoverMultiply
         for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
         return new(tower);
     }
-    private MatrixCopy<Complex> MultiplyDivideCore(string input)
+    private MatrixCopy<Complex> MultiplyDivideCore(ReadOnlySpan<char> input)
     {
         if (!ContainsAny(input, "*/")) return PowerCore(input);
         var (split, signs) = GetMultiplyDivideComponents(input);
@@ -2461,7 +2459,7 @@ public sealed class ComplexSub : RecoverMultiply
         }
         return new(product);
     }
-    private MatrixCopy<Complex> PlusSubtractCore(string input)
+    private MatrixCopy<Complex> PlusSubtractCore(ReadOnlySpan<char> input)
     {
         if (!ContainsAny(input, "+-")) return MultiplyDivideCore(input);
         var (split, signs) = GetPlusSubtractComponents(input);
@@ -2473,7 +2471,7 @@ public sealed class ComplexSub : RecoverMultiply
         }
         return new(sum);
     }
-    private MatrixCopy<Complex> ComputeBraFreePart(string input)
+    private MatrixCopy<Complex> ComputeBraFreePart(ReadOnlySpan<char> input)
         => Int32.TryParse(input, out int result) ? ConstMtx(new(result)) : PlusSubtractCore(input); // Single.Parse is slower
     private MatrixCopy<Complex> SubCore(string input, int start, MatrixCopy<Complex> bFValue, ref int tagL)
     {
@@ -2892,7 +2890,7 @@ public sealed class RealSub : RecoverMultiply
         bool equal = _const.Equals(cm._const); Matrix<float> mtx = equal ? cm.matrix : Const(_const); countCst++;
         return new(mtx, equal);
     } // Sensitive
-    private MatrixCopy<float> Transform(string input) => input[0] switch
+    private MatrixCopy<float> Transform(ReadOnlySpan<char> input) => input[0] switch
     {
         _X => HandleSolo<float>(input, new(x, true)),
         _Y => HandleSolo<float>(input, new(y, true)),
@@ -2905,7 +2903,7 @@ public sealed class RealSub : RecoverMultiply
         G => HandleSolo<float>(input, ConstMtx(GAMMA)),
         _ => ConstMtx(Single.Parse(input))
     };
-    private MatrixCopy<float> PowerCore(string input)
+    private MatrixCopy<float> PowerCore(ReadOnlySpan<char> input)
     {
         if (!input.Contains('^')) return Transform(input);
         string[] split = SplitByChars(input, "^");
@@ -2913,7 +2911,7 @@ public sealed class RealSub : RecoverMultiply
         for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
         return new(tower);
     }
-    private MatrixCopy<float> MultiplyDivideCore(string input)
+    private MatrixCopy<float> MultiplyDivideCore(ReadOnlySpan<char> input)
     {
         if (!ContainsAny(input, "*/")) return PowerCore(input);
         var (split, signs) = GetMultiplyDivideComponents(input);
@@ -2925,7 +2923,7 @@ public sealed class RealSub : RecoverMultiply
         }
         return new(product);
     }
-    private MatrixCopy<float> PlusSubtractCore(string input)
+    private MatrixCopy<float> PlusSubtractCore(ReadOnlySpan<char> input)
     {
         if (!ContainsAny(input, "+-")) return MultiplyDivideCore(input);
         var (split, signs) = GetPlusSubtractComponents(input);
@@ -2937,7 +2935,7 @@ public sealed class RealSub : RecoverMultiply
         }
         return new(sum);
     }
-    private MatrixCopy<float> ComputeBraFreePart(string input)
+    private MatrixCopy<float> ComputeBraFreePart(ReadOnlySpan<char> input)
        => Int32.TryParse(input, out int result) ? ConstMtx(result) : PlusSubtractCore(input); // Single.Parse is slower
     private MatrixCopy<float> SubCore(string input, int start, MatrixCopy<float> bFValue, ref int tagL)
     {
@@ -3097,6 +3095,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
         var (mod, unit) = (MathF.Exp(-MathF.Tau * c.imaginary), MathF.SinCos(MathF.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
     } // Often used in analytic number theory, represented by 'q'
+
     public static Complex Sin(Complex c)
     {
         var (mod, unit) = (MathF.Exp(-c.imaginary), MathF.SinCos(c.real));
@@ -3157,6 +3156,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
         Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); float re = _c.real - 1, im = _c.imaginary;
         return new(MathF.Log(re * re + im * im) / 4, MathF.Atan2(im, re) / 2);
     }
+
     public static Complex Sqrt(Complex c) => Pow(c, 0.5f);
     public static float Modulus(float x, float y) => Modulus(new(x, y));
     public static float Modulus(Complex c) => MathF.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
