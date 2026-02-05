@@ -1,5 +1,3 @@
-/// DATE: 2023.4~5, 2024.9~11, 2025.1, 2026.1
-
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
 using System.Drawing.Imaging; // BitmapData
@@ -633,7 +631,7 @@ public partial class Graph : Form
         var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
         int toInt(int index) => RealSub.ToInt(split[index]);
         int int3 = toInt(3), int4 = is_checking ? int3 : (int)MathF.Max(int3, toInt(4)); // Necessary
-        string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops);
+        string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops.ToString(), true);
         string obtainDisplayInput(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(5, loops) : defaultInput;
 
         MyString.ThrowInvalidLengths(split, [5, 6]);
@@ -670,7 +668,7 @@ public partial class Graph : Form
             containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
         int toInt(int index) => RealSub.ToInt(split[index]);
         int int2 = toInt(2), int3 = is_checking ? int2 : (int)MathF.Max(int2, toInt(3)); // Necessary
-        for (int loops = int2; loops <= int3; loops++) displayMethod(MyString.ReplaceLoop(split, 0, 1, loops));
+        for (int loops = int2; loops <= int3; loops++) displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true));
     }
     private void DisplayOnScreen()
     {
@@ -1834,7 +1832,6 @@ public class MyString
         foreach (char c in input) { if (c == '(') sum++; else if (c == ')') sum--; if (sum < 0) return false; }
         return sum == 0;
     }
-    private static string WrapBase(int n, char c1, char c2) => String.Concat(c1, n.ToString(), c2);
     #endregion
 
     #region Replacement
@@ -1842,22 +1839,24 @@ public class MyString
     protected static string BraFreePart(ReadOnlySpan<char> input, int start, int end) => Extract(input, start + 1, end - 1);
     protected static string TryBraNum(ReadOnlySpan<char> input, char c1, char c2)
     { ThrowException(input[0] != c1 || input[^1] != c2); return BraFreePart(input, 0, input.Length - 1); }
-    public static string Replace(string orig, string sub, int start, int end)
+    private static string ReplaceCore(string orig, string sub, int start, int end)
         => String.Create(start + sub.Length + orig.Length - end - 1, (start, end, sub.Length), (span, state) =>
         {
             var (_start, _end, _subLen) = state;
             orig[.._start].CopyTo(span); sub.CopyTo(span[_start..]); orig[(_end + 1)..].CopyTo(span[(_start + _subLen)..]);
         });
-    public static string ReplaceLoop(ReadOnlySpan<string> split, int origIdx, int subIdx, int i)
-        => split[origIdx].Replace(split[subIdx], WrapBase(i, '(', ')'));
-    protected static string ReplaceInput(string input, ref int countBra, int start, int end)
-        => Replace(input, WrapBase(countBra++, '[', ']'), start, end);
-    protected static void ReplaceInput(ref string input, ref int countBra, ref int start, int end, ref int tagL)
-    { start -= tagL; tagL = 0; input = ReplaceInput(input, ref countBra, start--, end); }
-    private static string ReplaceInterior(string input, char origChar, char subChar)
+    public static string Replace(ReadOnlySpan<char> orig, ReadOnlySpan<char> sub, int start, int end)
+        => ReplaceCore(orig.ToString(), sub.ToString(), start, end);
+    public static string ReplaceLoop(ReadOnlySpan<string> split, int origIdx, int subIdx, string idxStr, bool wrapBra = false)
+        => split[origIdx].Replace(split[subIdx], wrapBra ? String.Concat('(', idxStr, ')') : idxStr);
+    protected static string ReplaceInput(ReadOnlySpan<char> input, int countBra, int start, int end)
+        => Replace(input, String.Concat('[', countBra.ToString(), ']'), start, end);
+    protected static string ReplaceInput(ReadOnlySpan<char> input, int countBra, ref int start, int end, ref int tagL)
+    { start -= tagL; tagL = 0; return ReplaceInput(input, countBra, start--, end); }
+    private static string ReplaceInterior(ReadOnlySpan<char> input, char origChar, char subChar)
     {
-        if (!input.Contains(ReplaceTags.UNDERLINE)) return input;
-        StringBuilder buffer = new(input);
+        if (!input.Contains(ReplaceTags.UNDERLINE)) return input.ToString();
+        StringBuilder buffer = new(input.ToString());
         for (int i = 0; i < buffer.Length; i++)
         {
             if (buffer[i] != ReplaceTags.UNDERLINE) continue;
@@ -1867,7 +1866,7 @@ public class MyString
         } // Sensitive
         return buffer.ToString();
     } // To prevent the interior ',' from interfering with exterior splitting
-    private static string[] ReplaceRecover(string input)
+    private static string[] ReplaceRecover(ReadOnlySpan<char> input)
         => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
     protected static string ReplaceSubstrings(string input, ReadOnlySpan<string> substrings, string substitution)
     { foreach (string s in substrings) input = input.Replace(s, substitution); return input; }
@@ -1929,7 +1928,6 @@ public class RealComplex : MyString
         rowChk = rows / step; rowOffs = GetArithProg(rows, columns);
         strd = columns * step; strdInit = GetArithProg(rowChk, step);
         resInit = rowChk * step; res = rows - resInit;
-
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
@@ -2283,13 +2281,14 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
-        ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, validLength - 3, 0), initMtx, buffCocs, true);
+        int subIdx = validLength - 3; split[0] = ReplaceLoop(split, 0, subIdx, split[subIdx], true);
+        ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, buffCocs, true);
 
         void resetCount() => buffer.countBra = buffer.countCst = 0;
         buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
 
         For(RealSub.ToInt(split[validLength - 2]), RealSub.ToInt(split[validLength - 1]), i =>
-        { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), true); resetCount(); action(buffer); });
+        { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
         return buffer.Z;
     } // Meticulously optimized
     private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
@@ -2522,7 +2521,7 @@ public sealed class ComplexSub : RecoverMultiply
             K_ => handleSub(Cocoon, 2)
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
-        return ReplaceInput(input, ref countBra, idx - tagL, end);
+        return ReplaceInput(input, countBra++, idx - tagL, end);
     }
     public Matrix<Complex> Obtain()
     {
@@ -2535,7 +2534,7 @@ public sealed class ComplexSub : RecoverMultiply
             {
                 ResetStartEnd(input, ref start, ref end);
                 braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end)), ref tagL);
-                ReplaceInput(ref input, ref countBra, ref start, end, ref tagL);
+                input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
             }
         }
         return ComputeBraFreePart(input).matrix; // No need to copy
@@ -2727,13 +2726,14 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<float> ProcessSPI(string[] split, int validLength, Matrix<float> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
-        RealSub buffer = ObtainSub(ReplaceLoop(split, 0, validLength - 3, 0), initMtx, null, buffCocs, true);
+        int subIdx = validLength - 3; split[0] = ReplaceLoop(split, 0, subIdx, split[subIdx], true);
+        RealSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, null, buffCocs, true);
 
         void resetCount() => buffer.countBra = buffer.countCst = 0;
         buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
 
         For(ToInt(split[validLength - 2]), ToInt(split[validLength - 1]), i =>
-        { buffer.input = Recover(ReplaceLoop(split, 0, validLength - 3, i), false); resetCount(); action(buffer); });
+        { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
         return buffer.X;
     } // Meticulously optimized
     private Matrix<float> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
@@ -2742,16 +2742,16 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<float> Iterate2(string[] split)
     {
         ThrowInvalidLengths(split, [8]);
-        RealSub obtain(int i) => ObtainSub(ReplaceLoop(split, i, 4, 0), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
+        split[0] = ReplaceLoop(split, 0, 4, split[4], true); split[1] = ReplaceLoop(split, 1, 4, split[4], true);
+        RealSub obtain(int i) => ObtainSub(ReplaceLoop(split, i, 4, "0"), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
         RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<float> temp1, temp2;
 
         void resetCount() => buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
         buffer1.Obtain(); buffer2.Obtain(); resetCount(); buffer1.readList = buffer2.readList = true; // To precompute cstMtcs
 
-        string obtainInput(int s, int i) => Recover(ReplaceLoop(split, s, 4, i), false);
         For(ToInt(split[5]), ToInt(split[6]), i =>
         {
-            buffer1.input = obtainInput(0, i); buffer2.input = obtainInput(1, i);
+            buffer1.input = ReplaceLoop(split, 0, 4, i.ToString()); buffer2.input = ReplaceLoop(split, 1, 4, i.ToString());
             resetCount(); temp1 = buffer1.Obtain(); temp2 = buffer2.Obtain(); // Necessary
             buffer1.X = buffer2.X = temp1; buffer1.Y = buffer2.Y = temp2;
         });
@@ -2996,7 +2996,7 @@ public sealed class RealSub : RecoverMultiply
             K_ => handleSub(Cocoon, 2)
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
-        return ReplaceInput(input, ref countBra, idx - tagL, end);
+        return ReplaceInput(input, countBra++, idx - tagL, end);
     }
     public Matrix<float> Obtain()
     {
@@ -3009,7 +3009,7 @@ public sealed class RealSub : RecoverMultiply
             {
                 ResetStartEnd(input, ref start, ref end);
                 braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end)), ref tagL);
-                ReplaceInput(ref input, ref countBra, ref start, end, ref tagL);
+                input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
             }
         }
         return ComputeBraFreePart(input).matrix; // No need to copy
