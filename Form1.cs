@@ -1823,7 +1823,6 @@ public class MyString
         { for (int i = start, j = -1; ; i--) { if (input[i] == ')') j = i; else if (input[i] == '(') return (i, j); } }
         static int pairedInnerBra(ReadOnlySpan<char> input, int start)
         { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
-
         int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
     } // Backward lookup for parenthesis pairs, extremely sensitive
     public static bool CheckParenthesis(ReadOnlySpan<char> input)
@@ -2281,7 +2280,7 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
-        int subIdx = validLength - 3; split[0] = ReplaceLoop(split, 0, subIdx, split[subIdx], true);
+        int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
         ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, buffCocs, true);
 
         void resetCount() => buffer.countBra = buffer.countCst = 0;
@@ -2726,7 +2725,7 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<float> ProcessSPI(string[] split, int validLength, Matrix<float> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
-        int subIdx = validLength - 3; split[0] = ReplaceLoop(split, 0, subIdx, split[subIdx], true);
+        int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
         RealSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, null, buffCocs, true);
 
         void resetCount() => buffer.countBra = buffer.countCst = 0;
@@ -2742,7 +2741,8 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<float> Iterate2(string[] split)
     {
         ThrowInvalidLengths(split, [8]);
-        split[0] = ReplaceLoop(split, 0, 4, split[4], true); split[1] = ReplaceLoop(split, 1, 4, split[4], true);
+        string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
+        split[0] = replaceLoop(0); split[1] = replaceLoop(1);
         RealSub obtain(int i) => ObtainSub(ReplaceLoop(split, i, 4, "0"), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
         RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<float> temp1, temp2;
 
