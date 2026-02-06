@@ -1783,7 +1783,7 @@ public class MyString
     private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; }
     public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]), FUNC_NAMES = AddSuffix(["func", "Func"]),
         POLAR_NAMES = AddSuffix(["polar", "Polar"]), PARAM_NAMES = AddSuffix(["param", "Param"]), ZETAS = AddSuffix(["zeta", "Zeta"]);
-    public static readonly string[] FPP_NAMES = FUNC_NAMES.Concat(POLAR_NAMES).Concat(PARAM_NAMES).ToArray();
+    public static readonly string[] FPP_NAMES = [.. FUNC_NAMES, .. POLAR_NAMES, .. PARAM_NAMES];
     protected static readonly char SUB_CHAR = ';'; // Replacing ','
 
     #region Reckoning
