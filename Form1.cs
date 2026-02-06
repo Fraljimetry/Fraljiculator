@@ -279,28 +279,29 @@ public partial class Graph : Form
     private static void DrawAxesGrids(int[] borders)
     {
         bdp_painted = true; // To prevent calling Graph_Paint afterwards
-        var (xInit, yInit, xEnd, yEnd) = (AddOne(borders[0]), AddOne(borders[2]), borders[1], borders[3]);
         static float calculateGrid(float range) => MathF.Pow(GRID, MathF.Floor(MathF.Log(range / 2, GRID)));
         var (xGrid, yGrid) = (calculateGrid(RowScopes()), calculateGrid(ColumnScopes()));
+        var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
+        var (xInit, yInit, xEnd, yEnd) = (AddOne(borders[0]), AddOne(borders[2]), borders[1], borders[3]);
 
         void drawGrids(float xGrid, float yGrid, float penWidth)
         {
             Pen gridPen = new(GRID_GRAY, penWidth);
             RealComplex.For((int)MathF.Floor(scopes[2] / yGrid), (int)MathF.Ceiling(scopes[3] / yGrid), i =>
             {
-                int pos = LinearTransformY(i * yGrid, borders);
+                int pos = LinearTransformY(i * yGrid, borders, ratioColumn);
                 if (pos >= yInit && pos < yEnd) graphics.DrawLine(gridPen, xInit, pos, xEnd, pos);
             });
             RealComplex.For((int)MathF.Floor(scopes[0] / xGrid), (int)MathF.Ceiling(scopes[1] / xGrid), i =>
             {
-                int pos = LinearTransformX(i * xGrid, borders);
+                int pos = LinearTransformX(i * xGrid, borders, ratioRow);
                 if (pos >= xInit && pos < xEnd) graphics.DrawLine(gridPen, pos, yEnd, pos, yInit);
             });
         }
         drawGrids(xGrid, yGrid, GRID_WIDTH_1);
         drawGrids(xGrid / GRID, yGrid / GRID, GRID_WIDTH_2);
 
-        var (x, y) = (LinearTransformX(0f, borders), LinearTransformY(0f, borders));
+        var (x, y) = (LinearTransformX(0f, borders, ratioRow), LinearTransformY(0f, borders, ratioColumn));
         if (y >= yInit && y < yEnd) graphics.DrawLine(AXES_PEN, xInit, y, xEnd, y);
         if (x >= xInit && x < xEnd) graphics.DrawLine(AXES_PEN, x, yEnd, x, yInit);
     }
@@ -324,10 +325,10 @@ public partial class Graph : Form
     #region Numerics
     private static float GetRatioRow(int[] borders) => RowScopes() / RowBorders(borders);
     private static float GetRatioColumn(int[] borders) => -ColumnScopes() / ColumnBorders(borders); // Remind the minus sign
-    private static int LinearTransformX(float x, int[] borders) => (int)(borders[0] + (x - scopes[0]) / GetRatioRow(borders));
-    private static int LinearTransformY(float y, int[] borders) => (int)(borders[2] + (y - scopes[3]) / GetRatioColumn(borders));
+    private static int LinearTransformX(float x, int[] borders, float ratioRow) => (int)(borders[0] + (x - scopes[0]) / ratioRow);
+    private static int LinearTransformY(float y, int[] borders, float ratioColumn) => (int)(borders[2] + (y - scopes[3]) / ratioColumn);
     private static (float, float) LinearTransform(int x, int y, float xCoor, float yCoor, int[] borders)
-        => (scopes[0] + (x - borders[0]) * xCoor, scopes[3] + (y - borders[2]) * yCoor); // For optimization
+        => (scopes[0] + (x - borders[0]) * xCoor, scopes[3] + (y - borders[2]) * yCoor);
     private static int LowIdx(float a, float m) => (int)MathF.Floor(a / m);
     private static float LowDist(float a, float m) => a - m * LowIdx(a, m);
     private static float LowRatio(float a, float m) => a == -0 ? 1 : LowDist(a, m) / m; // -0 is necessary
@@ -353,14 +354,14 @@ public partial class Graph : Form
     } // To find the min and max of the atan'ed matrix to prevent infinitude
     private unsafe static (int, int, Matrix<float>, Matrix<float>) GetRowColumnCoor()
     {
-        var (rows, columns) = (RowBorders(borders), ColumnBorders(borders));
+        var (rows, columns, _x, _y) = (RowBorders(borders), ColumnBorders(borders), GetRatioRow(borders), GetRatioColumn(borders));
         var (xCoor, yCoor) = (GetMatrix(rows, columns), GetMatrix(rows, columns));
-        var (xInit, yInit, _x, _y) = (AddOne(borders[0]), AddOne(borders[2]), GetRatioRow(borders), GetRatioColumn(borders));
         Parallel.For(0, rows, p =>
         {
-            float* xPtr = xCoor.RowPtr(p), yPtr = yCoor.RowPtr(p); int _xInit = xInit + p, _yInit = yInit; // Must NOT be pre-defined
-            for (int q = 0; q < columns; q++, xPtr++, yPtr++, _yInit++) (*xPtr, *yPtr) = LinearTransform(_xInit, _yInit, _x, _y, borders);
-        });
+            float* xPtr = xCoor.RowPtr(p), yPtr = yCoor.RowPtr(p);
+            var (x, y) = (scopes[0] + (1 + p) * _x, scopes[3] + _y);
+            for (int q = 0; q < columns; q++, xPtr++, yPtr++, y += _y) (*xPtr, *yPtr) = (x, y);
+        }); // Optimized linear transforms
         return (rows, columns, xCoor, yCoor);
     }
     #endregion
@@ -378,17 +379,17 @@ public partial class Graph : Form
         }); // Deliberate loop order
         bmp.UnlockBits(bmpData);
     }
-    private unsafe void SetPixelFast(byte* _ptr, Color color, ref int pixNum)
+    private unsafe void SetPixel(byte* _ptr, Color color, ref int pixNum)
     { pixNum++; *_ptr = color.B; _ptr++; *_ptr = color.G; _ptr++; *_ptr = color.R; _ptr++; *_ptr = color.A; }
     private unsafe void RealSpecial(byte* _ptr, Color _zero, Color _pole, float _value, (float min, float max) mM, ref int pixNum)
     {
-        if (_value < Single.Lerp(mM.min, mM.max, size_real)) SetPixelFast(_ptr, _zero, ref pixNum);
-        if (_value > Single.Lerp(mM.max, mM.min, size_real)) SetPixelFast(_ptr, _pole, ref pixNum);
+        if (_value < Single.Lerp(mM.min, mM.max, size_real)) SetPixel(_ptr, _zero, ref pixNum);
+        if (_value > Single.Lerp(mM.max, mM.min, size_real)) SetPixel(_ptr, _pole, ref pixNum);
     }
     private unsafe void ComplexSpecial(byte* _ptr, Color _zero, Color _pole, float _value, ref int pixNum)
     {
-        if (_value < epsilon) SetPixelFast(_ptr, _zero, ref pixNum);
-        if (_value > 1 / epsilon) SetPixelFast(_ptr, _pole, ref pixNum);
+        if (_value < epsilon) SetPixel(_ptr, _zero, ref pixNum);
+        if (_value > 1 / epsilon) SetPixel(_ptr, _pole, ref pixNum);
     }
     private delegate void PixelLoop(int x, int y, IntPtr pixelPtr, ref int pixNum); // Instead of Action<int, int, IntPtr, ref int>
     private unsafe static void LoopBase(PixelLoop pixelLoop)
@@ -415,7 +416,7 @@ public partial class Graph : Form
             float _value = output[x, y];
             if (Single.IsNaN(_value)) return;
             var _pixelPtr = (byte*)pixelPtr;
-            SetPixelFast(_pixelPtr, extractor(_value), ref pixNum);
+            SetPixel(_pixelPtr, extractor(_value), ref pixNum);
             if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathF.Atan(_value), mM, ref pixNum);
         });
     private unsafe void ComplexLoop(Matrix<Complex> output, Color _zero, Color _pole, Func<Complex, Color> extractor)
@@ -424,7 +425,7 @@ public partial class Graph : Form
             Complex _value = output[x, y];
             if (Single.IsNaN(_value.real) || Single.IsNaN(_value.imaginary)) return;
             var _pixelPtr = (byte*)pixelPtr;
-            SetPixelFast(_pixelPtr, extractor(_value), ref pixNum);
+            SetPixel(_pixelPtr, extractor(_value), ref pixNum);
             if (!delete_point) ComplexSpecial(_pixelPtr, _zero, _pole, Complex.Modulus(_value), ref pixNum);
         });
     private static Func<float, Color> GetColorReal123(int mode) => _value =>
@@ -561,10 +562,11 @@ public partial class Graph : Form
 
         Point pos = new(), posBuffer = new(); bool inRange, inRangeBuffer = false; int _ratio, _ratioBuffer = 0;
         float relativeSpeed = Obtain(DenseInput) / length, ratio; float* v1Ptr = value1.RowPtr(), v2Ptr = value2.RowPtr();
+        var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
 
         for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++, segment_number++)
         {
-            (pos.X, pos.Y) = (LinearTransformX(*v1Ptr, borders), LinearTransformY(*v2Ptr, borders));
+            (pos.X, pos.Y) = (LinearTransformX(*v1Ptr, borders, ratioRow), LinearTransformY(*v2Ptr, borders, ratioColumn));
             inRange = *v1Ptr > scopes[0] && *v1Ptr < scopes[1] && *v2Ptr > scopes[2] && *v2Ptr < scopes[3];
             if (inRangeBuffer && inRange && posBuffer != pos)
             {
@@ -579,7 +581,7 @@ public partial class Graph : Form
                 graphics.DrawLine(selectedPen, posBuffer, pos);
 
                 SetScrollBars(true); // Necessary for each loop
-                DrawScrollBar(LinearTransform(pos.X, pos.Y, GetRatioRow(borders), GetRatioColumn(borders), borders));
+                DrawScrollBar(LinearTransform(pos.X, pos.Y, ratioRow, ratioColumn, borders));
                 _ratio = Frac(REFRESH, ratio);
                 if (_ratioBuffer != _ratio) DrawReferenceRectangles(selectedPen.Color);
                 _ratioBuffer = _ratio;
@@ -676,7 +678,7 @@ public partial class Graph : Form
         string[] split = MyString.SplitByChars(InputString.Text, "|");
         for (int loops = 0; loops < split.Length; loops++)
         {
-            if (is_checking) CheckComplex.Checked = MyString.ContainsAny(MyString.ReplaceZetas(split[loops]), RecoverMultiply._ZZ_);
+            CheckComplex.Checked = MyString.ContainsAny(MyString.ReplaceZetas(split[loops]), RecoverMultiply._ZZ_);
             string component = RecoverMultiply.Simplify(split[loops], is_complex);
             bool containsTags(string[] str) => MyString.ContainsAny(component, str);
             Action<string> displayMethod =    // Should not pull outside of the loop
@@ -695,16 +697,14 @@ public partial class Graph : Form
         if (IllegalRatio(alpha)) return Color.Empty; // Necessary
         float _argument = argument * 3 / MathF.PI; int proportion, region = argument < 0 ? -1 : (int)_argument;
         if (region == 6) region = proportion = 0; else proportion = Frac(255, _argument - region);
-
-        Color getArgb(int r, int g, int b) => Argb(decay, r, g, b);
         return region switch
         {
-            0 => getArgb(Frac(255, alpha), Frac(proportion, alpha), 0),
-            1 => getArgb(Frac(255 - proportion, alpha), Frac(255, alpha), 0),
-            2 => getArgb(0, Frac(255, alpha), Frac(proportion, alpha)),
-            3 => getArgb(0, Frac(255 - proportion, alpha), Frac(255, alpha)),
-            4 => getArgb(Frac(proportion, alpha), 0, Frac(255, alpha)),
-            5 => getArgb(Frac(255, alpha), 0, Frac(255 - proportion, alpha)),
+            0 => Argb(decay, Frac(255, alpha), Frac(proportion, alpha), 0),
+            1 => Argb(decay, Frac(255 - proportion, alpha), Frac(255, alpha), 0),
+            2 => Argb(decay, 0, Frac(255, alpha), Frac(proportion, alpha)),
+            3 => Argb(decay, 0, Frac(255 - proportion, alpha), Frac(255, alpha)),
+            4 => Argb(decay, Frac(proportion, alpha), 0, Frac(255, alpha)),
+            5 => Argb(decay, Frac(255, alpha), 0, Frac(255 - proportion, alpha)),
             _ => Color.Empty
         }; // The ARGB hexagon for standard domain coloring
     } // Reference: https://en.wikipedia.org/wiki/Domain_coloring & https://complex-analysis.com/content/domain_coloring.html
