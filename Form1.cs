@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, 
 using System.Runtime.InteropServices; // DllImport, StructLayout
 using System.Drawing.Imaging; // BitmapData
 using System.Text; // StringBuilder
+using Real = System.Single;
 
 namespace Fraljiculator;
 
@@ -30,8 +31,8 @@ public partial class Graph : Form
         CONTROL_GRAY = Argb(105, 105, 105), GRID_GRAY = Argb(75, 255, 255, 255), READONLY_GRAY = Color.Gainsboro,
         UPPER_GOLD = Color.Gold, LOWER_BLUE = Color.RoyalBlue, ZERO_BLUE = Color.Lime, POLE_PURPLE = Color.Magenta;
     //
-    private static float scale_factor, title_elapsed, pause_pos, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
-    private static readonly float GRID_WIDTH_1 = 3f, GRID_WIDTH_2 = 2f, CURVE_WIDTH_LIMIT = 20f, STRIDE = 0.25f, MOD = 0.25f,
+    private static Real scale_factor, title_elapsed, pause_pos, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
+    private static readonly Real GRID_WIDTH_1 = 3f, GRID_WIDTH_2 = 2f, CURVE_WIDTH_LIMIT = 20f, STRIDE = 0.25f, MOD = 0.25f,
         ARG = MathF.PI / 12, STRIDE_REAL = 1f, EPS_REAL = 0.015f, EPS_COMPLEX = 0.015f, SIZE_REAL = 0.5f, DECAY = 0.2f, DEPTH = 2f,
         CURVE_WIDTH = 5f, INCREMENT = 0.01f, TITLE = 0.01f;
     private static int display_elapsed, x_left, x_right, y_up, y_down, color_mode, contour_mode,
@@ -40,10 +41,10 @@ public partial class Graph : Form
         X_LEFT_MIC = 1565, X_RIGHT_MIC = 1765, Y_UP_MIC = 745, Y_DOWN_MIC = 945, X_LEFT_CHECK = 1921, X_RIGHT_CHECK = 1922,
         Y_UP_CHECK = 1081, Y_DOWN_CHECK = 1082, REF_POS_1 = 9, REF_POS_2 = 27, WIDTH_IND = 22, HEIGHT_IND = 55,
         LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 200, THRESHOLD = 1000;
-    private static float[] scopes; // Corresponding to tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]
+    private static Real[] scopes; // Corresponding to tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]
     private static int[] borders; // = [x_left, x_right, y_up, y_down]
     private static Matrix<Complex> output_complex;
-    private static Matrix<float> output_real;
+    private static Matrix<Real> output_real;
     //
     private static bool is_flashing, is_paused = true, is_complex = true, delete_point = true, delete_coor, swap_colors,
         is_auto, freeze_graph, clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking,
@@ -80,7 +81,7 @@ public partial class Graph : Form
         const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20; // Desktop Window Manager (DWM)
         return DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref mode, Unsafe.SizeOf<Int32>());
     }
-    public static void ReduceFontSizeByScale(Control parentCtrl, ref float scalingFactor)
+    public static void ReduceFontSizeByScale(Control parentCtrl, ref Real scalingFactor)
     {
         scalingFactor = Graphics.FromHwnd(IntPtr.Zero).DpiX / 96f / 1.5f; // Originally scaled to 150%
         foreach (Control ctrl in parentCtrl.Controls)
@@ -186,7 +187,7 @@ public partial class Graph : Form
         TextBox[] tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]; // Crucial ordering
         if (autoFill) foreach (var tbx in tbxDetails) FillEmpty(tbx, ZERO);
 
-        float _dense = Obtain(DenseInput), _thick = Obtain(ThickInput);
+        Real _dense = Obtain(DenseInput), _thick = Obtain(ThickInput);
         stride_real = STRIDE_REAL / _dense; stride = STRIDE / _dense;
         mod_stride = MOD / _dense; arg_stride = ARG / _dense;
         epsilon = (is_complex ? EPS_COMPLEX : EPS_REAL) * _thick; // For lines and complex extremities
@@ -195,7 +196,7 @@ public partial class Graph : Form
 
         if (!GeneralInput_Undo())
         {
-            float _scope = Obtain(GeneralInput);
+            Real _scope = Obtain(GeneralInput);
             scopes = [-_scope, _scope, -_scope, _scope]; // Remind the signs
             for (int i = 0; i < tbxDetails.Length; i++) SetText(tbxDetails[i], scopes[i].ToString("0.################"));
         } // Never using scientific notation
@@ -237,14 +238,14 @@ public partial class Graph : Form
     private static Color Swap(Color c1, Color c2) => swap_colors ? c1 : c2;
     private static Color Argb(int a, int r, int g, int b) => Color.FromArgb(a, r, g, b);
     public static Color Argb(int r, int g, int b) => Color.FromArgb(r, g, b); // Also used for Message Boxes
-    public static float ArgRGB(float x, float y) => Single.IsNaN(x) && Single.IsNaN(y) ? -1 : y == 0 ?
+    public static Real ArgRGB(Real x, Real y) => Real.IsNaN(x) && Real.IsNaN(y) ? -1 : y == 0 ?
         (x == 0 ? -1 : x > 0 ? 0 : MathF.PI) : (y > 0 ? MathF.Atan2(y, x) : MathF.Atan2(y, x) + MathF.Tau); // Sensitive checking
-    private static int Frac(int input, float alpha) => (int)(input * alpha);
-    private static bool IllegalRatio(float ratio) => ratio < 0 || ratio > 1;
+    private static int Frac(int input, Real alpha) => (int)(input * alpha);
+    private static bool IllegalRatio(Real ratio) => ratio < 0 || ratio > 1;
     private static int RowBorders(int[] borders) => borders[1] - borders[0];
     private static int ColumnBorders(int[] borders) => borders[3] - borders[2];
-    private static float RowScopes() => scopes[1] - scopes[0];
-    private static float ColumnScopes() => scopes[3] - scopes[2]; // The sign convention varies from place to place
+    private static Real RowScopes() => scopes[1] - scopes[0];
+    private static Real ColumnScopes() => scopes[3] - scopes[2]; // The sign convention varies from place to place
     private static bool InvalidScopesX() => scopes[0] >= scopes[1];
     private static bool InvalidScopesY() => scopes[2] >= scopes[3];
     private static int[] GetBorders(int mode) => mode switch
@@ -253,15 +254,15 @@ public partial class Graph : Form
         2 => [X_LEFT_MIC, X_RIGHT_MIC, Y_UP_MIC, Y_DOWN_MIC],
         3 => [X_LEFT_CHECK, X_RIGHT_CHECK, Y_UP_CHECK, Y_DOWN_CHECK]
     };
-    private static Matrix<float> GetMatrix(int rows, int columns) => new(RealComplex.GetArithProg(rows, columns), columns);
+    private static Matrix<Real> GetMatrix(int rows, int columns) => new(RealComplex.GetArithProg(rows, columns), columns);
     private static Rectangle GetRect(int[] borders, int margin = 0)
         => new(borders[0] + margin, borders[2] + margin, RowBorders(borders) - margin, ColumnBorders(borders) - margin);
     private static Bitmap GetBitmap(bool isMain) => isMain ? bmp_mac : bmp_mic;
     private static ref bool ReturnAxesDrawn(bool isMain) => ref (isMain ? ref axes_drawn_mac : ref axes_drawn_mic);
     private static void SetAxesDrawn(bool isMain, bool drawn = false) { ReturnAxesDrawn(isMain) = drawn; }
     private static void ReverseBool(ref bool isChecked) => isChecked = !isChecked;
-    private static float Obtain(string text) => RealSub.Obtain(RecoverMultiply.Simplify(text));
-    private static float Obtain(TextBox tbx) => Obtain(tbx.Text);
+    private static Real Obtain(string text) => RealSub.Obtain(RecoverMultiply.Simplify(text));
+    private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
@@ -279,12 +280,12 @@ public partial class Graph : Form
     private static void DrawAxesGrids(int[] borders)
     {
         bdp_painted = true; // To prevent calling Graph_Paint afterwards
-        static float calculateGrid(float range) => MathF.Pow(GRID, MathF.Floor(MathF.Log(range / 2, GRID)));
+        static Real calculateGrid(Real range) => MathF.Pow(GRID, MathF.Floor(MathF.Log(range / 2, GRID)));
         var (xGrid, yGrid) = (calculateGrid(RowScopes()), calculateGrid(ColumnScopes()));
         var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
         var (xInit, yInit, xEnd, yEnd) = (AddOne(borders[0]), AddOne(borders[2]), borders[1], borders[3]);
 
-        void drawGrids(float xGrid, float yGrid, float penWidth)
+        void drawGrids(Real xGrid, Real yGrid, Real penWidth)
         {
             Pen gridPen = new(GRID_GRAY, penWidth);
             RealComplex.For((int)MathF.Floor(scopes[2] / yGrid), (int)MathF.Ceiling(scopes[3] / yGrid), i =>
@@ -313,7 +314,7 @@ public partial class Graph : Form
     private void DrawReferenceRectangles(Color color)
         => graphics.FillRectangle(new SolidBrush(color), VScrollBarX.Location.X - REF_POS_1, Y_UP_MIC + REF_POS_2,
             2 * (VScrollBarX.Width + REF_POS_1), VScrollBarX.Height - 2 * REF_POS_2);
-    private void DrawScrollBar((float x, float y) xyCoor)
+    private void DrawScrollBar((Real x, Real y) xyCoor)
     {
         int range = VScrollBarX.Maximum - VScrollBarX.Minimum;
         VScrollBarX.Value = Frac(range, (xyCoor.x - scopes[0]) / RowScopes());
@@ -323,42 +324,42 @@ public partial class Graph : Form
 
     // 2. GRAPHING
     #region Numerics
-    private static float GetRatioRow(int[] borders) => RowScopes() / RowBorders(borders);
-    private static float GetRatioColumn(int[] borders) => -ColumnScopes() / ColumnBorders(borders); // Remind the minus sign
-    private static int LinearTransformX(float x, int[] borders, float ratioRow) => (int)(borders[0] + (x - scopes[0]) / ratioRow);
-    private static int LinearTransformY(float y, int[] borders, float ratioColumn) => (int)(borders[2] + (y - scopes[3]) / ratioColumn);
-    private static (float, float) LinearTransform(int x, int y, float xCoor, float yCoor, int[] borders)
+    private static Real GetRatioRow(int[] borders) => RowScopes() / RowBorders(borders);
+    private static Real GetRatioColumn(int[] borders) => -ColumnScopes() / ColumnBorders(borders); // Remind the minus sign
+    private static int LinearTransformX(Real x, int[] borders, Real ratioRow) => (int)(borders[0] + (x - scopes[0]) / ratioRow);
+    private static int LinearTransformY(Real y, int[] borders, Real ratioColumn) => (int)(borders[2] + (y - scopes[3]) / ratioColumn);
+    private static (Real, Real) LinearTransform(int x, int y, Real xCoor, Real yCoor, int[] borders)
         => (scopes[0] + (x - borders[0]) * xCoor, scopes[3] + (y - borders[2]) * yCoor);
-    private static int LowIdx(float a, float m) => (int)MathF.Floor(a / m);
-    private static float LowDist(float a, float m) => a - m * LowIdx(a, m);
-    private static float LowRatio(float a, float m) => a == -0 ? 1 : LowDist(a, m) / m; // -0 is necessary
-    private static float GetShade(float alpha) => (alpha - 1) / DEPTH + 1;
-    private unsafe static (float, float) FiniteExtremities(Matrix<float> output, int rows, int columns)
+    private static int LowIdx(Real a, Real m) => (int)MathF.Floor(a / m);
+    private static Real LowDist(Real a, Real m) => a - m * LowIdx(a, m);
+    private static Real LowRatio(Real a, Real m) => a == -0 ? 1 : LowDist(a, m) / m; // -0 is necessary
+    private static Real GetShade(Real alpha) => (alpha - 1) / DEPTH + 1;
+    private unsafe static (Real, Real) FiniteExtremities(Matrix<Real> output, int rows, int columns)
     {
-        static float seekM(Func<float, float, float> function, float* ptr, int length)
+        static Real seekM(Func<Real, Real, Real> function, Real* ptr, int length)
         {
-            float _value = Single.NaN;
+            Real _value = Real.NaN;
             for (int i = 0; i < length; i++, ptr++)
-            { if (Single.IsNaN(*ptr)) continue; if (Single.IsNaN(_value)) _value = *ptr; else _value = function(*ptr, _value); }
+            { if (Real.IsNaN(*ptr)) continue; if (Real.IsNaN(_value)) _value = *ptr; else _value = function(*ptr, _value); }
             return _value;
         }
-        Matrix<float> outputAtan = GetMatrix(rows, columns), minMax = GetMatrix(2, rows); // Necessary
+        Matrix<Real> outputAtan = GetMatrix(rows, columns), minMax = GetMatrix(2, rows); // Necessary
         Parallel.For(0, rows, p =>
         {
-            float* destPtr = outputAtan.RowPtr(p), _destPtr = destPtr, srcPtr = output.RowPtr(p);
+            Real* destPtr = outputAtan.RowPtr(p), _destPtr = destPtr, srcPtr = output.RowPtr(p);
             for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = MathF.Atan(*srcPtr);
             minMax[0, p] = seekM(MathF.Min, _destPtr, columns);
             minMax[1, p] = seekM(MathF.Max, _destPtr, columns);
         });
         return (seekM(MathF.Min, minMax.RowPtr(0), rows), seekM(MathF.Max, minMax.RowPtr(1), rows));
     } // To find the min and max of the atan'ed matrix to prevent infinitude
-    private unsafe static (int, int, Matrix<float>, Matrix<float>) GetRowColumnCoor()
+    private unsafe static (int, int, Matrix<Real>, Matrix<Real>) GetRowColumnCoor()
     {
         var (rows, columns, _x, _y) = (RowBorders(borders), ColumnBorders(borders), GetRatioRow(borders), GetRatioColumn(borders));
         var (xCoor, yCoor) = (GetMatrix(rows, columns), GetMatrix(rows, columns));
         Parallel.For(0, rows, p =>
         {
-            float* xPtr = xCoor.RowPtr(p), yPtr = yCoor.RowPtr(p);
+            Real* xPtr = xCoor.RowPtr(p), yPtr = yCoor.RowPtr(p);
             var (x, y) = (scopes[0] + (1 + p) * _x, scopes[3] + _y);
             for (int q = 0; q < columns; q++, xPtr++, yPtr++, y += _y) (*xPtr, *yPtr) = (x, y);
         }); // Optimized linear transforms
@@ -381,12 +382,12 @@ public partial class Graph : Form
     }
     private unsafe void SetPixel(byte* _ptr, Color color, ref int pixNum)
     { pixNum++; *_ptr = color.B; _ptr++; *_ptr = color.G; _ptr++; *_ptr = color.R; _ptr++; *_ptr = color.A; }
-    private unsafe void RealSpecial(byte* _ptr, Color _zero, Color _pole, float _value, (float min, float max) mM, ref int pixNum)
+    private unsafe void RealSpecial(byte* _ptr, Color _zero, Color _pole, Real _value, (Real min, Real max) mM, ref int pixNum)
     {
-        if (_value < Single.Lerp(mM.min, mM.max, size_real)) SetPixel(_ptr, _zero, ref pixNum);
-        if (_value > Single.Lerp(mM.max, mM.min, size_real)) SetPixel(_ptr, _pole, ref pixNum);
+        if (_value < Real.Lerp(mM.min, mM.max, size_real)) SetPixel(_ptr, _zero, ref pixNum);
+        if (_value > Real.Lerp(mM.max, mM.min, size_real)) SetPixel(_ptr, _pole, ref pixNum);
     }
-    private unsafe void ComplexSpecial(byte* _ptr, Color _zero, Color _pole, float _value, ref int pixNum)
+    private unsafe void ComplexSpecial(byte* _ptr, Color _zero, Color _pole, Real _value, ref int pixNum)
     {
         if (_value < epsilon) SetPixel(_ptr, _zero, ref pixNum);
         if (_value > 1 / epsilon) SetPixel(_ptr, _pole, ref pixNum);
@@ -410,11 +411,11 @@ public partial class Graph : Form
         finally { bmp.UnlockBits(bmpData); }
     }
     //
-    private unsafe void RealLoop(Matrix<float> output, Color _zero, Color _pole, Func<float, Color> extractor, (float, float) mM)
+    private unsafe void RealLoop(Matrix<Real> output, Color _zero, Color _pole, Func<Real, Color> extractor, (Real, Real) mM)
         => LoopBase((x, y, pixelPtr, ref pixNum) =>
         {
-            float _value = output[x, y];
-            if (Single.IsNaN(_value)) return;
+            Real _value = output[x, y];
+            if (Real.IsNaN(_value)) return;
             var _pixelPtr = (byte*)pixelPtr;
             SetPixel(_pixelPtr, extractor(_value), ref pixNum);
             if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathF.Atan(_value), mM, ref pixNum);
@@ -423,12 +424,12 @@ public partial class Graph : Form
         => LoopBase((x, y, pixelPtr, ref pixNum) =>
         {
             Complex _value = output[x, y];
-            if (Single.IsNaN(_value.real) || Single.IsNaN(_value.imaginary)) return;
+            if (Real.IsNaN(_value.real) || Real.IsNaN(_value.imaginary)) return;
             var _pixelPtr = (byte*)pixelPtr;
             SetPixel(_pixelPtr, extractor(_value), ref pixNum);
             if (!delete_point) ComplexSpecial(_pixelPtr, _zero, _pole, Complex.Modulus(_value), ref pixNum);
         });
-    private static Func<float, Color> GetColorReal123(int mode) => _value =>
+    private static Func<Real, Color> GetColorReal123(int mode) => _value =>
     {
         Color func23(Color c1, Color c2) => _value < 0 ? Swap(c1, c2) : _value > 0 ? Swap(c2, c1) : Color.Empty;
         return mode switch
@@ -438,7 +439,7 @@ public partial class Graph : Form
             3 => func23(UPPER_GOLD, LOWER_BLUE)
         };
     };
-    private static Func<float, Color> GetColorReal45(bool mode, (float min, float max) mM) => _value => mode ?
+    private static Func<Real, Color> GetColorReal45(bool mode, (Real min, Real max) mM) => _value => mode ?
         ObtainColorStrip(_value, mM.min, mM.max) :
         ObtainColorStrip(_value, mM.min, mM.max, GetShade(LowRatio(_value, stride_real)));
     private static Func<Complex, Color> GetColorComplex123(int mode, bool isReIm) => input =>
@@ -451,19 +452,19 @@ public partial class Graph : Form
             2 => (Color.Black, Color.White),
             3 => (LOWER_BLUE, UPPER_GOLD)
         };
-        bool draw = mode != 1 ? Single.IsEvenInteger(LowIdx(v1, s1) + LowIdx(v2, s2))
+        bool draw = mode != 1 ? Real.IsEvenInteger(LowIdx(v1, s1) + LowIdx(v2, s2))
             : MathF.Min(MathF.Min(LowDist(v1, s1), LowDist(v2, s2)), MathF.Min(-LowDist(v1, -s1), -LowDist(v2, -s2))) < epsilon;
         return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
     };
     private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? (c => ObtainColorWheel(c, alpha: 1)) : (_value =>
     {
         Complex _valueLog = Complex.Log(_value);
-        float alpha = (LowRatio(_valueLog.real, mod_stride) + LowRatio(_valueLog.imaginary, arg_stride)) / 2;
+        Real alpha = (LowRatio(_valueLog.real, mod_stride) + LowRatio(_valueLog.imaginary, arg_stride)) / 2;
         return ObtainColorWheel(_value, GetShade(alpha));
     });
-    private void RealLoop123(Matrix<float> output, Color _zero, Color _pole, int mode, (float, float) mM)
+    private void RealLoop123(Matrix<Real> output, Color _zero, Color _pole, int mode, (Real, Real) mM)
         => RealLoop(output, _zero, _pole, GetColorReal123(mode), mM);
-    private void RealLoop45(Matrix<float> output, bool mode, (float, float) mM)
+    private void RealLoop45(Matrix<Real> output, bool mode, (Real, Real) mM)
         => RealLoop(output, Color.Black, Color.White, GetColorReal45(mode, mM), mM);
     private void ComplexLoop123(Matrix<Complex> output, Color _zero, Color _pole, int mode, bool isReIm)
         => ComplexLoop(output, _zero, _pole, GetColorComplex123(mode, isReIm));
@@ -474,7 +475,7 @@ public partial class Graph : Form
     #region Rendering
     private void RealComputation()
     {
-        Action<Matrix<float>, (float, float)> realOperation = color_mode switch
+        Action<Matrix<Real>, (Real, Real)> realOperation = color_mode switch
         {
             1 => Real1,
             2 => Real2,
@@ -484,11 +485,11 @@ public partial class Graph : Form
         };
         realOperation(output_real, FiniteExtremities(output_real, RowBorders(borders), ColumnBorders(borders)));
     }
-    private void Real1(Matrix<float> output, (float, float) mM) => RealLoop123(output, ZERO_BLUE, POLE_PURPLE, 1, mM);
-    private void Real2(Matrix<float> output, (float, float) mM) => RealLoop123(output, ZERO_BLUE, POLE_PURPLE, 2, mM);
-    private void Real3(Matrix<float> output, (float, float) mM) => RealLoop123(output, Color.Black, Color.White, 3, mM);
-    private void Real4(Matrix<float> output, (float, float) mM) => RealLoop45(output, true, mM);
-    private void Real5(Matrix<float> output, (float, float) mM) => RealLoop45(output, false, mM);
+    private void Real1(Matrix<Real> output, (Real, Real) mM) => RealLoop123(output, ZERO_BLUE, POLE_PURPLE, 1, mM);
+    private void Real2(Matrix<Real> output, (Real, Real) mM) => RealLoop123(output, ZERO_BLUE, POLE_PURPLE, 2, mM);
+    private void Real3(Matrix<Real> output, (Real, Real) mM) => RealLoop123(output, Color.Black, Color.White, 3, mM);
+    private void Real4(Matrix<Real> output, (Real, Real) mM) => RealLoop45(output, true, mM);
+    private void Real5(Matrix<Real> output, (Real, Real) mM) => RealLoop45(output, false, mM);
 
     private void ComplexComputation()
     {
@@ -514,10 +515,10 @@ public partial class Graph : Form
     #endregion
 
     #region Curves
-    private (float, float, float) SetStartEndIncrement(string[] split, bool isPolar, bool isParam)
+    private (Real, Real, Real) SetStartEndIncrement(string[] split, bool isPolar, bool isParam)
     {
-        float obtain(int index) => Obtain(split[index]);
-        (float, float, float) initializeParamPolar(int relPos)
+        Real obtain(int index) => Obtain(split[index]);
+        (Real, Real, Real) initializeParamPolar(int relPos)
         {
             MyString.ThrowInvalidLengths(split, [relPos + 2, relPos + 3]);
             return (obtain(relPos), obtain(relPos + 1), split.Length == relPos + 3 ? obtain(relPos + 2) : INCREMENT);
@@ -526,15 +527,15 @@ public partial class Graph : Form
         else if (isPolar) return initializeParamPolar(2);
         else
         {
-            MyString.ThrowInvalidLengths(split, [0, 1, 2, 3, 4]); float range = Obtain(GeneralInput);
-            float getRange(TextBox tbx, bool minus) => GeneralInput_Undo() ? Obtain(tbx) : (minus ? -range : range);
+            MyString.ThrowInvalidLengths(split, [0, 1, 2, 3, 4]); Real range = Obtain(GeneralInput);
+            Real getRange(TextBox tbx, bool minus) => GeneralInput_Undo() ? Obtain(tbx) : (minus ? -range : range);
             return (split.Length < 3 ? getRange(X_Left, true) : obtain(1),
                 split.Length < 3 ? getRange(X_Right, false) : obtain(2),
                 split.Length == 2 ? obtain(1) : split.Length == 4 ? obtain(3) : INCREMENT);
         }
     }
-    private unsafe static (Matrix<float>, Matrix<float>, int, bool) SetCurveValues(string[] split, bool isPolar, bool isParam,
-        float start, float end, float increment)
+    private unsafe static (Matrix<Real>, Matrix<Real>, int, bool) SetCurveValues(string[] split, bool isPolar, bool isParam,
+        Real start, Real end, Real increment)
     {
         string replace(string s, int index) => s.Replace(split[index], "x");
         string tag1 = ReplaceTags.FUNC_HEAD + ReplaceTags.COS, tag2 = ReplaceTags.FUNC_HEAD + ReplaceTags.SIN,
@@ -542,18 +543,18 @@ public partial class Graph : Form
             input2 = isParam ? replace(split[1], 2) : isPolar ? replace($"({split[0]})*{tag2}({split[1]})", 1) : split[0];
 
         int length = (int)((end - start) / increment), _length = length + 2; // For safety
-        Matrix<float> partition = GetMatrix(1, _length); float steps = start;
-        float obtainCheck(string input) => RealSub.Obtain(input, steps); // Already simplified
+        Matrix<Real> partition = GetMatrix(1, _length); Real steps = start;
+        Real obtainCheck(string input) => RealSub.Obtain(input, steps); // Already simplified
         if (is_checking) { obtainCheck(input1); obtainCheck(input2); return (partition, partition, length, true); }
 
-        float* partPtr = partition.RowPtr();
+        Real* partPtr = partition.RowPtr();
         for (int i = 0; i < _length; i++, partPtr++, steps += increment) *partPtr = steps;
-        Matrix<float> obtain(string input) => new RealSub(input, partition, null, null, null, null, 1, _length).Obtain();
+        Matrix<Real> obtain(string input) => new RealSub(input, partition, null, null, null, null, 1, _length).Obtain();
         return (obtain(input1), obtain(input2), length, false);
     }
-    private unsafe void DrawCurve(Matrix<float> value1, Matrix<float> value2, int length)
+    private unsafe void DrawCurve(Matrix<Real> value1, Matrix<Real> value2, int length)
     {
-        float curveWidth = MathF.Min(CURVE_WIDTH * Obtain(ThickInput), CURVE_WIDTH_LIMIT);
+        Real curveWidth = MathF.Min(CURVE_WIDTH * Obtain(ThickInput), CURVE_WIDTH_LIMIT);
         Pen dichoPen(Color c1, Color c2) => new(Swap(c1, c2), curveWidth);
         Pen vividPen = dichoPen(Color.Empty, Color.Empty), defaultPen = dichoPen(Color.Black, Color.White),
             blackPen = dichoPen(Color.White, Color.Black), whitePen = dichoPen(Color.Black, Color.White),
@@ -561,7 +562,7 @@ public partial class Graph : Form
             selectedPen = color_mode == 1 ? defaultPen : vividPen;
 
         Point pos = new(), posBuffer = new(); bool inRange, inRangeBuffer = false; int _ratio, _ratioBuffer = 0;
-        float relativeSpeed = Obtain(DenseInput) / length, ratio; float* v1Ptr = value1.RowPtr(), v2Ptr = value2.RowPtr();
+        Real relativeSpeed = Obtain(DenseInput) / length, ratio; Real* v1Ptr = value1.RowPtr(), v2Ptr = value2.RowPtr();
         var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
 
         for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++, segment_number++)
@@ -650,7 +651,7 @@ public partial class Graph : Form
         }
         else
         {
-            Matrix<float> X = new RealSub(split[1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
+            Matrix<Real> X = new RealSub(split[1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
             for (int loops = int3; loops <= int4; loops++)
             {
                 X = new RealSub(replaceLoop(0, loops), xCoor, yCoor, X, null, null, rows, columns).Obtain();
@@ -692,10 +693,10 @@ public partial class Graph : Form
     #endregion
 
     #region Color Extractors
-    private static Color ObtainColorBase(float argument, float alpha, int decay) // alpha: brightness
+    private static Color ObtainColorBase(Real argument, Real alpha, int decay) // alpha: brightness
     {
         if (IllegalRatio(alpha)) return Color.Empty; // Necessary
-        float _argument = argument * 3 / MathF.PI; int proportion, region = argument < 0 ? -1 : (int)_argument;
+        Real _argument = argument * 3 / MathF.PI; int proportion, region = argument < 0 ? -1 : (int)_argument;
         if (region == 6) region = proportion = 0; else proportion = Frac(255, _argument - region);
         return region switch
         {
@@ -708,13 +709,13 @@ public partial class Graph : Form
             _ => Color.Empty
         }; // The ARGB hexagon for standard domain coloring
     } // Reference: https://en.wikipedia.org/wiki/Domain_coloring & https://complex-analysis.com/content/domain_coloring.html
-    private static Color ObtainColorWheel(Complex c, float alpha = 1)
+    private static Color ObtainColorWheel(Complex c, Real alpha = 1)
         => ObtainColorBase(ArgRGB(c.real, c.imaginary), alpha, (int)(255 / (1 + decay * Complex.Modulus(shade ? c : Complex.ZERO))));
-    private static Color ObtainColorWheelCurve(float alpha) => ObtainColorBase(alpha * MathF.Tau, 1, 255);
-    private static Color ObtainColorStrip(float _value, float min, float max, float alpha = 1) // alpha: brightness
+    private static Color ObtainColorWheelCurve(Real alpha) => ObtainColorBase(alpha * MathF.Tau, 1, 255);
+    private static Color ObtainColorStrip(Real _value, Real min, Real max, Real alpha = 1) // alpha: brightness
     {
         if (min == max) return Color.Empty; // Necessary
-        float beta = (MathF.Atan(_value) - min) / (max - min);
+        Real beta = (MathF.Atan(_value) - min) / (max - min);
         if (IllegalRatio(alpha) || IllegalRatio(beta)) return Color.Empty; // Necessary
         return beta < 0.5f ? Argb(Frac(Frac(510, beta), alpha), 0, Frac(255, alpha))
             : Argb(Frac(255, alpha), 0, Frac(255 - Frac(510, beta - 0.5f), alpha));
@@ -752,11 +753,11 @@ public partial class Graph : Form
     private static void RunMouse(MouseEventArgs e, int[] b, Action<MouseEventArgs, int[]> action, Action? _action)
     { if (e.X > b[0] && e.X < b[1] && e.Y > b[2] && e.Y < b[3]) action(e, b); else _action?.Invoke(); }
     private static void CheckMoveDown(Action<int[]> checkMouse) => checkMouse(GetBorders(is_main ? 1 : 2));
-    private static void HandleMouseAction(MouseEventArgs e, int[] borders, Action<(float, float)> actionHandler)
+    private static void HandleMouseAction(MouseEventArgs e, int[] borders, Action<(Real, Real)> actionHandler)
         => actionHandler(LinearTransform(e.X, e.Y, GetRatioRow(borders), GetRatioColumn(borders), borders));
-    private void DisplayMouseMove(MouseEventArgs e, float xCoor, float yCoor)
+    private void DisplayMouseMove(MouseEventArgs e, Real xCoor, Real yCoor)
     {
-        static string trimForMove(float input) => MyString.TrimExtremeNum(input, THRESHOLD);
+        static string trimForMove(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
         SetText(X_CoorDisplay, trimForMove(xCoor)); SetText(Y_CoorDisplay, trimForMove(yCoor));
         SetText(ModulusDisplay, trimForMove(Complex.Modulus(xCoor, yCoor)));
         SetText(AngleDisplay, MyString.GetAngle(xCoor, yCoor));
@@ -772,9 +773,9 @@ public partial class Graph : Form
         }
         else SetText(FunctionDisplay, DISPLAY_ERROR);
     }
-    private void DisplayMouseDown(MouseEventArgs e, float xCoor, float yCoor)
+    private void DisplayMouseDown(MouseEventArgs e, Real xCoor, Real yCoor)
     {
-        static string trimForDown(float input) => MyString.TrimExtremeNum(input, THRESHOLD);
+        static string trimForDown(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
         string _xCoor = trimForDown(xCoor), _yCoor = trimForDown(yCoor),
             Modulus = trimForDown(Complex.Modulus(xCoor, yCoor)), Angle = MyString.GetAngle(xCoor, yCoor);
 
@@ -1072,13 +1073,13 @@ public partial class Graph : Form
             "\r\n\r\nLog & Ln, Exp, Sqrt, Abs (f(x,y) & f(z))" +
             $"\r\n\r\nConjugate & Conj (f(z)), e(f(z)){TAB}{GetComment("e(z) := exp (2*pi*i*z).")}");
         content += subTitleContent("COMBINATORICS",
-            "\r\n\r\nFloor, Ceil, Round, Sign & Sgn (float a)" +
-            "\r\n\r\nMod (float a, float n), nCr, nPr (int n, int r)" +
-            "\r\n\r\nMax, Min (float a, float b, ...), Factorial & Fact (int n)");
+            "\r\n\r\nFloor, Ceil, Round, Sign & Sgn (Real a)" +
+            "\r\n\r\nMod (Real a, Real n), nCr, nPr (int n, int r)" +
+            "\r\n\r\nMax, Min (Real a, Real b, ...), Factorial & Fact (int n)");
         content += subTitleContent("SPECIALTIES",
-            $"\r\n\r\n{GetComment("F&C := float & Complex.")}" +
-            "\r\n\r\nF (F&C a, F&C b, F&C c, f(x,y) & f(z)) & " +
-            "\r\nF (F&C a, F&C b, F&C c, f(x,y) & f(z), int n)" +
+            $"\r\n\r\n{GetComment("R&C := Real & Complex.")}" +
+            "\r\n\r\nF (R&C a, R&C b, R&C c, f(x,y) & f(z)) & " +
+            "\r\nF (R&C a, R&C b, R&C c, f(x,y) & f(z), int n)" +
             $"\r\n{GetComment("HyperGeometric Series (case-sensitive).")}" +
             "\r\n\r\nGamma & Ga (f(x,y) & f(z)) & " +
             "\r\nGamma & Ga (f(x,y) & f(z), int n)" +
@@ -1102,13 +1103,13 @@ public partial class Graph : Form
             $"\r\n{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}");
         content += subTitleContent("PLANAR CURVES",
             "\r\n\r\nFunc (f(x)) & " +
-            "\r\nFunc (f(x), float increment) & " +
-            "\r\nFunc (f(x), float a, float b) & " +
-            "\r\nFunc (f(x), float a, float b, float increment)" +
-            "\r\n\r\nPolar (f(θ), θ, float a, float b) & " +
-            "\r\nPolar (f(θ), θ, float a, float b, float increment)" +
-            "\r\n\r\nParam (f(u), g(u), u, float a, float b) & " +
-            "\r\nParam (f(u), g(u), u, float a, float b, float increment)");
+            "\r\nFunc (f(x), Real increment) & " +
+            "\r\nFunc (f(x), Real a, Real b) & " +
+            "\r\nFunc (f(x), Real a, Real b, Real increment)" +
+            "\r\n\r\nPolar (f(θ), θ, Real a, Real b) & " +
+            "\r\nPolar (f(θ), θ, Real a, Real b, Real increment)" +
+            "\r\n\r\nParam (f(u), g(u), u, Real a, Real b) & " +
+            "\r\nParam (f(u), g(u), u, Real a, Real b, Real increment)");
         content += subTitleContent("RECURSIONS",
             $"\r\n\r\n{GetComment("These methods should be combined with all above.")}" +
             "\r\n\r\nLoop (Input(k), k, int a, int b)" +
@@ -1365,7 +1366,7 @@ public partial class Graph : Form
         }
         else
         {
-            pause_pos = (float)MediaPlayer.controls.currentPosition; // Conversion from double to float
+            pause_pos = (Real)MediaPlayer.controls.currentPosition;
             MediaPlayer.controls.pause();
             ColorTimer.Stop();
             TitleLabel.ForeColor = Color.White;
@@ -1694,8 +1695,8 @@ public class MyMessageBox : Form
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
     //
-    private static float scale_factor;
-    private static readonly float MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
+    private static Real scale_factor;
+    private static readonly Real MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
     private static bool is_resized;
     private static readonly string MSG_FONT = "Microsoft YaHei UI", BTN_FONT = "Microsoft YaHei UI", BTN_TXT = "OK";
@@ -1806,9 +1807,9 @@ public class MyString
         { for (int i = start, j = -1; ; i--) { if (input[i] == ')') j = i; else if (input[i] == '(') return (i, j); } }
         static int pairedInnerBra(ReadOnlySpan<char> input, int start)
         { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
-
         int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
-    } // Backward lookup for parenthesis pairs, extremely sensitive
+        // Backward lookup for parenthesis pairs, extremely sensitive
+    }
     public static bool CheckParenthesis(ReadOnlySpan<char> input)
     {
         int sum = 0;
@@ -1879,9 +1880,9 @@ public class MyString
         if (startIndex == input.Length) return String.Empty;
         return input.Slice(startIndex).ToString();
     }
-    public static string TrimExtremeNum(float input, float threshold)
+    public static string TrimExtremeNum(Real input, Real threshold)
         => (MathF.Abs(input) < threshold && MathF.Abs(input) > 1 / threshold) ? input.ToString() : input.ToString("E3");
-    public static string GetAngle(float x, float y) => (Graph.ArgRGB(x, y) / MathF.PI).ToString("#0.000000") + " π";
+    public static string GetAngle(Real x, Real y) => (Graph.ArgRGB(x, y) / MathF.PI).ToString("#0.000000") + " π";
     public static void ThrowException(bool error = true) { if (error) throw new Exception(); }
     public static void ThrowInvalidLengths(ReadOnlySpan<string> split, int[] lengths) => ThrowException(!lengths.Contains(split.Length));
     protected static int ThrowReturnLengths(ReadOnlySpan<string> split, int length, int iteration)
@@ -1895,7 +1896,7 @@ public class MyString
 } /// String manipulations
 public class RealComplex : MyString
 {
-    protected static readonly float GAMMA = 0.57721566f;
+    protected static readonly Real GAMMA = 0.57721566f;
     protected static readonly int STEP = 1; // A tunable chunk size
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
@@ -1916,12 +1917,11 @@ public class RealComplex : MyString
         rowChk = rows / step; rowOffs = GetArithProg(rows, columns);
         strd = columns * step; strdInit = GetArithProg(rowChk, step);
         resInit = rowChk * step; res = rows - resInit;
-
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
     public static void For(int start, int end, Action<int> action) { for (int i = start; i <= end; i++) action(i); }
-    protected static Matrix<float> ChooseMode(string mode, Matrix<float> m1, Matrix<float> m2, int[] rowOffs, int columns)
+    protected static Matrix<Real> ChooseMode(string mode, Matrix<Real> m1, Matrix<Real> m2, int[] rowOffs, int columns)
         => Char.Parse(mode) switch { MODE_1 => m1, MODE_2 => m2 };
     protected static MatrixCopy<TEntry> HandleSolo<TEntry>(ReadOnlySpan<char> input, MatrixCopy<TEntry> mc)
     { ThrowException(input.Length != 1); return mc; }
@@ -2119,7 +2119,7 @@ public class RecoverMultiply : ReplaceTags
             recoveredInput.Append(input[i]);
         }
         return recoveredInput.ToString();
-    }
+    } // Pulled out of loops
     private static bool DecideRecovery(char c1, char c2, Func<char, bool> isVar)
     {
         bool isConstNum(char c) => IsConst(c) || Char.IsNumber(c);
@@ -2169,7 +2169,7 @@ public sealed class ComplexSub : RecoverMultiply
         Initialize<Complex>(rows, columns, ref rowChk, ref rowOffs, ref colBytes,
             ref strd, ref strdInit, ref strdBytes, ref res, ref resInit, ref resBytes);
     }
-    public ComplexSub(string input, Matrix<float> xCoor, Matrix<float> yCoor, int rows, int columns)
+    public ComplexSub(string input, Matrix<Real> xCoor, Matrix<Real> yCoor, int rows, int columns)
         : this(input, InitilizeZ(xCoor, yCoor, rows, columns), null, null, rows, columns) { } // Special for complex
     private ComplexSub ObtainSub(string input, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs, bool useList = false)
         => new(input, z, Z, buffCocs, rows, columns, useList);
@@ -2259,7 +2259,7 @@ public sealed class ComplexSub : RecoverMultiply
                         for (int j = 0; j <= i; j++)
                         {
                             *sumPtr += *_coeffPtr * Complex.Pow(j + 1, -*initialPtr);
-                            *_coeffPtr *= (float)(j - i) / (float)(j + 1); // (float) is not redundant
+                            *_coeffPtr *= (Real)(j - i) / (Real)(j + 1); // (Real) is not redundant
                         }
                         *sumPtr *= *coeffPtr; *_sumPtr += *sumPtr;
                     }
@@ -2304,12 +2304,12 @@ public sealed class ComplexSub : RecoverMultiply
 
     #region Elements
     [MethodImpl(512)] // AggressiveOptimization
-    public unsafe static Matrix<Complex> InitilizeZ(Matrix<float> xCoor, Matrix<float> yCoor, int rows, int columns)
+    public unsafe static Matrix<Complex> InitilizeZ(Matrix<Real> xCoor, Matrix<Real> yCoor, int rows, int columns)
     {
         Matrix<Complex> z = new(GetArithProg(rows, columns), columns);
         Parallel.For(0, rows, p =>
         {
-            Complex* zPtr = z.RowPtr(p); float* xCoorPtr = xCoor.RowPtr(p), yCoorPtr = yCoor.RowPtr(p);
+            Complex* zPtr = z.RowPtr(p); Real* xCoorPtr = xCoor.RowPtr(p), yCoorPtr = yCoor.RowPtr(p);
             for (int q = 0; q < columns; q++, zPtr++, xCoorPtr++, yCoorPtr++) *zPtr = new(*xCoorPtr, *yCoorPtr);
         });
         return z;
@@ -2430,7 +2430,7 @@ public sealed class ComplexSub : RecoverMultiply
         E => HandleSolo<Complex>(input, ConstMtx(new(MathF.E))),
         P => HandleSolo<Complex>(input, ConstMtx(new(MathF.PI))),
         G => HandleSolo<Complex>(input, ConstMtx(new(GAMMA))),
-        _ => ConstMtx(new(Single.Parse(input)))
+        _ => ConstMtx(new(Real.Parse(input)))
     };
     private MatrixCopy<Complex> PowerCore(ReadOnlySpan<char> input)
     {
@@ -2465,7 +2465,7 @@ public sealed class ComplexSub : RecoverMultiply
         return new(sum);
     }
     private MatrixCopy<Complex> ComputeBraFreePart(ReadOnlySpan<char> input)
-        => Int32.TryParse(input, out int result) ? ConstMtx(new(result)) : PlusSubtractCore(input); // Single.Parse is slower
+        => Int32.TryParse(input, out int result) ? ConstMtx(new(result)) : PlusSubtractCore(input); // Real.Parse is slower
     private MatrixCopy<Complex> SubCore(string input, int start, MatrixCopy<Complex> bFValue, ref int tagL)
     {
         if (start == 0) return bFValue;
@@ -2486,7 +2486,7 @@ public sealed class ComplexSub : RecoverMultiply
                 _C => isInverse.hyper ? handleSub(Complex.Acosh, 4) : handleSub(Complex.Cosh, 3),
                 _T => isInverse.hyper ? handleSub(Complex.Atanh, 4) : handleSub(Complex.Tanh, 3)
             },
-            _A => handleSub(c => new(Complex.Modulus(c)), 2), // Conversion from float to Complex
+            _A => handleSub(c => new(Complex.Modulus(c)), 2),
             J_ => handleSub(Complex.Conjugate, 2), // Special for complex
             _L => handleSub(Complex.Log, 2),
             E_ => handleSub(Complex.Exp, 2),
@@ -2542,71 +2542,71 @@ public sealed class RealSub : RecoverMultiply
     private readonly int rows, columns, rowChk, strd, res, resInit; // Lengths of chunks
     private readonly int[] rowOffs, strdInit; // For row extraction
     private readonly bool useList; // Whether to use cstMtcs or not
-    private readonly Matrix<float> x, y;
-    private readonly Matrix<float>[] buffCocs; // To precompute repetitively used blocks
-    private readonly MatrixCopy<float>[] braValues; // To store values between parenthesis pairs
-    private readonly List<ConstMatrix<float>> cstMtcs = []; // To store reusable constant matrices
+    private readonly Matrix<Real> x, y;
+    private readonly Matrix<Real>[] buffCocs; // To precompute repetitively used blocks
+    private readonly MatrixCopy<Real>[] braValues; // To store values between parenthesis pairs
+    private readonly List<ConstMatrix<Real>> cstMtcs = []; // To store reusable constant matrices
 
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
-    private Matrix<float> X, Y; // For substitution
+    private Matrix<Real> X, Y; // For substitution
 
-    public RealSub(string input, Matrix<float>? x, Matrix<float>? y, Matrix<float>? X, Matrix<float>? Y, Matrix<float>[]? buffCocs,
+    public RealSub(string input, Matrix<Real>? x, Matrix<Real>? y, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs,
         int rows, int columns, bool useList = false)
     {
         ThrowException(String.IsNullOrEmpty(input));
-        this.input = Recover(input, false); braValues = new MatrixCopy<float>[this.input.AsSpan().Count('(')];
-        if (x != null) this.x = (Matrix<float>)x; if (y != null) this.y = (Matrix<float>)y;
-        if (X != null) this.X = (Matrix<float>)X; if (Y != null) this.Y = (Matrix<float>)Y;
+        this.input = Recover(input, false); braValues = new MatrixCopy<Real>[this.input.AsSpan().Count('(')];
+        if (x != null) this.x = (Matrix<Real>)x; if (y != null) this.y = (Matrix<Real>)y;
+        if (X != null) this.X = (Matrix<Real>)X; if (Y != null) this.Y = (Matrix<Real>)Y;
         this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
-        Initialize<float>(rows, columns, ref rowChk, ref rowOffs, ref colBytes,
+        Initialize<Real>(rows, columns, ref rowChk, ref rowOffs, ref colBytes,
             ref strd, ref strdInit, ref strdBytes, ref res, ref resInit, ref resBytes);
     }
-    private RealSub ObtainSub(string input, Matrix<float>? X, Matrix<float>? Y, Matrix<float>[]? buffCocs, bool useList = false)
+    private RealSub ObtainSub(string input, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs, bool useList = false)
         => new(input, x, y, X, Y, buffCocs, rows, columns, useList);
-    private Matrix<float> ObtainValue(string input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
-    public static float Obtain(string input, float x = 0) => new RealSub(input, new(x), null, null, null, null, 1, 1).Obtain()[0, 0];
+    private Matrix<Real> ObtainValue(string input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
+    public static Real Obtain(string input, Real x = 0) => new RealSub(input, new(x), null, null, null, null, 1, 1).Obtain()[0, 0];
     public static int ToInt(string input) => (int)Obtain(input); // Often bound to RealComplex.For
     #endregion
 
     #region Basic Calculations
-    private static float FactorialBase(float n) => n < 0 ? Single.NaN : n == 0 ? 1 : n * FactorialBase(n - 1);
-    public static float Factorial(float r) => FactorialBase(MathF.Floor(r));
-    private static float SafeSign(float r) => Single.IsNaN(r) ? Single.NaN : MathF.Sign(r);
-    private static float Mod(float n, float r) => r != 0 ? n % MathF.Abs(r) : Single.NaN;
-    private static float Combination(float n, float r)
+    private static Real FactorialBase(Real n) => n < 0 ? Real.NaN : n == 0 ? 1 : n * FactorialBase(n - 1);
+    public static Real Factorial(Real r) => FactorialBase(MathF.Floor(r));
+    private static Real SafeSign(Real r) => Real.IsNaN(r) ? Real.NaN : MathF.Sign(r);
+    private static Real Mod(Real n, Real r) => r != 0 ? n % MathF.Abs(r) : Real.NaN;
+    private static Real Combination(Real n, Real r)
         => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n > 0 ?
         Combination(n - 1, r - 1) + Combination(n - 1, r) : r > 0 ?
         Combination(n + 1, r) - Combination(n, r - 1) :
         Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
-    private static float Permutation(float n, float r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
+    private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
     //
-    private unsafe Matrix<float> ProcessMCP(string[] split, Func<float, float, float> function)
+    private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
     {
         ThrowInvalidLengths(split, [2]);
         return HandleMtx(UninitMtx(), output =>
         {
-            Matrix<float> input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
+            Matrix<Real> input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
             void processMCP(int p, int col)
             {
-                float* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
+                Real* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
             }
             if (rows == 1) { processMCP(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
         });
     }
-    private unsafe Matrix<float> ProcessMinMax(string[] split, Func<float[], float> function)
+    private unsafe Matrix<Real> ProcessMinMax(string[] split, Func<Real[], Real> function)
     {
-        Matrix<float>[] _value = new Matrix<float>[split.Length];
+        Matrix<Real>[] _value = new Matrix<Real>[split.Length];
         for (int i = 0; i < split.Length; i++) _value[i] = ObtainValue(split[i]);
         return HandleMtx(UninitMtx(), output =>
         {
             void processMinMax(int p, int col)
             {
-                Span<float> minMax = stackalloc float[split.Length];
-                float* outputPtr = output.RowPtr(p);
+                Span<Real> minMax = stackalloc Real[split.Length];
+                Real* outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, outputPtr++)
                 {
                     for (int i = 0; i < split.Length; i++) minMax[i] = _value[i][p, q];
@@ -2618,24 +2618,24 @@ public sealed class RealSub : RecoverMultiply
         });
     }
     //
-    private Matrix<float> Mod(string[] split) => ProcessMCP(split, Mod);
-    private Matrix<float> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathF.Floor(n), MathF.Floor(r)));
-    private Matrix<float> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathF.Floor(n), MathF.Floor(r)));
-    private Matrix<float> Max(string[] split) => ProcessMinMax(split, _value => _value.Max());
-    private Matrix<float> Min(string[] split) => ProcessMinMax(split, _value => _value.Min());
+    private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
+    private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathF.Floor(n), MathF.Floor(r)));
+    private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathF.Floor(n), MathF.Floor(r)));
+    private Matrix<Real> Max(string[] split) => ProcessMinMax(split, _value => _value.Max());
+    private Matrix<Real> Min(string[] split) => ProcessMinMax(split, _value => _value.Min());
     #endregion // Special for real
 
     #region Additional Calculations
-    private unsafe Matrix<float> Hypergeometric(string[] split)
+    private unsafe Matrix<Real> Hypergeometric(string[] split)
     {
         int n = ThrowReturnLengths(split, 4, 100);
         return HandleMtx(Const(0), sum =>
         {
-            Matrix<float> obtain(int index) => ObtainValue(split[index]);
-            Matrix<float> product = Const(1), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
+            Matrix<Real> obtain(int index) => ObtainValue(split[index]);
+            Matrix<Real> product = Const(1), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
             void hypergeometric(int p, int col)
             {
-                float* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
+                Real* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
                     _aPtr = _a.RowPtr(p), _bPtr = _b.RowPtr(p), _cPtr = _c.RowPtr(p), initialPtr = initial.RowPtr(p);
                 for (int q = 0; q < col; q++, productPtr++, sumPtr++, _aPtr++, _bPtr++, _cPtr++, initialPtr++)
                 {
@@ -2650,18 +2650,18 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
-    private unsafe Matrix<float> Gamma(string[] split)
+    private unsafe Matrix<Real> Gamma(string[] split)
     {
         int n = ThrowReturnLengths(split, 1, 100);
         return HandleMtx(UninitMtx(), output =>
         {
-            Matrix<float> product = Const(1), initial = ObtainValue(split[0]);
+            Matrix<Real> product = Const(1), initial = ObtainValue(split[0]);
             void gamma(int p, int col)
             {
-                float* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
+                Real* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, productPtr++, initialPtr++, outputPtr++)
                 {
-                    for (int i = 1; i <= n; i++) { float temp = *initialPtr / i; *productPtr *= MathF.Exp(temp) / (1 + temp); }
+                    for (int i = 1; i <= n; i++) { Real temp = *initialPtr / i; *productPtr *= MathF.Exp(temp) / (1 + temp); }
                     *outputPtr = *productPtr * MathF.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
             }
@@ -2669,16 +2669,16 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Gamma_function
-    private unsafe Matrix<float> Beta(string[] split)
+    private unsafe Matrix<Real> Beta(string[] split)
     {
         int n = ThrowReturnLengths(split, 2, 100);
         return HandleMtx(UninitMtx(), output =>
         {
-            Matrix<float> obtain(int index) => ObtainValue(split[index]);
-            Matrix<float> product = Const(1), input1 = obtain(0), input2 = obtain(1);
+            Matrix<Real> obtain(int index) => ObtainValue(split[index]);
+            Matrix<Real> product = Const(1), input1 = obtain(0), input2 = obtain(1);
             void beta(int p, int col)
             {
-                float* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
+                Real* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
                     input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
                 {
@@ -2690,15 +2690,15 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Beta_function
-    private unsafe Matrix<float> Zeta(string[] split)
+    private unsafe Matrix<Real> Zeta(string[] split)
     {
         int n = ThrowReturnLengths(split, 1, 50);
         return HandleMtx(Const(0), _sum =>
         {
-            Matrix<float> sum = UninitMtx(), coeff = Const(1), _coeff = UninitMtx(), initial = ObtainValue(split[0]);
+            Matrix<Real> sum = UninitMtx(), coeff = Const(1), _coeff = UninitMtx(), initial = ObtainValue(split[0]);
             void zeta(int p, int col)
             {
-                float* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
+                Real* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
                     coeffPtr = coeff.RowPtr(p), _coeffPtr = _coeff.RowPtr(p), initialPtr = initial.RowPtr(p);
                 for (int q = 0; q < col; q++, sumPtr++, _sumPtr++, coeffPtr++, _coeffPtr++, initialPtr++)
                 {
@@ -2708,7 +2708,7 @@ public sealed class RealSub : RecoverMultiply
                         for (int j = 0; j <= i; j++)
                         {
                             *sumPtr += *_coeffPtr * MathF.Pow(j + 1, -*initialPtr);
-                            *_coeffPtr *= (float)(j - i) / (float)(j + 1); // (float) is not redundant
+                            *_coeffPtr *= (Real)(j - i) / (Real)(j + 1); // (Real) is not redundant
                         }
                         *sumPtr *= *coeffPtr; *_sumPtr += *sumPtr;
                     }
@@ -2720,7 +2720,7 @@ public sealed class RealSub : RecoverMultiply
         });
     } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
     //
-    private Matrix<float> ProcessSPI(string[] split, int validLength, Matrix<float> initMtx, Action<RealSub> action)
+    private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
         int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
@@ -2733,16 +2733,16 @@ public sealed class RealSub : RecoverMultiply
         { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
         return buffer.X;
     } // Meticulously optimized
-    private Matrix<float> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
-    private Matrix<float> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
-    private Matrix<float> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
-    private Matrix<float> Iterate2(string[] split)
+    private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
+    private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
+    private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
+    private Matrix<Real> Iterate2(string[] split)
     {
         ThrowInvalidLengths(split, [8]);
         string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
         split[0] = replaceLoop(0); split[1] = replaceLoop(1);
         RealSub obtain(int i) => ObtainSub(ReplaceLoop(split, i, 4, "0"), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
-        RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<float> temp1, temp2;
+        RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<Real> temp1, temp2;
 
         void resetCount() => buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
         buffer1.Obtain(); buffer2.Obtain(); resetCount(); buffer1.readList = buffer2.readList = true; // To precompute cstMtcs
@@ -2756,27 +2756,27 @@ public sealed class RealSub : RecoverMultiply
         return ChooseMode(split[^1], buffer1.X, buffer1.Y, rowOffs, columns); // Or, alternatively, buffer2
     } // Special for real
     //
-    private Matrix<float> Composite1(string[] split)
+    private Matrix<Real> Composite1(string[] split)
     {
-        Matrix<float> _value = ObtainValue(split[0]);
+        Matrix<Real> _value = ObtainValue(split[0]);
         for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, null, buffCocs).Obtain();
         return _value;
     }
-    private Matrix<float> Composite2(string[] split)
+    private Matrix<Real> Composite2(string[] split)
     {
         ThrowException(Int32.IsEvenInteger(split.Length));
-        Matrix<float> value1 = ObtainValue(split[0]), value2 = ObtainValue(split[1]), temp1, temp2;
+        Matrix<Real> value1 = ObtainValue(split[0]), value2 = ObtainValue(split[1]), temp1, temp2;
         for (int i = 0, j = 2; i < split.Length / 2 - 1; i++)
         {
             temp1 = value1; temp2 = value2; // Necessary
-            Matrix<float> obtainValue() => ObtainSub(split[j++], temp1, temp2, buffCocs).Obtain();
+            Matrix<Real> obtainValue() => ObtainSub(split[j++], temp1, temp2, buffCocs).Obtain();
             value1 = obtainValue(); value2 = obtainValue(); // Even and odd terms respectively
         }
         return ChooseMode(split[^1], value1, value2, rowOffs, columns);
     } // Special for real
-    private Matrix<float> Cocoon(string[] split)
+    private Matrix<Real> Cocoon(string[] split)
     {
-        RealSub body = ObtainSub(split[0], X, Y, new Matrix<float>[split.Length - 1]);
+        RealSub body = ObtainSub(split[0], X, Y, new Matrix<Real>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
         return body.Obtain();
     } // For shallow and complicated composites
@@ -2784,92 +2784,92 @@ public sealed class RealSub : RecoverMultiply
 
     #region Elements
     [MethodImpl(512)] // AggressiveOptimization
-    private unsafe Matrix<float> Copy(Matrix<float> src) => HandleMtx(UninitMtx(), dest =>
+    private unsafe Matrix<Real> Copy(Matrix<Real> src) => HandleMtx(UninitMtx(), dest =>
     {
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
         if (rows == 1) { copy(0, colBytes); return; }
         Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     });
     [MethodImpl(512)] // AggressiveOptimization
-    private unsafe Matrix<float> Const(float _const) => HandleMtx(UninitMtx(), output =>
+    private unsafe Matrix<Real> Const(Real _const) => HandleMtx(UninitMtx(), output =>
     {
-        float* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
+        Real* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
         for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const; if (rows == 1) return;
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
         Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     }); // Sensitive
     [MethodImpl(512)] // AggressiveOptimization
-    private unsafe void Negate(Matrix<float> _value)
+    private unsafe void Negate(Matrix<Real> _value)
     {
         void negate(int p, int col)
         {
-            float* _valuePtr = _value.RowPtr(p);
+            Real* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
         }
         if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
-    private unsafe void Plus(Matrix<float> src, Matrix<float> dest)
+    private unsafe void Plus(Matrix<Real> src, Matrix<Real> dest)
     {
         void plus(int p, int col)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
         }
         if (rows == 1) { plus(0, columns); return; }
         Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
-    private unsafe void Subtract(Matrix<float> src, Matrix<float> dest)
+    private unsafe void Subtract(Matrix<Real> src, Matrix<Real> dest)
     {
         void subtract(int p, int col)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
         }
         if (rows == 1) { subtract(0, columns); return; }
         Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
-    private unsafe void Multiply(Matrix<float> src, Matrix<float> dest)
+    private unsafe void Multiply(Matrix<Real> src, Matrix<Real> dest)
     {
         void multiply(int p, int col)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
         }
         if (rows == 1) { multiply(0, columns); return; }
         Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
-    private unsafe void Divide(Matrix<float> src, Matrix<float> dest)
+    private unsafe void Divide(Matrix<Real> src, Matrix<Real> dest)
     {
         void divide(int p, int col)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
         }
         if (rows == 1) { divide(0, columns); return; }
         Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
-    private unsafe void Power(Matrix<float> src, Matrix<float> dest)
+    private unsafe void Power(Matrix<Real> src, Matrix<Real> dest)
     {
         void power(int p, int col)
         {
-            float* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathF.Pow(*srcPtr, *destPtr);
         }
         if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
-    private unsafe void FuncSub(Matrix<float> _value, Func<float, float> function)
+    private unsafe void FuncSub(Matrix<Real> _value, Func<Real, Real> function)
     {
         void funcSub(int p, int col)
         {
-            float* _valuePtr = _value.RowPtr(p);
+            Real* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
         }
         if (rows == 1) { funcSub(0, columns); return; }
@@ -2878,69 +2878,69 @@ public sealed class RealSub : RecoverMultiply
     #endregion
 
     #region Assembly
-    private Matrix<float> UninitMtx() => new(rowOffs, columns);
-    private Matrix<float> HandleMtx(Matrix<float> mtx, Action<Matrix<float>> action) { action(mtx); return mtx; }
-    private Matrix<float> CopyMtx(MatrixCopy<float> mc) => mc.copy ? Copy(mc.matrix) : mc.matrix;
-    private MatrixCopy<float> ConstMtx(float _const)
+    private Matrix<Real> UninitMtx() => new(rowOffs, columns);
+    private Matrix<Real> HandleMtx(Matrix<Real> mtx, Action<Matrix<Real>> action) { action(mtx); return mtx; }
+    private Matrix<Real> CopyMtx(MatrixCopy<Real> mc) => mc.copy ? Copy(mc.matrix) : mc.matrix;
+    private MatrixCopy<Real> ConstMtx(Real _const)
     {
         if (!useList) return new(Const(_const));
         if (!readList) { cstMtcs.Add(new(_const, Const(_const))); return new(cstMtcs[^1].matrix, true); }
-        ConstMatrix<float> cm = cstMtcs[countCst];
-        bool equal = _const.Equals(cm._const); Matrix<float> mtx = equal ? cm.matrix : Const(_const); countCst++;
+        ConstMatrix<Real> cm = cstMtcs[countCst];
+        bool equal = _const.Equals(cm._const); Matrix<Real> mtx = equal ? cm.matrix : Const(_const); countCst++;
         return new(mtx, equal);
     } // Sensitive
-    private MatrixCopy<float> Transform(ReadOnlySpan<char> input) => input[0] switch
+    private MatrixCopy<Real> Transform(ReadOnlySpan<char> input) => input[0] switch
     {
-        _X => HandleSolo<float>(input, new(x, true)),
-        _Y => HandleSolo<float>(input, new(y, true)),
-        X_ => HandleSolo<float>(input, new(X, true)),
-        Y_ => HandleSolo<float>(input, new(Y, true)),
+        _X => HandleSolo<Real>(input, new(x, true)),
+        _Y => HandleSolo<Real>(input, new(y, true)),
+        X_ => HandleSolo<Real>(input, new(X, true)),
+        Y_ => HandleSolo<Real>(input, new(Y, true)),
         '{' => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
         '[' => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
-        E => HandleSolo<float>(input, ConstMtx(MathF.E)),
-        P => HandleSolo<float>(input, ConstMtx(MathF.PI)),
-        G => HandleSolo<float>(input, ConstMtx(GAMMA)),
-        _ => ConstMtx(Single.Parse(input))
+        E => HandleSolo<Real>(input, ConstMtx(MathF.E)),
+        P => HandleSolo<Real>(input, ConstMtx(MathF.PI)),
+        G => HandleSolo<Real>(input, ConstMtx(GAMMA)),
+        _ => ConstMtx(Real.Parse(input))
     };
-    private MatrixCopy<float> PowerCore(ReadOnlySpan<char> input)
+    private MatrixCopy<Real> PowerCore(ReadOnlySpan<char> input)
     {
         if (!input.Contains('^')) return Transform(input);
         string[] split = SplitByChars(input, "^");
-        Matrix<float> tower = CopyMtx(Transform(split[^1]));
+        Matrix<Real> tower = CopyMtx(Transform(split[^1]));
         for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
         return new(tower);
     }
-    private MatrixCopy<float> MultiplyDivideCore(ReadOnlySpan<char> input)
+    private MatrixCopy<Real> MultiplyDivideCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("*/")) return PowerCore(input);
         var (split, signs) = GetMultiplyDivideComponents(input);
-        Matrix<float> product = CopyMtx(PowerCore(split[0]));
+        Matrix<Real> product = CopyMtx(PowerCore(split[0]));
         for (int j = 1; j < split.Length; j++)
         {
-            Action<Matrix<float>, Matrix<float>> operation = signs[j - 1] switch { '*' => Multiply, '/' => Divide };
+            Action<Matrix<Real>, Matrix<Real>> operation = signs[j - 1] switch { '*' => Multiply, '/' => Divide };
             operation(PowerCore(split[j]).matrix, product);
         }
         return new(product);
     }
-    private MatrixCopy<float> PlusSubtractCore(ReadOnlySpan<char> input)
+    private MatrixCopy<Real> PlusSubtractCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("+-")) return MultiplyDivideCore(input);
         var (split, signs) = GetPlusSubtractComponents(input);
-        Matrix<float> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
+        Matrix<Real> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
         for (int i = 1; i < split.Length; i++)
         {
-            Action<Matrix<float>, Matrix<float>> operation = signs[i] switch { '+' => Plus, '-' => Subtract };
+            Action<Matrix<Real>, Matrix<Real>> operation = signs[i] switch { '+' => Plus, '-' => Subtract };
             operation(MultiplyDivideCore(split[i]).matrix, sum);
         }
         return new(sum);
     }
-    private MatrixCopy<float> ComputeBraFreePart(ReadOnlySpan<char> input)
-       => Int32.TryParse(input, out int result) ? ConstMtx(result) : PlusSubtractCore(input); // Single.Parse is slower
-    private MatrixCopy<float> SubCore(string input, int start, MatrixCopy<float> bFValue, ref int tagL)
+    private MatrixCopy<Real> ComputeBraFreePart(ReadOnlySpan<char> input)
+       => Int32.TryParse(input, out int result) ? ConstMtx(result) : PlusSubtractCore(input); // Real.Parse is slower
+    private MatrixCopy<Real> SubCore(string input, int start, MatrixCopy<Real> bFValue, ref int tagL)
     {
         if (start == 0) return bFValue;
         var (isInverse, mtx, copy) = (IsInverseFunc(input, start), bFValue.matrix, bFValue.copy);
-        int handleSub(Func<float, float> func, int tagL)
+        int handleSub(Func<Real, Real> func, int tagL)
         {
             ThrowException(input[start - tagL] != FUNC_HEAD);
             mtx = CopyMtx(bFValue); FuncSub(mtx, func); copy = false; return tagL;
@@ -2966,7 +2966,7 @@ public sealed class RealSub : RecoverMultiply
                 _F => handleSub(MathF.Floor, 3),
                 _C => handleSub(MathF.Ceiling, 3),
                 _R => handleSub(MathF.Round, 3),
-                _S => handleSub(SafeSign, 3) // Since MathF.Sign does not accept Single.NaN
+                _S => handleSub(SafeSign, 3) // Since MathF.Sign does not accept Real.NaN
             }, // Special for real
             _ => tagL
         };
@@ -2975,7 +2975,7 @@ public sealed class RealSub : RecoverMultiply
     private string SeriesSub(string input)
     {
         var (idx, end, split) = PrepareSeriesSub(input);
-        (Func<string[], Matrix<float>>, int) handleSub(Func<string[], Matrix<float>> func, int tagL)
+        (Func<string[], Matrix<Real>>, int) handleSub(Func<string[], Matrix<Real>> func, int tagL)
         { ThrowException(input[idx - tagL] != FUNC_HEAD); return (func, tagL); }
         var (braFunc, tagL) = input[idx - 1] switch
         {
@@ -2997,7 +2997,7 @@ public sealed class RealSub : RecoverMultiply
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
-    public Matrix<float> Obtain()
+    public Matrix<Real> Obtain()
     {
         string input = this.input; // Preserving the original input
         if (input.Contains('('))
@@ -3022,66 +3022,66 @@ public sealed class RealSub : RecoverMultiply
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct Complex // Manually inlined to reduce overhead
 {
-    public readonly float real, imaginary;
+    public readonly Real real, imaginary;
     public static readonly Complex ZERO = new(0), ONE = new(1), I = new(0, 1);
     [MethodImpl(256)] // AggressiveInlining
-    public Complex(float real, float imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use primary constructor
+    public Complex(Real real, Real imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use primary constructor
 
     #region Operators
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator -(Complex c) => new(-c.real, -c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator +(float f, Complex c) => new(f + c.real, c.imaginary);
+    public static Complex operator +(Real f, Complex c) => new(f + c.real, c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator +(Complex c1, Complex c2) => new(c1.real + c2.real, c1.imaginary + c2.imaginary);
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator -(float f, Complex c) => new(f - c.real, -c.imaginary);
+    public static Complex operator -(Real f, Complex c) => new(f - c.real, -c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator -(Complex c1, Complex c2) => new(c1.real - c2.real, c1.imaginary - c2.imaginary);
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator *(Complex c, float f) => new(f * c.real, f * c.imaginary);
+    public static Complex operator *(Complex c, Real f) => new(f * c.real, f * c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator *(Complex c1, Complex c2)
     {
-        float re1 = c1.real, im1 = c1.imaginary, re2 = c2.real, im2 = c2.imaginary;
+        Real re1 = c1.real, im1 = c1.imaginary, re2 = c2.real, im2 = c2.imaginary;
         return new(re1 * re2 - im1 * im2, re1 * im2 + im1 * re2);
     }
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator /(float f, Complex c)
-    { float re = c.real, im = c.imaginary, mod = f / (re * re + im * im); return new(mod * re, -mod * im); }
+    public static Complex operator /(Real f, Complex c)
+    { Real re = c.real, im = c.imaginary, mod = f / (re * re + im * im); return new(mod * re, -mod * im); }
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator /(Complex c, float f) => c * (1 / f);
+    public static Complex operator /(Complex c, Real f) => c * (1 / f);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator /(Complex c1, Complex c2)
     {
-        float re1 = c1.real, im1 = c1.imaginary, re2 = c2.real, im2 = c2.imaginary, modSquare = re2 * re2 + im2 * im2;
+        Real re1 = c1.real, im1 = c1.imaginary, re2 = c2.real, im2 = c2.imaginary, modSquare = re2 * re2 + im2 * im2;
         return new((re1 * re2 + im1 * im2) / modSquare, (im1 * re2 - re1 * im2) / modSquare);
     }
     #endregion
 
     #region Elementary Functions
-    public static Complex Pow(float f, Complex c)
+    public static Complex Pow(Real f, Complex c)
     {
         if (f == 0) return ZERO; // Necessary apriori checking
         var (mod, unit) = (MathF.Pow(f, c.real), MathF.SinCos(MathF.Log(f) * c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
-    public static Complex Pow(Complex c, float f)
+    public static Complex Pow(Complex c, Real f)
     {
-        float re = c.real, im = c.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
+        Real re = c.real, im = c.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
         var (mod, unit) = (MathF.Pow(re * re + im * im, f / 2), MathF.SinCos(f * MathF.Atan2(im, re)));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Pow(Complex c1, Complex c2)
     {
-        float re = c1.real, im = c1.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
+        Real re = c1.real, im = c1.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
         Complex c = c2 * new Complex(MathF.Log(re * re + im * im) / 2, MathF.Atan2(im, re));
         var (mod, unit) = (MathF.Exp(c.real), MathF.SinCos(c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Log(Complex c)
     {
-        float re = c.real, im = c.imaginary;
+        Real re = c.real, im = c.imaginary;
         return new(MathF.Log(re * re + im * im) / 2, MathF.Atan2(im, re));
     }
     public static Complex Exp(Complex c)
@@ -3112,17 +3112,17 @@ public readonly struct Complex // Manually inlined to reduce overhead
     }
     public static Complex Asin(Complex c)
     {
-        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, 0.5f); float re = _c.real, im = _c.imaginary;
+        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, 0.5f); Real re = _c.real, im = _c.imaginary;
         return new(MathF.Atan2(im, re), -MathF.Log(re * re + im * im) / 2);
     }
     public static Complex Acos(Complex c)
     {
-        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, 0.5f); float re = _c.real, im = _c.imaginary;
+        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, 0.5f); Real re = _c.real, im = _c.imaginary;
         return new(MathF.PI / 2 - MathF.Atan2(im, re), MathF.Log(re * re + im * im) / 2);
     } // Wolfram convention: https://mathworld.wolfram.com/InverseCosine.html
     public static Complex Atan(Complex c)
     {
-        Complex _c = 2 / new Complex(1 + c.imaginary, -c.real); float re = _c.real - 1, im = _c.imaginary;
+        Complex _c = 2 / new Complex(1 + c.imaginary, -c.real); Real re = _c.real - 1, im = _c.imaginary;
         return new(MathF.Atan2(im, re) / 2, -MathF.Log(re * re + im * im) / 4);
     }
     //
@@ -3143,27 +3143,27 @@ public readonly struct Complex // Manually inlined to reduce overhead
     }
     public static Complex Asinh(Complex c)
     {
-        Complex _c = c + Pow(1 + c * c, 0.5f); float re = _c.real, im = _c.imaginary;
+        Complex _c = c + Pow(1 + c * c, 0.5f); Real re = _c.real, im = _c.imaginary;
         return new(MathF.Log(re * re + im * im) / 2, MathF.Atan2(im, re));
     }
     public static Complex Acosh(Complex c)
     {
-        Complex _c = c + Pow(1 + c, 0.5f) * Pow(-1 + c, 0.5f); float re = _c.real, im = _c.imaginary;
+        Complex _c = c + Pow(1 + c, 0.5f) * Pow(-1 + c, 0.5f); Real re = _c.real, im = _c.imaginary;
         return new(MathF.Log(re * re + im * im) / 2, MathF.Atan2(im, re));
     } // Wolfram convention: https://mathworld.wolfram.com/InverseHyperbolicCosine.html
     public static Complex Atanh(Complex c)
     {
-        Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); float re = _c.real - 1, im = _c.imaginary;
+        Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); Real re = _c.real - 1, im = _c.imaginary;
         return new(MathF.Log(re * re + im * im) / 4, MathF.Atan2(im, re) / 2);
     }
     //
     public static Complex Sqrt(Complex c) => Pow(c, 0.5f);
-    public static float Modulus(float x, float y) => Modulus(new(x, y));
-    public static float Modulus(Complex c) => MathF.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
+    public static Real Modulus(Real x, Real y) => Modulus(new(x, y));
+    public static Real Modulus(Complex c) => MathF.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
     public static Complex Conjugate(Complex c) => new(c.real, -c.imaginary);
     public static Complex Factorial(Complex c) => new(RealSub.Factorial(c.real));
     #endregion
-} /// Optimized float-entried complex numbers
+} /// Optimized Real-entried complex numbers
 public readonly struct Matrix<TEntry>
 {
     private readonly TEntry[] matrix;
