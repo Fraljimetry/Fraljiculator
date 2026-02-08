@@ -2,7 +2,8 @@ using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, 
 using System.Runtime.InteropServices; // DllImport, StructLayout
 using System.Drawing.Imaging; // BitmapData
 using System.Text; // StringBuilder
-using Real = System.Single;
+using Real = System.Double;
+using MathR = System.Math;
 
 namespace Fraljiculator;
 
@@ -24,7 +25,7 @@ public partial class Graph : Form
     private static readonly Bitmap BMP_PIXEL = new(1, 1);
     private static readonly Size SIZE_PIXEL = new(1, 1);
     private static readonly SolidBrush BACK_BRUSH = new(Color.Black);
-    private static readonly Pen BDR_PEN = new(Color.Gray), _BDR_PEN = new(Color.White), AXES_PEN = new(Color.DarkGray, 4f);
+    private static readonly Pen BDR_PEN = new(Color.Gray), _BDR_PEN = new(Color.White), AXES_PEN = new(Color.DarkGray, 4);
     private static readonly Color CORRECT_GREEN = Argb(192, 255, 192), ERROR_RED = Argb(255, 192, 192),
         UNCHECK_YELLOW = Argb(255, 255, 128), READONLY_PURPLE = Argb(255, 192, 255),
         COMBO_BLUE = Argb(192, 255, 255), FOCUS_GRAY = Color.LightGray, BACKDROP_GRAY = Argb(64, 64, 64),
@@ -32,9 +33,9 @@ public partial class Graph : Form
         UPPER_GOLD = Color.Gold, LOWER_BLUE = Color.RoyalBlue, ZERO_BLUE = Color.Lime, POLE_PURPLE = Color.Magenta;
     //
     private static Real scale_factor, title_elapsed, pause_pos, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
-    private static readonly Real GRID_WIDTH_1 = 3f, GRID_WIDTH_2 = 2f, CURVE_WIDTH_LIMIT = 20f, STRIDE = 0.25f, MOD = 0.25f,
-        ARG = MathF.PI / 12, STRIDE_REAL = 1f, EPS_REAL = 0.015f, EPS_COMPLEX = 0.015f, SIZE_REAL = 0.5f, DECAY = 0.2f, DEPTH = 2f,
-        CURVE_WIDTH = 5f, INCREMENT = 0.01f, TITLE = 0.01f;
+    private static readonly Real GRID_WIDTH_1 = 3, GRID_WIDTH_2 = 2, CURVE_WIDTH_LIMIT = 20, STRIDE = (Real)0.25, MOD = (Real)0.25,
+        ARG = MathR.PI / 12, STRIDE_REAL = 1, EPS_REAL = (Real)0.015, EPS_COMPLEX = (Real)0.015, SIZE_REAL = (Real)0.5, DECAY = (Real)0.2,
+        DEPTH = 2, CURVE_WIDTH = 5, INCREMENT = (Real)0.01, TITLE = (Real)0.01;
     private static int display_elapsed, x_left, x_right, y_up, y_down, color_mode, contour_mode,
         loop_number, chosen_number, export_number, pixel_number, segment_number;
     private static readonly int X_LEFT_MAC = 620, X_RIGHT_MAC = 1520, Y_UP_MAC = 45, Y_DOWN_MAC = 945,
@@ -54,7 +55,7 @@ public partial class Graph : Form
         MICRO = "MICRO", ZERO = "0", REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History stored at",
         CAPTION_DEFAULT = "Yours inputs will be shown here.", MISTAKES_HEAD = "\r\nCommon mistakes include:",
         WRONG_FORMAT = "THE INPUT IS IN A WRONG FORMAT.", WRONG_ADDRESS = "THE ADDRESS DOES NOT EXIST.",
-        DISPLAY_ERROR = "UNAVAILABLE.", DRAFT_DEFAULT = "\r\nDetailed historical info is documented here.",
+        DISPLAY_ERROR = "UNAVAILABLE.", DRAFT_DEFAULT = $"\r\nPrecision of real numbers: \r\n{typeof(Real)}.",
         TEMP_BGM_NAME = "background_music", MUSIC = "music", SOUND = "click sound", TIP = "ReadOnly",
         SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('~', 3), _SEP = new('*', 20), TAB = new(' ', 4);
     private static readonly string[] CONTOUR_MODES = ["Cartesian (x,y)", "Polar (r,θ)"], COLOR_MODES =
@@ -83,10 +84,10 @@ public partial class Graph : Form
     }
     public static void ReduceFontSizeByScale(Control parentCtrl, ref Real scalingFactor)
     {
-        scalingFactor = Graphics.FromHwnd(IntPtr.Zero).DpiX / 96f / 1.5f; // Originally scaled to 150%
+        scalingFactor = Graphics.FromHwnd(IntPtr.Zero).DpiX / 96 / (Real)1.5; // Originally scaled to 150%
         foreach (Control ctrl in parentCtrl.Controls)
         {
-            ctrl.Font = new(ctrl.Font.FontFamily, ctrl.Font.Size / scalingFactor, ctrl.Font.Style);
+            ctrl.Font = new(ctrl.Font.FontFamily, ctrl.Font.Size / (float)scalingFactor, ctrl.Font.Style);
             if (ctrl.Controls.Count > 0) ReduceFontSizeByScale(ctrl, ref scalingFactor);
         }
     } // Also used for Message Boxes, so scalingFactor should not be passed as a field
@@ -239,7 +240,7 @@ public partial class Graph : Form
     private static Color Argb(int a, int r, int g, int b) => Color.FromArgb(a, r, g, b);
     public static Color Argb(int r, int g, int b) => Color.FromArgb(r, g, b); // Also used for Message Boxes
     public static Real ArgRGB(Real x, Real y) => Real.IsNaN(x) && Real.IsNaN(y) ? -1 : y == 0 ?
-        (x == 0 ? -1 : x > 0 ? 0 : MathF.PI) : (y > 0 ? MathF.Atan2(y, x) : MathF.Atan2(y, x) + MathF.Tau); // Sensitive checking
+        (x == 0 ? -1 : x > 0 ? 0 : MathR.PI) : (y > 0 ? MathR.Atan2(y, x) : MathR.Atan2(y, x) + MathR.Tau); // Sensitive checking
     private static int Frac(int input, Real alpha) => (int)(input * alpha);
     private static bool IllegalRatio(Real ratio) => ratio < 0 || ratio > 1;
     private static int RowBorders(int[] borders) => borders[1] - borders[0];
@@ -280,20 +281,20 @@ public partial class Graph : Form
     private static void DrawAxesGrids(int[] borders)
     {
         bdp_painted = true; // To prevent calling Graph_Paint afterwards
-        static Real calculateGrid(Real range) => MathF.Pow(GRID, MathF.Floor(MathF.Log(range / 2, GRID)));
+        static Real calculateGrid(Real range) => MathR.Pow(GRID, MathR.Floor(MathR.Log(range / 2, GRID)));
         var (xGrid, yGrid) = (calculateGrid(RowScopes()), calculateGrid(ColumnScopes()));
         var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
         var (xInit, yInit, xEnd, yEnd) = (AddOne(borders[0]), AddOne(borders[2]), borders[1], borders[3]);
 
         void drawGrids(Real xGrid, Real yGrid, Real penWidth)
         {
-            Pen gridPen = new(GRID_GRAY, penWidth);
-            RealComplex.For((int)MathF.Floor(scopes[2] / yGrid), (int)MathF.Ceiling(scopes[3] / yGrid), i =>
+            Pen gridPen = new(GRID_GRAY, (float)penWidth);
+            RealComplex.For((int)MathR.Floor(scopes[2] / yGrid), (int)MathR.Ceiling(scopes[3] / yGrid), i =>
             {
                 int pos = LinearTransformY(i * yGrid, borders, ratioColumn);
                 if (pos >= yInit && pos < yEnd) graphics.DrawLine(gridPen, xInit, pos, xEnd, pos);
             });
-            RealComplex.For((int)MathF.Floor(scopes[0] / xGrid), (int)MathF.Ceiling(scopes[1] / xGrid), i =>
+            RealComplex.For((int)MathR.Floor(scopes[0] / xGrid), (int)MathR.Ceiling(scopes[1] / xGrid), i =>
             {
                 int pos = LinearTransformX(i * xGrid, borders, ratioRow);
                 if (pos >= xInit && pos < xEnd) graphics.DrawLine(gridPen, pos, yEnd, pos, yInit);
@@ -302,7 +303,7 @@ public partial class Graph : Form
         drawGrids(xGrid, yGrid, GRID_WIDTH_1);
         drawGrids(xGrid / GRID, yGrid / GRID, GRID_WIDTH_2);
 
-        var (x, y) = (LinearTransformX(0f, borders, ratioRow), LinearTransformY(0f, borders, ratioColumn));
+        var (x, y) = (LinearTransformX(0, borders, ratioRow), LinearTransformY(0, borders, ratioColumn));
         if (y >= yInit && y < yEnd) graphics.DrawLine(AXES_PEN, xInit, y, xEnd, y);
         if (x >= xInit && x < xEnd) graphics.DrawLine(AXES_PEN, x, yEnd, x, yInit);
     }
@@ -330,7 +331,7 @@ public partial class Graph : Form
     private static int LinearTransformY(Real y, int[] borders, Real ratioColumn) => (int)(borders[2] + (y - scopes[3]) / ratioColumn);
     private static (Real, Real) LinearTransform(int x, int y, Real xCoor, Real yCoor, int[] borders)
         => (scopes[0] + (x - borders[0]) * xCoor, scopes[3] + (y - borders[2]) * yCoor);
-    private static int LowIdx(Real a, Real m) => (int)MathF.Floor(a / m);
+    private static int LowIdx(Real a, Real m) => (int)MathR.Floor(a / m);
     private static Real LowDist(Real a, Real m) => a - m * LowIdx(a, m);
     private static Real LowRatio(Real a, Real m) => a == -0 ? 1 : LowDist(a, m) / m; // -0 is necessary
     private static Real GetShade(Real alpha) => (alpha - 1) / DEPTH + 1;
@@ -347,11 +348,11 @@ public partial class Graph : Form
         Parallel.For(0, rows, p =>
         {
             Real* destPtr = outputAtan.RowPtr(p), _destPtr = destPtr, srcPtr = output.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = MathF.Atan(*srcPtr);
-            minMax[0, p] = seekM(MathF.Min, _destPtr, columns);
-            minMax[1, p] = seekM(MathF.Max, _destPtr, columns);
+            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = MathR.Atan(*srcPtr);
+            minMax[0, p] = seekM(MathR.Min, _destPtr, columns);
+            minMax[1, p] = seekM(MathR.Max, _destPtr, columns);
         });
-        return (seekM(MathF.Min, minMax.RowPtr(0), rows), seekM(MathF.Max, minMax.RowPtr(1), rows));
+        return (seekM(MathR.Min, minMax.RowPtr(0), rows), seekM(MathR.Max, minMax.RowPtr(1), rows));
     } // To find the min and max of the atan'ed matrix to prevent infinitude
     private unsafe static (int, int, Matrix<Real>, Matrix<Real>) GetRowColumnCoor()
     {
@@ -418,7 +419,7 @@ public partial class Graph : Form
             if (Real.IsNaN(_value)) return;
             var _pixelPtr = (byte*)pixelPtr;
             SetPixel(_pixelPtr, extractor(_value), ref pixNum);
-            if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathF.Atan(_value), mM, ref pixNum);
+            if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathR.Atan(_value), mM, ref pixNum);
         });
     private unsafe void ComplexLoop(Matrix<Complex> output, Color _zero, Color _pole, Func<Complex, Color> extractor)
         => LoopBase((x, y, pixelPtr, ref pixNum) =>
@@ -434,7 +435,7 @@ public partial class Graph : Form
         Color func23(Color c1, Color c2) => _value < 0 ? Swap(c1, c2) : _value > 0 ? Swap(c2, c1) : Color.Empty;
         return mode switch
         {
-            1 => MathF.Abs(_value) < epsilon ? Swap(Color.Black, Color.White) : Color.Empty,
+            1 => MathR.Abs(_value) < epsilon ? Swap(Color.Black, Color.White) : Color.Empty,
             2 => func23(Color.White, Color.Black),
             3 => func23(UPPER_GOLD, LOWER_BLUE)
         };
@@ -453,7 +454,7 @@ public partial class Graph : Form
             3 => (LOWER_BLUE, UPPER_GOLD)
         };
         bool draw = mode != 1 ? Real.IsEvenInteger(LowIdx(v1, s1) + LowIdx(v2, s2))
-            : MathF.Min(MathF.Min(LowDist(v1, s1), LowDist(v2, s2)), MathF.Min(-LowDist(v1, -s1), -LowDist(v2, -s2))) < epsilon;
+            : MathR.Min(MathR.Min(LowDist(v1, s1), LowDist(v2, s2)), MathR.Min(-LowDist(v1, -s1), -LowDist(v2, -s2))) < epsilon;
         return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
     };
     private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? (c => ObtainColorWheel(c, alpha: 1)) : (_value =>
@@ -554,8 +555,8 @@ public partial class Graph : Form
     }
     private unsafe void DrawCurve(Matrix<Real> value1, Matrix<Real> value2, int length)
     {
-        Real curveWidth = MathF.Min(CURVE_WIDTH * Obtain(ThickInput), CURVE_WIDTH_LIMIT);
-        Pen dichoPen(Color c1, Color c2) => new(Swap(c1, c2), curveWidth);
+        Real curveWidth = MathR.Min(CURVE_WIDTH * Obtain(ThickInput), CURVE_WIDTH_LIMIT);
+        Pen dichoPen(Color c1, Color c2) => new(Swap(c1, c2), (float)curveWidth);
         Pen vividPen = dichoPen(Color.Empty, Color.Empty), defaultPen = dichoPen(Color.Black, Color.White),
             blackPen = dichoPen(Color.White, Color.Black), whitePen = dichoPen(Color.Black, Color.White),
             bluePen = dichoPen(LOWER_BLUE, UPPER_GOLD), yellowPen = dichoPen(UPPER_GOLD, LOWER_BLUE),
@@ -574,8 +575,8 @@ public partial class Graph : Form
                 ratio = relativeSpeed * steps % 1;
                 selectedPen = color_mode switch
                 {
-                    2 => ratio < 0.5f ? whitePen : blackPen,
-                    3 => ratio < 0.5f ? bluePen : yellowPen,
+                    2 => ratio < (Real)0.5 ? whitePen : blackPen,
+                    3 => ratio < (Real)0.5 ? bluePen : yellowPen,
                     _ => selectedPen
                 };
                 if (color_mode > 3) vividPen.Color = ObtainColorWheelCurve(ratio);
@@ -633,7 +634,7 @@ public partial class Graph : Form
     {
         var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
         int toInt(int index) => RealSub.ToInt(split[index]);
-        int int3 = toInt(3), int4 = is_checking ? int3 : (int)MathF.Max(int3, toInt(4)); // Necessary
+        int int3 = toInt(3), int4 = is_checking ? int3 : (int)MathR.Max(int3, toInt(4)); // Necessary
         string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops.ToString(), true);
         string obtainDisplayInput(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(5, loops) : defaultInput;
 
@@ -670,7 +671,7 @@ public partial class Graph : Form
             containsTag(ReplaceTags.POLAR) ? DisplayPolar :
             containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
         int toInt(int index) => RealSub.ToInt(split[index]);
-        int int2 = toInt(2), int3 = is_checking ? int2 : (int)MathF.Max(int2, toInt(3)); // Necessary
+        int int2 = toInt(2), int3 = is_checking ? int2 : (int)MathR.Max(int2, toInt(3)); // Necessary
         for (int loops = int2; loops <= int3; loops++) displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true));
     }
     private void DisplayOnScreen()
@@ -696,7 +697,7 @@ public partial class Graph : Form
     private static Color ObtainColorBase(Real argument, Real alpha, int decay) // alpha: brightness
     {
         if (IllegalRatio(alpha)) return Color.Empty; // Necessary
-        Real _argument = argument * 3 / MathF.PI; int proportion, region = argument < 0 ? -1 : (int)_argument;
+        Real _argument = argument * 3 / MathR.PI; int proportion, region = argument < 0 ? -1 : (int)_argument;
         if (region == 6) region = proportion = 0; else proportion = Frac(255, _argument - region);
         return region switch
         {
@@ -711,14 +712,14 @@ public partial class Graph : Form
     } // Reference: https://en.wikipedia.org/wiki/Domain_coloring & https://complex-analysis.com/content/domain_coloring.html
     private static Color ObtainColorWheel(Complex c, Real alpha = 1)
         => ObtainColorBase(ArgRGB(c.real, c.imaginary), alpha, (int)(255 / (1 + decay * Complex.Modulus(shade ? c : Complex.ZERO))));
-    private static Color ObtainColorWheelCurve(Real alpha) => ObtainColorBase(alpha * MathF.Tau, 1, 255);
+    private static Color ObtainColorWheelCurve(Real alpha) => ObtainColorBase(alpha * MathR.Tau, 1, 255);
     private static Color ObtainColorStrip(Real _value, Real min, Real max, Real alpha = 1) // alpha: brightness
     {
         if (min == max) return Color.Empty; // Necessary
-        Real beta = (MathF.Atan(_value) - min) / (max - min);
+        Real beta = (MathR.Atan(_value) - min) / (max - min);
         if (IllegalRatio(alpha) || IllegalRatio(beta)) return Color.Empty; // Necessary
-        return beta < 0.5f ? Argb(Frac(Frac(510, beta), alpha), 0, Frac(255, alpha))
-            : Argb(Frac(255, alpha), 0, Frac(255 - Frac(510, beta - 0.5f), alpha));
+        return beta < (Real)0.5 ? Argb(Frac(Frac(510, beta), alpha), 0, Frac(255, alpha))
+            : Argb(Frac(255, alpha), 0, Frac(255 - Frac(510, beta - (Real)0.5), alpha));
     }
     #endregion
 
@@ -1696,7 +1697,7 @@ public class MyMessageBox : Form
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
     //
     private static Real scale_factor;
-    private static readonly Real MSG_TXT_SIZE = 10f, BTN_TXT_SIZE = 7f;
+    private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
     private static bool is_resized;
     private static readonly string MSG_FONT = "Microsoft YaHei UI", BTN_FONT = "Microsoft YaHei UI", BTN_TXT = "OK";
@@ -1706,7 +1707,7 @@ public class MyMessageBox : Form
     private static void BtnOk_MouseEnterLeave(bool isEnter)
     {
         if (isEnter ? is_resized : !is_resized) return; // To prevent repetitive call
-        var (_size, _location, _font) = isEnter ? (2, -1, 1f) : (-2, 1, -1f);
+        var (_size, _location, _font) = isEnter ? (2, -1, 1) : (-2, 1, -1);
         btnOk.Size = new(btnOk.Width + _size, btnOk.Height + _size);
         btnOk.Location = new(btnOk.Location.X + _location, btnOk.Location.Y + _location);
         btnOk.Font = new(btnOk.Font.FontFamily, btnOk.Font.Size + _font, btnOk.Font.Style);
@@ -1726,7 +1727,7 @@ public class MyMessageBox : Form
         txtMessage = new()
         {
             Text = message,
-            Font = new(MSG_FONT, MSG_TXT_SIZE, FontStyle.Regular),
+            Font = new(MSG_FONT, (float)MSG_TXT_SIZE, FontStyle.Regular),
             ForeColor = txtColor,
             Multiline = true,
             ReadOnly = true,
@@ -1746,7 +1747,7 @@ public class MyMessageBox : Form
             Location = new(width / 2 - BTN_SIZE, height - DIST - BTN_SIZE),
             BackColor = btnColor,
             ForeColor = btnTxtColor,
-            Font = new(BTN_FONT, BTN_TXT_SIZE, FontStyle.Bold),
+            Font = new(BTN_FONT, (float)BTN_TXT_SIZE, FontStyle.Bold),
             FlatStyle = FlatStyle.Flat,
             Text = BTN_TXT,
         };
@@ -1808,8 +1809,7 @@ public class MyString
         static int pairedInnerBra(ReadOnlySpan<char> input, int start)
         { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
         int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
-        // Backward lookup for parenthesis pairs, extremely sensitive
-    }
+    } // Backward lookup for parenthesis pairs, extremely sensitive
     public static bool CheckParenthesis(ReadOnlySpan<char> input)
     {
         int sum = 0;
@@ -1881,8 +1881,8 @@ public class MyString
         return input.Slice(startIndex).ToString();
     }
     public static string TrimExtremeNum(Real input, Real threshold)
-        => (MathF.Abs(input) < threshold && MathF.Abs(input) > 1 / threshold) ? input.ToString() : input.ToString("E3");
-    public static string GetAngle(Real x, Real y) => (Graph.ArgRGB(x, y) / MathF.PI).ToString("#0.000000") + " π";
+        => (MathR.Abs(input) < threshold && MathR.Abs(input) > 1 / threshold) ? input.ToString("#0.0000000") : input.ToString("E3");
+    public static string GetAngle(Real x, Real y) => (Graph.ArgRGB(x, y) / MathR.PI).ToString("#0.000000") + " π";
     public static void ThrowException(bool error = true) { if (error) throw new Exception(); }
     public static void ThrowInvalidLengths(ReadOnlySpan<string> split, int[] lengths) => ThrowException(!lengths.Contains(split.Length));
     protected static int ThrowReturnLengths(ReadOnlySpan<string> split, int length, int iteration)
@@ -1896,7 +1896,7 @@ public class MyString
 } /// String manipulations
 public class RealComplex : MyString
 {
-    protected static readonly Real GAMMA = 0.57721566f;
+    protected static readonly Real GAMMA = (Real)0.5772156649015329;
     protected static readonly int STEP = 1; // A tunable chunk size
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
@@ -1913,7 +1913,7 @@ public class RealComplex : MyString
     protected static void Initialize<TEntry>(int rows, int columns, ref int rowChk, ref int[]? rowOffs, ref uint colBytes,
         ref int strd, ref int[]? strdInit, ref uint strdBytes, ref int res, ref int resInit, ref uint resBytes)
     {
-        int step = Math.Min(rows, STEP); // Necessary to ensure rowChk > 0
+        int step = Int32.Min(rows, STEP); // Necessary to ensure rowChk > 0
         rowChk = rows / step; rowOffs = GetArithProg(rows, columns);
         strd = columns * step; strdInit = GetArithProg(rowChk, step);
         resInit = rowChk * step; res = rows - resInit;
@@ -2255,7 +2255,7 @@ public sealed class ComplexSub : RecoverMultiply
                 {
                     for (int i = 0; i <= n; i++)
                     {
-                        *coeffPtr *= 0.5f; *_coeffPtr = Complex.ONE; *sumPtr = Complex.ZERO;
+                        *coeffPtr /= 2; *_coeffPtr = Complex.ONE; *sumPtr = Complex.ZERO;
                         for (int j = 0; j <= i; j++)
                         {
                             *sumPtr += *_coeffPtr * Complex.Pow(j + 1, -*initialPtr);
@@ -2427,8 +2427,8 @@ public sealed class ComplexSub : RecoverMultiply
         '{' => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
         '[' => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
         I => HandleSolo<Complex>(input, ConstMtx(Complex.I)), // Special for complex
-        E => HandleSolo<Complex>(input, ConstMtx(new(MathF.E))),
-        P => HandleSolo<Complex>(input, ConstMtx(new(MathF.PI))),
+        E => HandleSolo<Complex>(input, ConstMtx(new(MathR.E))),
+        P => HandleSolo<Complex>(input, ConstMtx(new(MathR.PI))),
         G => HandleSolo<Complex>(input, ConstMtx(new(GAMMA))),
         _ => ConstMtx(new(Real.Parse(input)))
     };
@@ -2572,9 +2572,9 @@ public sealed class RealSub : RecoverMultiply
 
     #region Basic Calculations
     private static Real FactorialBase(Real n) => n < 0 ? Real.NaN : n == 0 ? 1 : n * FactorialBase(n - 1);
-    public static Real Factorial(Real r) => FactorialBase(MathF.Floor(r));
-    private static Real SafeSign(Real r) => Real.IsNaN(r) ? Real.NaN : MathF.Sign(r);
-    private static Real Mod(Real n, Real r) => r != 0 ? n % MathF.Abs(r) : Real.NaN;
+    public static Real Factorial(Real r) => FactorialBase(MathR.Floor(r));
+    private static Real SafeSign(Real r) => Real.IsNaN(r) ? Real.NaN : MathR.Sign(r);
+    private static Real Mod(Real n, Real r) => r != 0 ? n % MathR.Abs(r) : Real.NaN;
     private static Real Combination(Real n, Real r)
         => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n > 0 ?
         Combination(n - 1, r - 1) + Combination(n - 1, r) : r > 0 ?
@@ -2619,8 +2619,8 @@ public sealed class RealSub : RecoverMultiply
     }
     //
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
-    private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathF.Floor(n), MathF.Floor(r)));
-    private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathF.Floor(n), MathF.Floor(r)));
+    private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathR.Floor(n), MathR.Floor(r)));
+    private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathR.Floor(n), MathR.Floor(r)));
     private Matrix<Real> Max(string[] split) => ProcessMinMax(split, _value => _value.Max());
     private Matrix<Real> Min(string[] split) => ProcessMinMax(split, _value => _value.Min());
     #endregion // Special for real
@@ -2661,8 +2661,8 @@ public sealed class RealSub : RecoverMultiply
                 Real* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, productPtr++, initialPtr++, outputPtr++)
                 {
-                    for (int i = 1; i <= n; i++) { Real temp = *initialPtr / i; *productPtr *= MathF.Exp(temp) / (1 + temp); }
-                    *outputPtr = *productPtr * MathF.Exp(-*initialPtr * GAMMA) / *initialPtr;
+                    for (int i = 1; i <= n; i++) { Real temp = *initialPtr / i; *productPtr *= MathR.Exp(temp) / (1 + temp); }
+                    *outputPtr = *productPtr * MathR.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
             }
             if (useList && !readList) output = product; if (rows == 1) { gamma(0, columns); return; }
@@ -2704,15 +2704,15 @@ public sealed class RealSub : RecoverMultiply
                 {
                     for (int i = 0; i <= n; i++)
                     {
-                        *coeffPtr *= 0.5f; *_coeffPtr = 1; *sumPtr = 0;
+                        *coeffPtr /= 2; *_coeffPtr = 1; *sumPtr = 0;
                         for (int j = 0; j <= i; j++)
                         {
-                            *sumPtr += *_coeffPtr * MathF.Pow(j + 1, -*initialPtr);
+                            *sumPtr += *_coeffPtr * MathR.Pow(j + 1, -*initialPtr);
                             *_coeffPtr *= (Real)(j - i) / (Real)(j + 1); // (Real) is not redundant
                         }
                         *sumPtr *= *coeffPtr; *_sumPtr += *sumPtr;
                     }
-                    *_sumPtr /= 1 - MathF.Pow(2, 1 - *initialPtr);
+                    *_sumPtr /= 1 - MathR.Pow(2, 1 - *initialPtr);
                 }
             }
             if (useList && !readList) return; if (rows == 1) { zeta(0, columns); return; }
@@ -2859,7 +2859,7 @@ public sealed class RealSub : RecoverMultiply
         void power(int p, int col)
         {
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathF.Pow(*srcPtr, *destPtr);
+            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathR.Pow(*srcPtr, *destPtr);
         }
         if (useList && !readList) return; if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
@@ -2897,8 +2897,8 @@ public sealed class RealSub : RecoverMultiply
         Y_ => HandleSolo<Real>(input, new(Y, true)),
         '{' => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
         '[' => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
-        E => HandleSolo<Real>(input, ConstMtx(MathF.E)),
-        P => HandleSolo<Real>(input, ConstMtx(MathF.PI)),
+        E => HandleSolo<Real>(input, ConstMtx(MathR.E)),
+        P => HandleSolo<Real>(input, ConstMtx(MathR.PI)),
         G => HandleSolo<Real>(input, ConstMtx(GAMMA)),
         _ => ConstMtx(Real.Parse(input))
     };
@@ -2947,26 +2947,26 @@ public sealed class RealSub : RecoverMultiply
         }
         tagL = input[start - 1] switch
         {
-            _S => isInverse.trig ? handleSub(MathF.Asin, 3) : handleSub(MathF.Sin, 2),
-            _C => isInverse.trig ? handleSub(MathF.Acos, 3) : handleSub(MathF.Cos, 2),
-            _T => isInverse.trig ? handleSub(MathF.Atan, 3) : handleSub(MathF.Tan, 2),
+            _S => isInverse.trig ? handleSub(MathR.Asin, 3) : handleSub(MathR.Sin, 2),
+            _C => isInverse.trig ? handleSub(MathR.Acos, 3) : handleSub(MathR.Cos, 2),
+            _T => isInverse.trig ? handleSub(MathR.Atan, 3) : handleSub(MathR.Tan, 2),
             _H => input[start - 2] switch
             {
-                _S => isInverse.hyper ? handleSub(MathF.Asinh, 4) : handleSub(MathF.Sinh, 3),
-                _C => isInverse.hyper ? handleSub(MathF.Acosh, 4) : handleSub(MathF.Cosh, 3),
-                _T => isInverse.hyper ? handleSub(MathF.Atanh, 4) : handleSub(MathF.Tanh, 3)
+                _S => isInverse.hyper ? handleSub(MathR.Asinh, 4) : handleSub(MathR.Sinh, 3),
+                _C => isInverse.hyper ? handleSub(MathR.Acosh, 4) : handleSub(MathR.Cosh, 3),
+                _T => isInverse.hyper ? handleSub(MathR.Atanh, 4) : handleSub(MathR.Tanh, 3)
             },
-            _A => handleSub(MathF.Abs, 2),
-            _L => handleSub(MathF.Log, 2),
-            E_ => handleSub(MathF.Exp, 2),
-            _Q => handleSub(MathF.Sqrt, 2),
+            _A => handleSub(MathR.Abs, 2),
+            _L => handleSub(MathR.Log, 2),
+            E_ => handleSub(MathR.Exp, 2),
+            _Q => handleSub(MathR.Sqrt, 2),
             _F_ => handleSub(Factorial, 2),
             _D_ => input[start - 2] switch
             {
-                _F => handleSub(MathF.Floor, 3),
-                _C => handleSub(MathF.Ceiling, 3),
-                _R => handleSub(MathF.Round, 3),
-                _S => handleSub(SafeSign, 3) // Since MathF.Sign does not accept Real.NaN
+                _F => handleSub(MathR.Floor, 3),
+                _C => handleSub(MathR.Ceiling, 3),
+                _R => handleSub(MathR.Round, 3),
+                _S => handleSub(SafeSign, 3) // Since MathR.Sign does not accept Real.NaN
             }, // Special for real
             _ => tagL
         };
@@ -3063,103 +3063,103 @@ public readonly struct Complex // Manually inlined to reduce overhead
     public static Complex Pow(Real f, Complex c)
     {
         if (f == 0) return ZERO; // Necessary apriori checking
-        var (mod, unit) = (MathF.Pow(f, c.real), MathF.SinCos(MathF.Log(f) * c.imaginary));
+        var (mod, unit) = (MathR.Pow(f, c.real), MathR.SinCos(MathR.Log(f) * c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Pow(Complex c, Real f)
     {
         Real re = c.real, im = c.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
-        var (mod, unit) = (MathF.Pow(re * re + im * im, f / 2), MathF.SinCos(f * MathF.Atan2(im, re)));
+        var (mod, unit) = (MathR.Pow(re * re + im * im, f / 2), MathR.SinCos(f * MathR.Atan2(im, re)));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Pow(Complex c1, Complex c2)
     {
         Real re = c1.real, im = c1.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
-        Complex c = c2 * new Complex(MathF.Log(re * re + im * im) / 2, MathF.Atan2(im, re));
-        var (mod, unit) = (MathF.Exp(c.real), MathF.SinCos(c.imaginary));
+        Complex c = c2 * new Complex(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
+        var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Log(Complex c)
     {
         Real re = c.real, im = c.imaginary;
-        return new(MathF.Log(re * re + im * im) / 2, MathF.Atan2(im, re));
+        return new(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
     }
     public static Complex Exp(Complex c)
     {
-        var (mod, unit) = (MathF.Exp(c.real), MathF.SinCos(c.imaginary));
+        var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Ei(Complex c)
     {
-        var (mod, unit) = (MathF.Exp(-MathF.Tau * c.imaginary), MathF.SinCos(MathF.Tau * c.real));
+        var (mod, unit) = (MathR.Exp(-MathR.Tau * c.imaginary), MathR.SinCos(MathR.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
     } // Often used in analytic number theory, represented by 'q'
     //
     public static Complex Sin(Complex c)
     {
-        var (mod, unit) = (MathF.Exp(-c.imaginary), MathF.SinCos(c.real));
+        var (mod, unit) = (MathR.Exp(-c.imaginary), MathR.SinCos(c.real));
         Complex _c = new(mod * unit.Cos, mod * unit.Sin); _c -= 1 / _c; return new(_c.imaginary / 2, -_c.real / 2);
     }
     public static Complex Cos(Complex c)
     {
-        var (mod, unit) = (MathF.Exp(-c.imaginary), MathF.SinCos(c.real));
+        var (mod, unit) = (MathR.Exp(-c.imaginary), MathR.SinCos(c.real));
         Complex _c = new(mod * unit.Cos, mod * unit.Sin); _c += 1 / _c; return new(_c.real / 2, _c.imaginary / 2);
     }
     public static Complex Tan(Complex c)
     {
-        var (mod, unit) = (MathF.Exp(-c.imaginary - c.imaginary), MathF.SinCos(c.real + c.real));
+        var (mod, unit) = (MathR.Exp(-c.imaginary - c.imaginary), MathR.SinCos(c.real + c.real));
         Complex _c = 2 / new Complex(1 + mod * unit.Cos, mod * unit.Sin); return new(-_c.imaginary, _c.real - 1);
     }
     public static Complex Asin(Complex c)
     {
-        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, 0.5f); Real re = _c.real, im = _c.imaginary;
-        return new(MathF.Atan2(im, re), -MathF.Log(re * re + im * im) / 2);
+        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, (Real)0.5); Real re = _c.real, im = _c.imaginary;
+        return new(MathR.Atan2(im, re), -MathR.Log(re * re + im * im) / 2);
     }
     public static Complex Acos(Complex c)
     {
-        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, 0.5f); Real re = _c.real, im = _c.imaginary;
-        return new(MathF.PI / 2 - MathF.Atan2(im, re), MathF.Log(re * re + im * im) / 2);
+        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, (Real)0.5); Real re = _c.real, im = _c.imaginary;
+        return new(MathR.PI / 2 - MathR.Atan2(im, re), MathR.Log(re * re + im * im) / 2);
     } // Wolfram convention: https://mathworld.wolfram.com/InverseCosine.html
     public static Complex Atan(Complex c)
     {
         Complex _c = 2 / new Complex(1 + c.imaginary, -c.real); Real re = _c.real - 1, im = _c.imaginary;
-        return new(MathF.Atan2(im, re) / 2, -MathF.Log(re * re + im * im) / 4);
+        return new(MathR.Atan2(im, re) / 2, -MathR.Log(re * re + im * im) / 4);
     }
     //
     public static Complex Sinh(Complex c)
     {
-        var (mod, unit) = (MathF.Exp(c.real), MathF.SinCos(c.imaginary));
+        var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
         Complex _c = new(mod * unit.Cos, mod * unit.Sin); _c -= 1 / _c; return new(_c.real / 2, _c.imaginary / 2);
     }
     public static Complex Cosh(Complex c)
     {
-        var (mod, unit) = (MathF.Exp(c.real), MathF.SinCos(c.imaginary));
+        var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
         Complex _c = new(mod * unit.Cos, mod * unit.Sin); _c += 1 / _c; return new(_c.real / 2, _c.imaginary / 2);
     }
     public static Complex Tanh(Complex c)
     {
-        var (mod, unit) = (MathF.Exp(c.real + c.real), MathF.SinCos(c.imaginary + c.imaginary));
+        var (mod, unit) = (MathR.Exp(c.real + c.real), MathR.SinCos(c.imaginary + c.imaginary));
         Complex _c = new(1 + mod * unit.Cos, mod * unit.Sin); return 1 - 2 / _c;
     }
     public static Complex Asinh(Complex c)
     {
-        Complex _c = c + Pow(1 + c * c, 0.5f); Real re = _c.real, im = _c.imaginary;
-        return new(MathF.Log(re * re + im * im) / 2, MathF.Atan2(im, re));
+        Complex _c = c + Pow(1 + c * c, (Real)0.5); Real re = _c.real, im = _c.imaginary;
+        return new(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
     }
     public static Complex Acosh(Complex c)
     {
-        Complex _c = c + Pow(1 + c, 0.5f) * Pow(-1 + c, 0.5f); Real re = _c.real, im = _c.imaginary;
-        return new(MathF.Log(re * re + im * im) / 2, MathF.Atan2(im, re));
+        Complex _c = c + Pow(1 + c, (Real)0.5) * Pow(-1 + c, (Real)0.5); Real re = _c.real, im = _c.imaginary;
+        return new(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
     } // Wolfram convention: https://mathworld.wolfram.com/InverseHyperbolicCosine.html
     public static Complex Atanh(Complex c)
     {
         Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); Real re = _c.real - 1, im = _c.imaginary;
-        return new(MathF.Log(re * re + im * im) / 4, MathF.Atan2(im, re) / 2);
+        return new(MathR.Log(re * re + im * im) / 4, MathR.Atan2(im, re) / 2);
     }
     //
-    public static Complex Sqrt(Complex c) => Pow(c, 0.5f);
+    public static Complex Sqrt(Complex c) => Pow(c, (Real)0.5);
     public static Real Modulus(Real x, Real y) => Modulus(new(x, y));
-    public static Real Modulus(Complex c) => MathF.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
+    public static Real Modulus(Complex c) => MathR.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
     public static Complex Conjugate(Complex c) => new(c.real, -c.imaginary);
     public static Complex Factorial(Complex c) => new(RealSub.Factorial(c.real));
     #endregion
