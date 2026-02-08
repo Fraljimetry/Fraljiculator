@@ -2007,7 +2007,7 @@ public class ReplaceTags : RealComplex
             "IterateLoop(x^X,1,k,1,30,y-X)",
             "iterate1(x/X+X/y,xy,k,1,5)",
             "iterate2(1/X+1/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
-            "comp1(xy,tan(Xx),Artanh(X-y))",
+            "comp1(xy,tan(Xx),artanh(X-y))",
             "comp2(xy,xx+yy,sin(X+Y),cos(X-Y),2)"
         ];
     public static readonly string[] EX_CURVES =
