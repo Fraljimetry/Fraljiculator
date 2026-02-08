@@ -2197,7 +2197,7 @@ public sealed class ComplexSub : RecoverMultiply
                     }
                 }
             }
-            if (rows == 1) { hypergeometric(0, columns); return; }
+            if (useList && !readList) return; if (rows == 1) { hypergeometric(0, columns); return; }
             Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
@@ -2216,7 +2216,7 @@ public sealed class ComplexSub : RecoverMultiply
                     *outputPtr = *productPtr * Complex.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
             }
-            if (rows == 1) { gamma(0, columns); return; }
+            if (useList && !readList) output = product; if (rows == 1) { gamma(0, columns); return; }
             Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Gamma_function
@@ -2237,7 +2237,7 @@ public sealed class ComplexSub : RecoverMultiply
                     *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                 }
             }
-            if (rows == 1) { beta(0, columns); return; }
+            if (useList && !readList) output = product; if (rows == 1) { beta(0, columns); return; }
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Beta_function
@@ -2266,7 +2266,7 @@ public sealed class ComplexSub : RecoverMultiply
                     *_sumPtr /= 1 - Complex.Pow(2, 1 - *initialPtr);
                 }
             }
-            if (rows == 1) { zeta(0, columns); return; }
+            if (useList && !readList) return; if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2313,12 +2313,12 @@ public sealed class ComplexSub : RecoverMultiply
             for (int q = 0; q < columns; q++, zPtr++, xCoorPtr++, yCoorPtr++) *zPtr = new(*xCoorPtr, *yCoorPtr);
         });
         return z;
-    } // Special for complex
+    } // Cannot use HandleMtx in a static method
     [MethodImpl(512)] // AggressiveOptimization
     private unsafe Matrix<Complex> Copy(Matrix<Complex> src) => HandleMtx(UninitMtx(), dest =>
     {
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
-        if (rows == 1) { copy(0, colBytes); return; }
+        if (useList && !readList) dest = Const(Complex.ZERO); if (rows == 1) { copy(0, colBytes); return; }
         Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     });
     [MethodImpl(512)] // AggressiveOptimization
@@ -2337,7 +2337,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
         }
-        if (rows == 1) { negate(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2348,7 +2348,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
         }
-        if (rows == 1) { plus(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { plus(0, columns); return; }
         Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2359,7 +2359,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
         }
-        if (rows == 1) { subtract(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { subtract(0, columns); return; }
         Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2370,7 +2370,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
         }
-        if (rows == 1) { multiply(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { multiply(0, columns); return; }
         Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2381,7 +2381,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
         }
-        if (rows == 1) { divide(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { divide(0, columns); return; }
         Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2392,7 +2392,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = Complex.Pow(*srcPtr, *destPtr);
         }
-        if (rows == 1) { power(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2403,7 +2403,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
         }
-        if (rows == 1) { funcSub(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { funcSub(0, columns); return; }
         Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
     }
     #endregion
@@ -2593,7 +2593,7 @@ public sealed class RealSub : RecoverMultiply
                 Real* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
             }
-            if (rows == 1) { processMCP(0, columns); return; }
+            if (useList && !readList) output = Const(0); if (rows == 1) { processMCP(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
         });
     }
@@ -2613,7 +2613,7 @@ public sealed class RealSub : RecoverMultiply
                     *outputPtr = function(minMax.ToArray());
                 }
             }
-            if (rows == 1) { processMinMax(0, columns); return; }
+            if (useList && !readList) output = Const(0); if (rows == 1) { processMinMax(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
         });
     }
@@ -2646,7 +2646,7 @@ public sealed class RealSub : RecoverMultiply
                     }
                 }
             }
-            if (rows == 1) { hypergeometric(0, columns); return; }
+            if (useList && !readList) return; if (rows == 1) { hypergeometric(0, columns); return; }
             Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
@@ -2665,7 +2665,7 @@ public sealed class RealSub : RecoverMultiply
                     *outputPtr = *productPtr * MathF.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
             }
-            if (rows == 1) { gamma(0, columns); return; }
+            if (useList && !readList) output = product; if (rows == 1) { gamma(0, columns); return; }
             Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Gamma_function
@@ -2686,7 +2686,7 @@ public sealed class RealSub : RecoverMultiply
                     *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                 }
             }
-            if (rows == 1) { beta(0, columns); return; }
+            if (useList && !readList) output = product; if (rows == 1) { beta(0, columns); return; }
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Beta_function
@@ -2715,7 +2715,7 @@ public sealed class RealSub : RecoverMultiply
                     *_sumPtr /= 1 - MathF.Pow(2, 1 - *initialPtr);
                 }
             }
-            if (rows == 1) { zeta(0, columns); return; }
+            if (useList && !readList) return; if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2787,7 +2787,7 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> Copy(Matrix<Real> src) => HandleMtx(UninitMtx(), dest =>
     {
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
-        if (rows == 1) { copy(0, colBytes); return; }
+        if (useList && !readList) dest = Const(0); if (rows == 1) { copy(0, colBytes); return; }
         Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     });
     [MethodImpl(512)] // AggressiveOptimization
@@ -2806,7 +2806,7 @@ public sealed class RealSub : RecoverMultiply
             Real* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
         }
-        if (rows == 1) { negate(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2817,7 +2817,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
         }
-        if (rows == 1) { plus(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { plus(0, columns); return; }
         Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2828,7 +2828,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
         }
-        if (rows == 1) { subtract(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { subtract(0, columns); return; }
         Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2839,7 +2839,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
         }
-        if (rows == 1) { multiply(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { multiply(0, columns); return; }
         Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2850,7 +2850,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
         }
-        if (rows == 1) { divide(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { divide(0, columns); return; }
         Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2861,7 +2861,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathF.Pow(*srcPtr, *destPtr);
         }
-        if (rows == 1) { power(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2872,7 +2872,7 @@ public sealed class RealSub : RecoverMultiply
             Real* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
         }
-        if (rows == 1) { funcSub(0, columns); return; }
+        if (useList && !readList) return; if (rows == 1) { funcSub(0, columns); return; }
         Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
     }
     #endregion
