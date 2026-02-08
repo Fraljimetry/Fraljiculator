@@ -1,9 +1,10 @@
+using Real = System.Double;
+using MathR = System.Math;
+
 using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
 using System.Drawing.Imaging; // BitmapData
 using System.Text; // StringBuilder
-using Real = System.Double;
-using MathR = System.Math;
 
 namespace Fraljiculator;
 
@@ -1695,7 +1696,6 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-    //
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1716,7 +1716,6 @@ public class MyMessageBox : Form
     private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
     private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
-    //
     private void SetUpForm(int width, int height)
     {
         FormBorderStyle = FormBorderStyle.None; TopMost = true; Size = new(width, height);
@@ -1764,7 +1763,6 @@ public class MyMessageBox : Form
         Graph.ReduceFontSizeByScale(this, ref scale_factor);
         KeyPreview = true; KeyDown += new(Form_KeyDown);
     }
-    //
     private static void Display(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
     {
         MyMessageBox msgBox = new();
@@ -1789,7 +1787,7 @@ public class MyString
     public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]), FUNC_NAMES = AddSuffix(["func", "Func"]),
         POLAR_NAMES = AddSuffix(["polar", "Polar"]), PARAM_NAMES = AddSuffix(["param", "Param"]), ZETAS = AddSuffix(["zeta", "Zeta"]);
     public static readonly string[] FPP_NAMES = [.. FUNC_NAMES, .. POLAR_NAMES, .. PARAM_NAMES];
-    protected static readonly char SUB_CHAR = ';'; // Replacing ','
+    protected static readonly char SUB_CHAR = ';'; // Replacing ",^"
 
     #region Parentheses
     private static int PairedParenthesis(ReadOnlySpan<char> input, int start)
@@ -1819,8 +1817,7 @@ public class MyString
     #endregion
 
     #region Replacement
-    private static ReadOnlySpan<char> Extract(ReadOnlySpan<char> input, int start, int end) => input.Slice(start, end - start + 1);
-    protected static ReadOnlySpan<char> BraFreePart(ReadOnlySpan<char> input, int start, int end) => Extract(input, start + 1, end - 1);
+    protected static ReadOnlySpan<char> BraFreePart(ReadOnlySpan<char> input, int start, int end) => input.Slice(start + 1, end - start - 1);
     protected static ReadOnlySpan<char> TryBraNum(ReadOnlySpan<char> input, char c1, char c2)
     { ThrowException(input[0] != c1 || input[^1] != c2); return BraFreePart(input, 0, input.Length - 1); }
     private static string ReplaceCore(string orig, string sub, int start, int end)
@@ -1897,7 +1894,8 @@ public class MyString
 public class RealComplex : MyString
 {
     protected static readonly Real GAMMA = (Real)0.5772156649015329;
-    protected static readonly int STEP = 1; // A tunable chunk size
+    protected static readonly int THRESHOLD = 10, STEP = 1; // THRESHOLD: breaking long expressions, STEP: a tunable chunk size
+    protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replacing "+-*/"
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
         M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r',
@@ -1920,11 +1918,48 @@ public class RealComplex : MyString
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
+    protected static int CountChars(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck)
+    {
+        int count = 0, offset = 0;
+        do
+        {
+            int idx = input.Slice(offset).IndexOfAny(charsToCheck); if (idx < 0) break;
+            count++; offset += idx + 1;
+        } while (offset < input.Length); // To avoid slicing past the end
+        return count;
+    }
     public static void For(int start, int end, Action<int> action) { for (int i = start; i <= end; i++) action(i); }
     protected static Matrix<Real> ChooseMode(string mode, Matrix<Real> m1, Matrix<Real> m2, int[] rowOffs, int columns)
         => Char.Parse(mode) switch { MODE_1 => m1, MODE_2 => m2 };
     protected static MatrixCopy<TEntry> HandleSolo<TEntry>(ReadOnlySpan<char> input, MatrixCopy<TEntry> mc)
     { ThrowException(input.Length != 1); return mc; }
+    protected static string[] PrepareBreakPower(string input, int THRESHOLD)
+    {
+        StringBuilder result = new(input);
+        for (int i = 0, flag = 0; i < result.Length; i++)
+        {
+            if (result[i] != '^') continue;
+            if (++flag == THRESHOLD) { result.Remove(i, 1).Insert(i, SUB_CHAR); flag = 0; }
+        }
+        return SplitByChars(result.ToString(), SUB_CHAR_STR);
+    }
+    protected static (string[], StringBuilder) PrepareBreakPSMD(string input, ReadOnlySpan<char> signs, int THRESHOLD)
+    {
+        Span<bool> lookup = stackalloc bool[1024]; // ASCII + Greek
+        foreach (char c in signs) lookup[c] = true;
+        StringBuilder signsBuilder = new(input), result = new(input);
+        for (int i = 0, flag = 0; i < result.Length; i++)
+        {
+            if (!lookup[result[i]]) continue;
+            if (++flag == THRESHOLD)
+            {
+                char subChar = result[i] == signs[0] ? SUB_CHARS[0] : result[i] == signs[1] ? SUB_CHARS[1] : '\0'; // Necessary
+                result.Remove(i, 1).Insert(i, subChar); signsBuilder.Append(subChar);
+                flag = 0;
+            }
+        }
+        return (SplitByChars(result.ToString(), SUB_CHARS), signsBuilder);
+    }
     private static StringBuilder GetSignsBuilder(ReadOnlySpan<char> input, ReadOnlySpan<char> signs)
     {
         Span<bool> lookup = stackalloc bool[1024]; // ASCII + Greek
@@ -1942,7 +1977,7 @@ public class RealComplex : MyString
         => (SplitByChars(input, "*/"), GetSignsBuilder(input, "*/"));
     protected static (bool trig, bool hyper) IsInverseFunc(ReadOnlySpan<char> input, int start)
         => (start > 1 ? input[start - 2] == _A : true, start > 2 ? input[start - 3] == _A : true); // Should not simplify
-    protected static (int, int, int, int) PrepareLoop(ReadOnlySpan<char> input) => (input.Count('('), input.Length - 1, -1, 0);
+    protected static (int, int, int, int) PrepareLoop(ReadOnlySpan<char> input) => (CountChars(input, "("), input.Length - 1, -1, 0);
 } /// Commonalities for RealSub & ComplexSub
 public class ReplaceTags : RealComplex
 {
@@ -2001,7 +2036,6 @@ public class ReplaceTags : RealComplex
         COMP = J_.ToString(), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP),
         CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP),
         PI = P.ToString(), _GA = G.ToString();
-    //
     private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
         => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
     private static readonly Dictionary<string, string> COMMON_STANDARD = new()
@@ -2069,7 +2103,6 @@ public class ReplaceTags : RealComplex
             { "param", PARAM }, { "Param", PARAM },
             { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }
         }, UNDERLINE);
-    //
     private static Dictionary<string, string> AddPrefixSuffix(Dictionary<string, string> dictionary)
     {
         Dictionary<string, string> _dictionary = [];
@@ -2163,7 +2196,7 @@ public sealed class ComplexSub : RecoverMultiply
         int rows, int columns, bool useList = false)
     {
         ThrowException(String.IsNullOrEmpty(input));
-        this.input = Recover(input, true); braValues = new MatrixCopy<Complex>[this.input.AsSpan().Count('(')];
+        this.input = Recover(input, true); braValues = new MatrixCopy<Complex>[CountChars(this.input, "(")];
         if (z != null) this.z = (Matrix<Complex>)z; if (Z != null) this.Z = (Matrix<Complex>)Z;
         this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
         Initialize<Complex>(rows, columns, ref rowChk, ref rowOffs, ref colBytes,
@@ -2225,8 +2258,7 @@ public sealed class ComplexSub : RecoverMultiply
         int n = ThrowReturnLengths(split, 2, 100);
         return HandleMtx(UninitMtx(), output =>
         {
-            Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
-            Matrix<Complex> product = Const(Complex.ONE), input1 = obtain(0), input2 = obtain(1);
+            Matrix<Complex> product = Const(Complex.ONE), input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
             void beta(int p, int col)
             {
                 Complex* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
@@ -2270,7 +2302,6 @@ public sealed class ComplexSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
-    //
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2287,7 +2318,6 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
     private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
-    //
     private Matrix<Complex> Composite(string[] split)
     {
         Matrix<Complex> _value = ObtainValue(split[0]);
@@ -2432,17 +2462,38 @@ public sealed class ComplexSub : RecoverMultiply
         G => HandleSolo<Complex>(input, ConstMtx(new(GAMMA))),
         _ => ConstMtx(new(Real.Parse(input)))
     };
+    private MatrixCopy<Complex> BreakPower(string input)
+    {
+        string[] chunks = PrepareBreakPower(input, THRESHOLD);
+        Matrix<Complex> tower = CopyMtx(PowerCore(chunks[^1]));
+        for (int k = chunks.Length - 2; k >= 0; k--)
+        {
+            string[] split = SplitByChars(chunks[k], "^"); // Special for "^"
+            for (int m = split.Length - 1; m >= 0; m--) Power(Transform(split[m]).matrix, tower);
+        }
+        return new(tower);
+    }
     private MatrixCopy<Complex> PowerCore(ReadOnlySpan<char> input)
     {
         if (!input.Contains('^')) return Transform(input);
+        if (CountChars(input, "^") > THRESHOLD) return BreakPower(input.ToString());
         string[] split = SplitByChars(input, "^");
         Matrix<Complex> tower = CopyMtx(Transform(split[^1]));
         for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
         return new(tower);
     }
+    private MatrixCopy<Complex> BreakMultiplyDivide(string input)
+    {
+        var (chunks, signs) = PrepareBreakPSMD(String.Concat('*', input), "*/", THRESHOLD);
+        Matrix<Complex> product = CopyMtx(MultiplyDivideCore(TrimStartChar(chunks[0], '*')));
+        for (int j = 1; j < chunks.Length; j++)
+            Multiply(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat("1/", chunks[j])).matrix, product);
+        return new(product);
+    }
     private MatrixCopy<Complex> MultiplyDivideCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("*/")) return PowerCore(input);
+        if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input.ToString());
         var (split, signs) = GetMultiplyDivideComponents(input);
         Matrix<Complex> product = CopyMtx(PowerCore(split[0]));
         for (int j = 1; j < split.Length; j++)
@@ -2452,9 +2503,18 @@ public sealed class ComplexSub : RecoverMultiply
         }
         return new(product);
     }
+    private MatrixCopy<Complex> BreakPlusSubtract(string input)
+    {
+        var (chunks, signs) = PrepareBreakPSMD(input[0] == '-' ? input : String.Concat('+', input), "+-", THRESHOLD);
+        Matrix<Complex> sum = CopyMtx(PlusSubtractCore(TrimStartChar(chunks[0], '+')));
+        for (int i = 1; i < chunks.Length; i++)
+            Plus(PlusSubtractCore(signs[i - 1] == SUB_CHARS[0] ? chunks[i] : String.Concat('-', chunks[i])).matrix, sum);
+        return new(sum);
+    }
     private MatrixCopy<Complex> PlusSubtractCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("+-")) return MultiplyDivideCore(input);
+        if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input.ToString());
         var (split, signs) = GetPlusSubtractComponents(input);
         Matrix<Complex> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
         for (int i = 1; i < split.Length; i++)
@@ -2556,7 +2616,7 @@ public sealed class RealSub : RecoverMultiply
         int rows, int columns, bool useList = false)
     {
         ThrowException(String.IsNullOrEmpty(input));
-        this.input = Recover(input, false); braValues = new MatrixCopy<Real>[this.input.AsSpan().Count('(')];
+        this.input = Recover(input, false); braValues = new MatrixCopy<Real>[CountChars(this.input, "(")];
         if (x != null) this.x = (Matrix<Real>)x; if (y != null) this.y = (Matrix<Real>)y;
         if (X != null) this.X = (Matrix<Real>)X; if (Y != null) this.Y = (Matrix<Real>)Y;
         this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
@@ -2581,7 +2641,6 @@ public sealed class RealSub : RecoverMultiply
         Combination(n + 1, r) - Combination(n, r - 1) :
         Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
     private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
-    //
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
     {
         ThrowInvalidLengths(split, [2]);
@@ -2617,7 +2676,6 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
         });
     }
-    //
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathR.Floor(n), MathR.Floor(r)));
     private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathR.Floor(n), MathR.Floor(r)));
@@ -2674,8 +2732,7 @@ public sealed class RealSub : RecoverMultiply
         int n = ThrowReturnLengths(split, 2, 100);
         return HandleMtx(UninitMtx(), output =>
         {
-            Matrix<Real> obtain(int index) => ObtainValue(split[index]);
-            Matrix<Real> product = Const(1), input1 = obtain(0), input2 = obtain(1);
+            Matrix<Real> product = Const(1), input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
             void beta(int p, int col)
             {
                 Real* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
@@ -2719,7 +2776,6 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
-    //
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2755,7 +2811,6 @@ public sealed class RealSub : RecoverMultiply
         });
         return ChooseMode(split[^1], buffer1.X, buffer1.Y, rowOffs, columns); // Or, alternatively, buffer2
     } // Special for real
-    //
     private Matrix<Real> Composite1(string[] split)
     {
         Matrix<Real> _value = ObtainValue(split[0]);
@@ -2902,17 +2957,38 @@ public sealed class RealSub : RecoverMultiply
         G => HandleSolo<Real>(input, ConstMtx(GAMMA)),
         _ => ConstMtx(Real.Parse(input))
     };
+    private MatrixCopy<Real> BreakPower(string input)
+    {
+        string[] chunks = PrepareBreakPower(input, THRESHOLD);
+        Matrix<Real> tower = CopyMtx(PowerCore(chunks[^1]));
+        for (int k = chunks.Length - 2; k >= 0; k--)
+        {
+            string[] split = SplitByChars(chunks[k], "^"); // Special for "^"
+            for (int m = split.Length - 1; m >= 0; m--) Power(Transform(split[m]).matrix, tower);
+        }
+        return new(tower);
+    }
     private MatrixCopy<Real> PowerCore(ReadOnlySpan<char> input)
     {
         if (!input.Contains('^')) return Transform(input);
+        if (CountChars(input, "^") > THRESHOLD) return BreakPower(input.ToString());
         string[] split = SplitByChars(input, "^");
         Matrix<Real> tower = CopyMtx(Transform(split[^1]));
         for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
         return new(tower);
     }
+    private MatrixCopy<Real> BreakMultiplyDivide(string input)
+    {
+        var (chunks, signs) = PrepareBreakPSMD(String.Concat('*', input), "*/", THRESHOLD);
+        Matrix<Real> product = CopyMtx(MultiplyDivideCore(TrimStartChar(chunks[0], '*')));
+        for (int j = 1; j < chunks.Length; j++)
+            Multiply(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat("1/", chunks[j])).matrix, product);
+        return new(product);
+    }
     private MatrixCopy<Real> MultiplyDivideCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("*/")) return PowerCore(input);
+        if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input.ToString());
         var (split, signs) = GetMultiplyDivideComponents(input);
         Matrix<Real> product = CopyMtx(PowerCore(split[0]));
         for (int j = 1; j < split.Length; j++)
@@ -2922,9 +2998,18 @@ public sealed class RealSub : RecoverMultiply
         }
         return new(product);
     }
+    private MatrixCopy<Real> BreakPlusSubtract(string input)
+    {
+        var (chunks, signs) = PrepareBreakPSMD(input[0] == '-' ? input : String.Concat('+', input), "+-", THRESHOLD);
+        Matrix<Real> sum = CopyMtx(PlusSubtractCore(TrimStartChar(chunks[0], '+')));
+        for (int i = 1; i < chunks.Length; i++)
+            Plus(PlusSubtractCore(signs[i - 1] == SUB_CHARS[0] ? chunks[i] : String.Concat('-', chunks[i])).matrix, sum);
+        return new(sum);
+    }
     private MatrixCopy<Real> PlusSubtractCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("+-")) return MultiplyDivideCore(input);
+        if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input.ToString());
         var (split, signs) = GetPlusSubtractComponents(input);
         Matrix<Real> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
         for (int i = 1; i < split.Length; i++)
@@ -3094,7 +3179,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
         var (mod, unit) = (MathR.Exp(-MathR.Tau * c.imaginary), MathR.SinCos(MathR.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
     } // Often used in analytic number theory, represented by 'q'
-    //
     public static Complex Sin(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary), MathR.SinCos(c.real));
@@ -3125,7 +3209,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
         Complex _c = 2 / new Complex(1 + c.imaginary, -c.real); Real re = _c.real - 1, im = _c.imaginary;
         return new(MathR.Atan2(im, re) / 2, -MathR.Log(re * re + im * im) / 4);
     }
-    //
     public static Complex Sinh(Complex c)
     {
         var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
@@ -3156,7 +3239,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
         Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); Real re = _c.real - 1, im = _c.imaginary;
         return new(MathR.Log(re * re + im * im) / 4, MathR.Atan2(im, re) / 2);
     }
-    //
     public static Complex Sqrt(Complex c) => Pow(c, (Real)0.5);
     public static Real Modulus(Real x, Real y) => Modulus(new(x, y));
     public static Real Modulus(Complex c) => MathR.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
