@@ -1043,17 +1043,17 @@ public partial class Graph : Form
     private static void GetInputErrorBox(string message) => ShowErrorBox(message,
     [
         "Misspelling of function/variable names.",
-            "Incorrect grammar of special functions.",
-            "Excess or deficiency of characters.",
-            "Real/Complex mode confusion.",
-            "Invalid other parameters."
+        "Incorrect grammar of special functions.",
+        "Excess or deficiency of characters.",
+        "Real/Complex mode confusion.",
+        "Invalid other parameters."
     ]);
     private static void GetExportStoreErrorBox() => ShowErrorBox(WRONG_ADDRESS,
     [
         "Files not created beforehand.",
-            "The address ending with \\.",
-            "The address quoted automatically.",
-            "The file storage being full."
+        "The address ending with \\.",
+        "The address quoted automatically.",
+        "The file storage being full."
     ]);
     //
     private static string GetComment(string input) => $"# {input}";
@@ -1166,76 +1166,76 @@ public partial class Graph : Form
     private void InputLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("FORMULA INPUT",
     [
         "Space and Enter keys are both acceptable. Unsupported keys are blocked, and removed if pasted from the clipboard.",
-            "Excessive omission of multiplication may cause misinterpretation. For example, \"gammax\" will be parsed as \"max\"."
+        "Excessive omission of multiplication may cause misinterpretation. For example, \"gammax\" will be parsed as \"max\"."
     ]);
     private void AtLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("SAVING ADDRESS",
     [
         "Create a file for snapshot storage and paste its address here. It will be validated.",
-            "PNG snapshots and history lists will be named in the following formats: " +
-            "\"yyyy_ddd_hh_mm_ss_No.#\" and \"yyyy_ddd_hh_mm_ss_stockpile\"."
+        "PNG snapshots and history lists will be named in the following formats: " +
+        "\"yyyy_ddd_hh_mm_ss_No.#\" and \"yyyy_ddd_hh_mm_ss_stockpile\"."
     ]);
     private void GeneralLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("GENERAL SCOPE",
     [
         "The detailed scope takes effect only when the general scope is set to \"0\".",
-            "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the input box."
+        "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the input box."
     ]);
     private void DetailLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DETAILED SCOPE",
     [
         "Creating a mirror effect by reversing endpoints is NOT supported.",
-            "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the input box."
+        "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the input box."
     ]);
     private void ThickLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("MAGNITUDE",
     [
         "Represents: (i) Width of planar curves, (ii) Size of special points, (iii) Decay rates of translucence.",
-            "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
+        "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
     ]);
     private void DenseLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DENSITY",
     [
         "Represents:\r\n(i) Density of contours (real and complex),\r\n(ii) Relative speed of planar curves.",
-            "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
+        "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
     ]);
     private void DraftLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("HISTORY LIST",
     [
         "The input will be saved both in this box and to the clipboard.",
-            "Clicked points, along with the timestamps of snapshots and history entries, will also be recorded in detail."
+        "Clicked points, along with the timestamps of snapshots and history entries, will also be recorded in detail."
     ]);
 
     private void ExampleLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("EXAMPLES",
     [
         "These examples illustrate the wide variety of supported input formats.",
-            "Some renderings are elegant while others are chaotic. Elegance takes time to explore and appreciate. Enjoy!"
+        "Some renderings are elegant while others are chaotic. Elegance takes time to explore and appreciate. Enjoy!"
     ]);
     private void FunctionLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("FUNCTIONS",
     [
         "The two combo boxes contain regular and special operations respectively, the latter having more complex grammar.",
-            "Select something in the input box and choose an item here to substitute your selection."
+        "Select something in the input box and choose an item here to substitute your selection."
     ]);
     private void ModeLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("COLORING MODES",
     [
         "The color spectrum represents:\r\n(i) Arguments of meromorphic functions," +
-            "\r\n(ii) Values of two-variable functions,\r\n(iii) Parameterizations of planar curves.",
-            "The first three modes support swappable color schemes, while the last two do not."
+        "\r\n(ii) Values of two-variable functions,\r\n(iii) Parameterizations of planar curves.",
+        "The first three modes support swappable color schemes, while the last two do not."
     ]);
     private void ContourLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("CONTOUR MODES",
     [
         "Both options apply ONLY to the complex version, for contouring meromorphic functions.",
-            "Only the Polar option supports translucent display, representing the decay rate of the modulus."
+        "Only the Polar option supports translucent display, representing the decay rate of the modulus."
     ]);
 
     private void PointNumLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("PIXELS",
     [
         "Logs the number of points or line segments in the previous loop, roughly proportional to time and iteration count.",
-            "A value of zero often results from constancy, divergence, or undefined behavior."
+        "A value of zero often results from constancy, divergence, or undefined behavior."
     ]);
     private void TimeLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DURATION",
     [
         "The auto-snapshot cannot capture updates here in real time, but the value will be saved in the history list.",
-            "This value is a valuable indicator of optimization, referenced for choosing appropriate iterations and other settings."
+        "This value is a valuable indicator of optimization, referenced for choosing appropriate iterations and other settings."
     ]);
     private void PreviewLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("MICROCOSM",
     [
         "Since graphing cannot be paused manually during execution, a preview is necessary for estimating computation time.",
-            "It differs from the main graph only in sharpness. Graphing here is roughly 20 times faster (less after optimization)."
+        "It differs from the main graph only in sharpness. Graphing here is roughly 20 times faster (less after optimization)."
     ]);
     #endregion
 
