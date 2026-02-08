@@ -1894,13 +1894,23 @@ public class MyString
 public class RealComplex : MyString
 {
     protected static readonly Real GAMMA = (Real)0.5772156649015329;
-    protected static readonly int THRESHOLD = 10, STEP = 1; // THRESHOLD: breaking long expressions, STEP: a tunable chunk size
+    protected static readonly int THRESHOLD = 20, STEP = 1; // THRESHOLD: breaking long expressions, STEP: a tunable chunk size
     protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replacing "+-*/"
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
         M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r',
         _S = 's', S_ = 'S', SP = '#', _T = 't', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
 
+    protected static int CountChars(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck)
+    {
+        int count = 0, offset = 0;
+        do
+        {
+            int idx = input.Slice(offset).IndexOfAny(charsToCheck); if (idx < 0) break;
+            count++; offset += idx + 1;
+        } while (offset < input.Length); // To avoid slicing past the end
+        return count;
+    }
     public unsafe static int[] GetArithProg(int length, int diff)
     {
         if (length == 0) return []; int[] progression = new int[length];
@@ -1918,16 +1928,6 @@ public class RealComplex : MyString
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
-    protected static int CountChars(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck)
-    {
-        int count = 0, offset = 0;
-        do
-        {
-            int idx = input.Slice(offset).IndexOfAny(charsToCheck); if (idx < 0) break;
-            count++; offset += idx + 1;
-        } while (offset < input.Length); // To avoid slicing past the end
-        return count;
-    }
     public static void For(int start, int end, Action<int> action) { for (int i = start; i <= end; i++) action(i); }
     protected static Matrix<Real> ChooseMode(string mode, Matrix<Real> m1, Matrix<Real> m2, int[] rowOffs, int columns)
         => Char.Parse(mode) switch { MODE_1 => m1, MODE_2 => m2 };
@@ -2181,7 +2181,7 @@ public sealed class ComplexSub : RecoverMultiply
     private readonly uint colBytes, strdBytes, resBytes; // Byte lengths of chunks
     private readonly int rows, columns, rowChk, strd, res, resInit; // Lengths of chunks
     private readonly int[] rowOffs, strdInit; // For row extraction
-    private readonly bool useList; // Whether to use cstMtcs or not
+    private readonly bool useList, brkChk; // useList: whether to use cstMtcs, brkChk: whether to break into chunks
     private readonly Matrix<Complex> z;
     private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
@@ -2195,8 +2195,8 @@ public sealed class ComplexSub : RecoverMultiply
     public ComplexSub(string input, Matrix<Complex>? z, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs,
         int rows, int columns, bool useList = false)
     {
-        ThrowException(String.IsNullOrEmpty(input));
-        this.input = Recover(input, true); braValues = new MatrixCopy<Complex>[CountChars(this.input, "(")];
+        this.input = Recover(input, true); brkChk = CountChars(this.input, "+-*/^") > THRESHOLD;
+        braValues = new MatrixCopy<Complex>[CountChars(this.input, "(")];
         if (z != null) this.z = (Matrix<Complex>)z; if (Z != null) this.Z = (Matrix<Complex>)Z;
         this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
         Initialize<Complex>(rows, columns, ref rowChk, ref rowOffs, ref colBytes,
@@ -2476,7 +2476,7 @@ public sealed class ComplexSub : RecoverMultiply
     private MatrixCopy<Complex> PowerCore(ReadOnlySpan<char> input)
     {
         if (!input.Contains('^')) return Transform(input);
-        if (CountChars(input, "^") > THRESHOLD) return BreakPower(input.ToString());
+        if (brkChk) if (CountChars(input, "^") > THRESHOLD) return BreakPower(input.ToString());
         string[] split = SplitByChars(input, "^");
         Matrix<Complex> tower = CopyMtx(Transform(split[^1]));
         for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
@@ -2493,7 +2493,7 @@ public sealed class ComplexSub : RecoverMultiply
     private MatrixCopy<Complex> MultiplyDivideCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("*/")) return PowerCore(input);
-        if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input.ToString());
+        if (brkChk) if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input.ToString());
         var (split, signs) = GetMultiplyDivideComponents(input);
         Matrix<Complex> product = CopyMtx(PowerCore(split[0]));
         for (int j = 1; j < split.Length; j++)
@@ -2514,7 +2514,7 @@ public sealed class ComplexSub : RecoverMultiply
     private MatrixCopy<Complex> PlusSubtractCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("+-")) return MultiplyDivideCore(input);
-        if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input.ToString());
+        if (brkChk) if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input.ToString());
         var (split, signs) = GetPlusSubtractComponents(input);
         Matrix<Complex> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
         for (int i = 1; i < split.Length; i++)
@@ -2601,7 +2601,7 @@ public sealed class RealSub : RecoverMultiply
     private readonly uint colBytes, strdBytes, resBytes; // Byte lengths of chunks
     private readonly int rows, columns, rowChk, strd, res, resInit; // Lengths of chunks
     private readonly int[] rowOffs, strdInit; // For row extraction
-    private readonly bool useList; // Whether to use cstMtcs or not
+    private readonly bool useList, brkChk; // useList: whether to use cstMtcs, brkChk: whether to break into chunks
     private readonly Matrix<Real> x, y;
     private readonly Matrix<Real>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Real>[] braValues; // To store values between parenthesis pairs
@@ -2615,8 +2615,8 @@ public sealed class RealSub : RecoverMultiply
     public RealSub(string input, Matrix<Real>? x, Matrix<Real>? y, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs,
         int rows, int columns, bool useList = false)
     {
-        ThrowException(String.IsNullOrEmpty(input));
-        this.input = Recover(input, false); braValues = new MatrixCopy<Real>[CountChars(this.input, "(")];
+        this.input = Recover(input, false); brkChk = CountChars(this.input, "+-*/^") > THRESHOLD;
+        braValues = new MatrixCopy<Real>[CountChars(this.input, "(")];
         if (x != null) this.x = (Matrix<Real>)x; if (y != null) this.y = (Matrix<Real>)y;
         if (X != null) this.X = (Matrix<Real>)X; if (Y != null) this.Y = (Matrix<Real>)Y;
         this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
@@ -2971,7 +2971,7 @@ public sealed class RealSub : RecoverMultiply
     private MatrixCopy<Real> PowerCore(ReadOnlySpan<char> input)
     {
         if (!input.Contains('^')) return Transform(input);
-        if (CountChars(input, "^") > THRESHOLD) return BreakPower(input.ToString());
+        if (brkChk) if (CountChars(input, "^") > THRESHOLD) return BreakPower(input.ToString());
         string[] split = SplitByChars(input, "^");
         Matrix<Real> tower = CopyMtx(Transform(split[^1]));
         for (int k = split.Length - 2; k >= 0; k--) Power(Transform(split[k]).matrix, tower);
@@ -2988,7 +2988,7 @@ public sealed class RealSub : RecoverMultiply
     private MatrixCopy<Real> MultiplyDivideCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("*/")) return PowerCore(input);
-        if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input.ToString());
+        if (brkChk) if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input.ToString());
         var (split, signs) = GetMultiplyDivideComponents(input);
         Matrix<Real> product = CopyMtx(PowerCore(split[0]));
         for (int j = 1; j < split.Length; j++)
@@ -3009,7 +3009,7 @@ public sealed class RealSub : RecoverMultiply
     private MatrixCopy<Real> PlusSubtractCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("+-")) return MultiplyDivideCore(input);
-        if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input.ToString());
+        if (brkChk) if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input.ToString());
         var (split, signs) = GetPlusSubtractComponents(input);
         Matrix<Real> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
         for (int i = 1; i < split.Length; i++)
