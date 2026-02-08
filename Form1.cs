@@ -1894,7 +1894,7 @@ public class MyString
 public class RealComplex : MyString
 {
     protected static readonly Real GAMMA = (Real)0.5772156649015329;
-    protected static readonly int THRESHOLD = 20, STEP = 1; // THRESHOLD: breaking long expressions, STEP: a tunable chunk size
+    protected static readonly int THRESHOLD = 10, BRKCHK = 5 * THRESHOLD, STEP = 1; // STEP: a tunable chunk size
     protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replacing "+-*/"
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
@@ -2195,7 +2195,7 @@ public sealed class ComplexSub : RecoverMultiply
     public ComplexSub(string input, Matrix<Complex>? z, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs,
         int rows, int columns, bool useList = false)
     {
-        this.input = Recover(input, true); brkChk = CountChars(this.input, "+-*/^") > THRESHOLD;
+        this.input = Recover(input, true); brkChk = CountChars(this.input, "+-*/^") > BRKCHK;
         braValues = new MatrixCopy<Complex>[CountChars(this.input, "(")];
         if (z != null) this.z = (Matrix<Complex>)z; if (Z != null) this.Z = (Matrix<Complex>)Z;
         this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
@@ -2615,7 +2615,7 @@ public sealed class RealSub : RecoverMultiply
     public RealSub(string input, Matrix<Real>? x, Matrix<Real>? y, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs,
         int rows, int columns, bool useList = false)
     {
-        this.input = Recover(input, false); brkChk = CountChars(this.input, "+-*/^") > THRESHOLD;
+        this.input = Recover(input, false); brkChk = CountChars(this.input, "+-*/^") > BRKCHK;
         braValues = new MatrixCopy<Real>[CountChars(this.input, "(")];
         if (x != null) this.x = (Matrix<Real>)x; if (y != null) this.y = (Matrix<Real>)y;
         if (X != null) this.X = (Matrix<Real>)X; if (Y != null) this.Y = (Matrix<Real>)Y;
