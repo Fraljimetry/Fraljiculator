@@ -2140,13 +2140,13 @@ public class RecoverMultiply : ReplaceTags
         Func<string, string> replaceTags = isComplex ? ReplaceComplex : ReplaceReal;
         return replaceTags(ReplaceSubstrings(input, ENTER_BLANK, String.Empty));
     } // Used only once at the beginning
-    protected static string Recover(string input, bool isComplex)
+    protected static string Recover(ReadOnlySpan<char> input, bool isComplex)
     {
-        int length = input.Length; if (length == 1) return input;
+        if (input.Length == 1) return input.ToString();
         Func<char, bool> isVar = isComplex ? IsVarComplex : IsVarReal;
-        StringBuilder recoveredInput = new(length * 2); // The longest possible length
+        StringBuilder recoveredInput = new(input.Length * 2); // The longest possible length
         recoveredInput.Append(input[0]);
-        for (int i = 1; i < length; i++) // Should not use parallel
+        for (int i = 1; i < input.Length; i++) // Should not use parallel
         {
             if (DecideRecovery(input[i - 1], input[i], isVar)) recoveredInput.Append('*');
             recoveredInput.Append(input[i]);
@@ -2213,7 +2213,7 @@ public sealed class ComplexSub : RecoverMultiply
     private unsafe Matrix<Complex> Hypergeometric(string[] split)
     {
         int n = ThrowReturnLengths(split, 4, 100);
-        return HandleMtx(Const(Complex.ZERO), sum =>
+        return (useList && !readList) ? Const(Complex.ZERO) : HandleMtx(Const(Complex.ZERO), sum =>
         {
             Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
             Matrix<Complex> product = Const(Complex.ONE), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
@@ -2230,14 +2230,14 @@ public sealed class ComplexSub : RecoverMultiply
                     }
                 }
             }
-            if (useList && !readList) return; if (rows == 1) { hypergeometric(0, columns); return; }
+            if (rows == 1) { hypergeometric(0, columns); return; }
             Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
     private unsafe Matrix<Complex> Gamma(string[] split)
     {
         int n = ThrowReturnLengths(split, 1, 100);
-        return HandleMtx(UninitMtx(), output =>
+        return (useList && !readList) ? Const(Complex.ZERO) : HandleMtx(UninitMtx(), output =>
         {
             Matrix<Complex> product = Const(Complex.ONE), initial = ObtainValue(split[0]);
             void gamma(int p, int col)
@@ -2249,14 +2249,14 @@ public sealed class ComplexSub : RecoverMultiply
                     *outputPtr = *productPtr * Complex.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
             }
-            if (useList && !readList) output = product; if (rows == 1) { gamma(0, columns); return; }
+            if (rows == 1) { gamma(0, columns); return; }
             Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Gamma_function
     private unsafe Matrix<Complex> Beta(string[] split)
     {
         int n = ThrowReturnLengths(split, 2, 100);
-        return HandleMtx(UninitMtx(), output =>
+        return (useList && !readList) ? Const(Complex.ZERO) : HandleMtx(UninitMtx(), output =>
         {
             Matrix<Complex> product = Const(Complex.ONE), input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
             void beta(int p, int col)
@@ -2269,14 +2269,14 @@ public sealed class ComplexSub : RecoverMultiply
                     *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                 }
             }
-            if (useList && !readList) output = product; if (rows == 1) { beta(0, columns); return; }
+            if (rows == 1) { beta(0, columns); return; }
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Beta_function
     private unsafe Matrix<Complex> Zeta(string[] split)
     {
         int n = ThrowReturnLengths(split, 1, 50);
-        return HandleMtx(Const(Complex.ZERO), _sum =>
+        return (useList && !readList) ? Const(Complex.ZERO) : HandleMtx(Const(Complex.ZERO), _sum =>
         {
             Matrix<Complex> sum = UninitMtx(), coeff = Const(Complex.ONE), _coeff = UninitMtx(), initial = ObtainValue(split[0]);
             void zeta(int p, int col)
@@ -2298,7 +2298,7 @@ public sealed class ComplexSub : RecoverMultiply
                     *_sumPtr /= 1 - Complex.Pow(2, 1 - *initialPtr);
                 }
             }
-            if (useList && !readList) return; if (rows == 1) { zeta(0, columns); return; }
+            if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2348,7 +2348,7 @@ public sealed class ComplexSub : RecoverMultiply
     private unsafe Matrix<Complex> Copy(Matrix<Complex> src) => HandleMtx(UninitMtx(), dest =>
     {
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
-        if (useList && !readList) dest = Const(Complex.ZERO); if (rows == 1) { copy(0, colBytes); return; }
+        if (rows == 1) { copy(0, colBytes); return; }
         Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     });
     [MethodImpl(512)] // AggressiveOptimization
@@ -2644,7 +2644,7 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
     {
         ThrowInvalidLengths(split, [2]);
-        return HandleMtx(UninitMtx(), output =>
+        return (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
         {
             Matrix<Real> input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
             void processMCP(int p, int col)
@@ -2652,7 +2652,7 @@ public sealed class RealSub : RecoverMultiply
                 Real* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
             }
-            if (useList && !readList) output = Const(0); if (rows == 1) { processMCP(0, columns); return; }
+            if (rows == 1) { processMCP(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
         });
     }
@@ -2660,7 +2660,7 @@ public sealed class RealSub : RecoverMultiply
     {
         Matrix<Real>[] _value = new Matrix<Real>[split.Length];
         for (int i = 0; i < split.Length; i++) _value[i] = ObtainValue(split[i]);
-        return HandleMtx(UninitMtx(), output =>
+        return (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
         {
             void processMinMax(int p, int col)
             {
@@ -2672,7 +2672,7 @@ public sealed class RealSub : RecoverMultiply
                     *outputPtr = function(minMax.ToArray());
                 }
             }
-            if (useList && !readList) output = Const(0); if (rows == 1) { processMinMax(0, columns); return; }
+            if (rows == 1) { processMinMax(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
         });
     }
@@ -2687,7 +2687,7 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> Hypergeometric(string[] split)
     {
         int n = ThrowReturnLengths(split, 4, 100);
-        return HandleMtx(Const(0), sum =>
+        return (useList && !readList) ? Const(0) : HandleMtx(Const(0), sum =>
         {
             Matrix<Real> obtain(int index) => ObtainValue(split[index]);
             Matrix<Real> product = Const(1), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
@@ -2704,14 +2704,14 @@ public sealed class RealSub : RecoverMultiply
                     }
                 }
             }
-            if (useList && !readList) return; if (rows == 1) { hypergeometric(0, columns); return; }
+            if (rows == 1) { hypergeometric(0, columns); return; }
             Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
     private unsafe Matrix<Real> Gamma(string[] split)
     {
         int n = ThrowReturnLengths(split, 1, 100);
-        return HandleMtx(UninitMtx(), output =>
+        return (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
         {
             Matrix<Real> product = Const(1), initial = ObtainValue(split[0]);
             void gamma(int p, int col)
@@ -2723,14 +2723,14 @@ public sealed class RealSub : RecoverMultiply
                     *outputPtr = *productPtr * MathR.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
             }
-            if (useList && !readList) output = product; if (rows == 1) { gamma(0, columns); return; }
+            if (rows == 1) { gamma(0, columns); return; }
             Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Gamma_function
     private unsafe Matrix<Real> Beta(string[] split)
     {
         int n = ThrowReturnLengths(split, 2, 100);
-        return HandleMtx(UninitMtx(), output =>
+        return (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
         {
             Matrix<Real> product = Const(1), input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
             void beta(int p, int col)
@@ -2743,14 +2743,14 @@ public sealed class RealSub : RecoverMultiply
                     *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
                 }
             }
-            if (useList && !readList) output = product; if (rows == 1) { beta(0, columns); return; }
+            if (rows == 1) { beta(0, columns); return; }
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Beta_function
     private unsafe Matrix<Real> Zeta(string[] split)
     {
         int n = ThrowReturnLengths(split, 1, 50);
-        return HandleMtx(Const(0), _sum =>
+        return (useList && !readList) ? Const(0) : HandleMtx(Const(0), _sum =>
         {
             Matrix<Real> sum = UninitMtx(), coeff = Const(1), _coeff = UninitMtx(), initial = ObtainValue(split[0]);
             void zeta(int p, int col)
@@ -2772,7 +2772,7 @@ public sealed class RealSub : RecoverMultiply
                     *_sumPtr /= 1 - MathR.Pow(2, 1 - *initialPtr);
                 }
             }
-            if (useList && !readList) return; if (rows == 1) { zeta(0, columns); return; }
+            if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
     } // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2842,7 +2842,7 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> Copy(Matrix<Real> src) => HandleMtx(UninitMtx(), dest =>
     {
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
-        if (useList && !readList) dest = Const(0); if (rows == 1) { copy(0, colBytes); return; }
+        if (rows == 1) { copy(0, colBytes); return; }
         Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     });
     [MethodImpl(512)] // AggressiveOptimization
