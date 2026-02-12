@@ -637,7 +637,6 @@ public partial class Graph : Form
     {
         var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
         int toInt(int index) => RealSub.ToInt(split[index]);
-        int int3 = toInt(3), int4 = toInt(4); MyString.ThrowException(int3 > int4);
         string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops.ToString(), true);
         string obtainDisplayInput(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(5, loops) : defaultInput;
 
@@ -646,22 +645,22 @@ public partial class Graph : Form
         {
             Matrix<Complex> z = ComplexSub.InitilizeZ(xCoor, yCoor, rows, columns); // Special for complex
             Matrix<Complex> Z = new ComplexSub(split[1], z, null, null, rows, columns).Obtain();
-            for (int loops = int3; loops <= int4; loops++)
+            RealComplex.For(toInt(3), toInt(4), loops =>
             {
                 Z = new ComplexSub(replaceLoop(0, loops), z, Z, null, rows, columns).Obtain();
                 output_complex = new ComplexSub(obtainDisplayInput(loops, "Z"), z, Z, null, rows, columns).Obtain();
                 RunDisplayBase(ComplexComputation);
-            }
+            });
         }
         else
         {
             Matrix<Real> X = new RealSub(split[1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
-            for (int loops = int3; loops <= int4; loops++)
+            RealComplex.For(toInt(3), toInt(4), loops =>
             {
                 X = new RealSub(replaceLoop(0, loops), xCoor, yCoor, X, null, null, rows, columns).Obtain();
                 output_real = new RealSub(obtainDisplayInput(loops, "y-X"), xCoor, yCoor, X, null, null, rows, columns).Obtain();
                 RunDisplayBase(RealComputation);
-            }
+            });
         }
     } // Deliberate buffer-free zone, rendering self-contained delay [See: ComplexSub.ProcessSPI, RealSub.ProcessSPI]
     private void DisplayLoop(string input)
@@ -674,8 +673,8 @@ public partial class Graph : Form
             containsTag(ReplaceTags.POLAR) ? DisplayPolar :
             containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
         int toInt(int index) => RealSub.ToInt(split[index]);
-        int int2 = toInt(2), int3 = toInt(3); MyString.ThrowException(int2 > int3);
-        for (int loops = int2; loops <= int3; loops++) displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true));
+        RealComplex.For(toInt(2), toInt(3), loops =>
+        { displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
     }
     private void DisplayOnScreen()
     {
@@ -2164,6 +2163,7 @@ public class RecoverMultiply : ReplaceTags
         }
         return recoveredInput.ToString();
     } // Pulled out of loops
+    //
     private static bool DecideRecovery(char c1, char c2, Func<char, bool> isVar)
     {
         bool isConstNum(char c) => IsConst(c) || Char.IsNumber(c);
