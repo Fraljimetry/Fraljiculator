@@ -292,12 +292,12 @@ public partial class Graph : Form
         void drawGrids(Real xGrid, Real yGrid, Real penWidth)
         {
             Pen gridPen = new(GRID_GRAY, (float)penWidth);
-            RealComplex.For((int)MathR.Floor(scopes[2] / yGrid), (int)MathR.Ceiling(scopes[3] / yGrid), i =>
+            RealComplex.CheckFor((int)MathR.Floor(scopes[2] / yGrid), (int)MathR.Ceiling(scopes[3] / yGrid), i =>
             {
                 int pos = LinearTransformY(i * yGrid, borders, ratioColumn);
                 if (pos >= yInit && pos < yEnd) graphics.DrawLine(gridPen, xInit, pos, xEnd, pos);
             });
-            RealComplex.For((int)MathR.Floor(scopes[0] / xGrid), (int)MathR.Ceiling(scopes[1] / xGrid), i =>
+            RealComplex.CheckFor((int)MathR.Floor(scopes[0] / xGrid), (int)MathR.Ceiling(scopes[1] / xGrid), i =>
             {
                 int pos = LinearTransformX(i * xGrid, borders, ratioRow);
                 if (pos >= xInit && pos < xEnd) graphics.DrawLine(gridPen, pos, yEnd, pos, yInit);
@@ -636,7 +636,6 @@ public partial class Graph : Form
     private void DisplayIterateLoop(string[] split)
     {
         var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
-        int toInt(int index) => RealSub.ToInt(split[index]);
         string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops.ToString(), true);
         string obtainDisplayInput(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(5, loops) : defaultInput;
 
@@ -645,7 +644,7 @@ public partial class Graph : Form
         {
             Matrix<Complex> z = ComplexSub.InitilizeZ(xCoor, yCoor, rows, columns); // Special for complex
             Matrix<Complex> Z = new ComplexSub(split[1], z, null, null, rows, columns).Obtain();
-            RealComplex.For(toInt(3), toInt(4), loops =>
+            RealComplex.CheckFor(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
             {
                 Z = new ComplexSub(replaceLoop(0, loops), z, Z, null, rows, columns).Obtain();
                 output_complex = new ComplexSub(obtainDisplayInput(loops, "Z"), z, Z, null, rows, columns).Obtain();
@@ -655,7 +654,7 @@ public partial class Graph : Form
         else
         {
             Matrix<Real> X = new RealSub(split[1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
-            RealComplex.For(toInt(3), toInt(4), loops =>
+            RealComplex.CheckFor(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
             {
                 X = new RealSub(replaceLoop(0, loops), xCoor, yCoor, X, null, null, rows, columns).Obtain();
                 output_real = new RealSub(obtainDisplayInput(loops, "y-X"), xCoor, yCoor, X, null, null, rows, columns).Obtain();
@@ -672,8 +671,8 @@ public partial class Graph : Form
             containsTag(ReplaceTags.FUNC) ? DisplayFunction :
             containsTag(ReplaceTags.POLAR) ? DisplayPolar :
             containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
-        int toInt(int index) => RealSub.ToInt(split[index]);
-        RealComplex.For(toInt(2), toInt(3), loops => { displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
+        RealComplex.CheckFor(RealSub.ToInt(split[2]), RealSub.ToInt(split[3]), loops =>
+        { displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
     }
     private void DisplayOnScreen()
     {
@@ -1887,7 +1886,8 @@ public class MyString
     public static void ThrowInvalidLengths(ReadOnlySpan<string> split, int[] lengths) => ThrowException(!lengths.Contains(split.Length));
     protected static (int, int) ObtainStartEnd(ReadOnlySpan<string> split, int length, int start, int iteration)
     {
-        ThrowInvalidLengths(split, [length, length + 1]); int end = split.Length == length ? iteration : RealSub.ToInt(split[^1]);
+        ThrowInvalidLengths(split, [length, length + 1]);
+        int end = split.Length == length ? iteration : RealSub.ToInt(split[^1]);
         ThrowException(start > end); return (start, end);
     }
     public static bool ContainsAny(string input, ReadOnlySpan<string> stringsToCheck)
@@ -1934,7 +1934,7 @@ public class RealComplex : MyString
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
-    public static void For(int start, int end, Action<int> action)
+    public static void CheckFor(int start, int end, Action<int> action)
     { ThrowException(start > end); for (int i = start; i <= end; i++) action(i); }
     protected static Matrix<Real> ChooseMode(string mode, Matrix<Real> m1, Matrix<Real> m2, int[] rowOffs, int columns)
         => Char.Parse(mode) switch { MODE_1 => m1, MODE_2 => m2 };
@@ -2315,7 +2315,7 @@ public sealed class ComplexSub : RecoverMultiply
         void resetCount() => buffer.countBra = buffer.countCst = 0;
         buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
 
-        For(RealSub.ToInt(split[validLength - 2]), RealSub.ToInt(split[validLength - 1]), i =>
+        CheckFor(RealSub.ToInt(split[validLength - 2]), RealSub.ToInt(split[validLength - 1]), i =>
         { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
         return buffer.Z;
     } // Meticulously optimized
@@ -2633,7 +2633,7 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> ObtainValue(ReadOnlySpan<char> input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
     public static Real Obtain(ReadOnlySpan<char> input, Real? x = null)
         => new RealSub(input, x != null ? new((Real)x) : null, null, null, null, null, 1, 1).Obtain()[0, 0];
-    public static int ToInt(ReadOnlySpan<char> input) => (int)Obtain(input); // Often bound to RealComplex.For
+    public static int ToInt(ReadOnlySpan<char> input) => (int)Obtain(input); // Often bound to RealComplex.CheckFor
     #endregion
 
     #region Basic Calculations
@@ -2781,7 +2781,7 @@ public sealed class RealSub : RecoverMultiply
         void resetCount() => buffer.countBra = buffer.countCst = 0;
         buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
 
-        For(ToInt(split[validLength - 2]), ToInt(split[validLength - 1]), i =>
+        CheckFor(ToInt(split[validLength - 2]), ToInt(split[validLength - 1]), i =>
         { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
         return buffer.X;
     } // Meticulously optimized
@@ -2799,7 +2799,7 @@ public sealed class RealSub : RecoverMultiply
         void resetCount() => buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
         buffer1.Obtain(); buffer2.Obtain(); resetCount(); buffer1.readList = buffer2.readList = true; // To precompute cstMtcs
 
-        For(ToInt(split[5]), ToInt(split[6]), i =>
+        CheckFor(ToInt(split[5]), ToInt(split[6]), i =>
         {
             buffer1.input = ReplaceLoop(split, 0, 4, i.ToString()); buffer2.input = ReplaceLoop(split, 1, 4, i.ToString());
             resetCount(); temp1 = buffer1.Obtain(); temp2 = buffer2.Obtain(); // Necessary
