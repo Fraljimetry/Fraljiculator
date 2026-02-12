@@ -673,8 +673,7 @@ public partial class Graph : Form
             containsTag(ReplaceTags.POLAR) ? DisplayPolar :
             containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
         int toInt(int index) => RealSub.ToInt(split[index]);
-        RealComplex.For(toInt(2), toInt(3), loops =>
-        { displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
+        RealComplex.For(toInt(2), toInt(3), loops => { displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
     }
     private void DisplayOnScreen()
     {
@@ -2044,6 +2043,7 @@ public class ReplaceTags : RealComplex
         COMP = J_.ToString(), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP),
         CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP),
         PI = P.ToString(), _GA = G.ToString();
+
     private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
         => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
     private static readonly Dictionary<string, string> COMMON_STANDARD = new()
