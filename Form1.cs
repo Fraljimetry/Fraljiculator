@@ -58,7 +58,7 @@ public partial class Graph : Form
         WRONG_FORMAT = "THE INPUT IS IN A WRONG FORMAT.", WRONG_ADDRESS = "THE ADDRESS DOES NOT EXIST.",
         DISPLAY_ERROR = "UNAVAILABLE.", DRAFT_DEFAULT = $"\r\nPrecision of real numbers: \r\n{typeof(Real)}.",
         TEMP_BGM_NAME = "background_music", MUSIC = "music", SOUND = "click sound", TIP = "ReadOnly",
-        SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('~', 3), _SEP = new('*', 20), TAB = new(' ', 4);
+        SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 3), _SEP = new('*', 20), TAB = new(' ', 4);
     private static readonly string[] CONTOUR_MODES = ["Cartesian (x,y)", "Polar (r,θ)"], COLOR_MODES =
         ["Commonplace", "Monochromatic", "Bichromatic", "Kaleidoscopic", "Miscellaneous"];
     #endregion
