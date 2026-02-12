@@ -635,7 +635,7 @@ public partial class Graph : Form
     {
         var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
         int toInt(int index) => RealSub.ToInt(split[index]);
-        int int3 = toInt(3), int4 = is_checking ? int3 : (int)MathR.Max(int3, toInt(4)); // Necessary
+        int int3 = toInt(3), int4 = toInt(4); MyString.ThrowException(int3 > int4);
         string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops.ToString(), true);
         string obtainDisplayInput(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(5, loops) : defaultInput;
 
@@ -672,7 +672,7 @@ public partial class Graph : Form
             containsTag(ReplaceTags.POLAR) ? DisplayPolar :
             containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
         int toInt(int index) => RealSub.ToInt(split[index]);
-        int int2 = toInt(2), int3 = is_checking ? int2 : (int)MathR.Max(int2, toInt(3)); // Necessary
+        int int2 = toInt(2), int3 = toInt(3); MyString.ThrowException(int2 > int3);
         for (int loops = int2; loops <= int3; loops++) displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true));
     }
     private void DisplayOnScreen()
@@ -2004,7 +2004,7 @@ public class ReplaceTags : RealComplex
             "nCr(x,y)",
             "min(sin(xy),tan(x),tan(y))",
             "ceil(x)round(y)-floor(y)round(x)",
-            "IterateLoop(x^X,1,k,1,30,y-X)",
+            "iterateLoop(x^X,1,k,1,30,y-X)",
             "iterate1(x/X+X/y,xy,k,1,5)",
             "iterate2(1/X+1/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
             "comp1(xy,tan(Xx),artanh(X-y))",
