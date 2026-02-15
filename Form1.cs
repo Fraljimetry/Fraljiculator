@@ -3144,19 +3144,18 @@ public readonly struct Complex // Manually inlined to reduce overhead
     #region Elementary Functions
     public static Complex Pow(Real f, Complex c)
     {
-        if (f == 0) return ZERO; // Necessary apriori checking
         var (mod, unit) = (MathR.Pow(f, c.real), MathR.SinCos(MathR.Log(f) * c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Pow(Complex c, Real f)
     {
-        Real re = c.real, im = c.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
+        Real re = c.real, im = c.imaginary;
         var (mod, unit) = (MathR.Pow(re * re + im * im, f / 2), MathR.SinCos(f * MathR.Atan2(im, re)));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Pow(Complex c1, Complex c2)
     {
-        Real re = c1.real, im = c1.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
+        Real re = c1.real, im = c1.imaginary;
         Complex c = c2 * new Complex(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
         var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
@@ -3179,18 +3178,18 @@ public readonly struct Complex // Manually inlined to reduce overhead
     //
     public static Complex Sin(Complex c)
     {
-        var (mod, unit) = (MathR.Exp(-c.imaginary), MathR.SinCos(c.real));
-        Complex _c = new(mod * unit.Cos, mod * unit.Sin); _c -= 1 / _c; return new(_c.imaginary / 2, -_c.real / 2);
+        var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
+        Real _mod = (Real)0.25 / mod; return new((_mod + mod) * unit.Sin, (_mod - mod) * unit.Cos);
     }
     public static Complex Cos(Complex c)
     {
-        var (mod, unit) = (MathR.Exp(-c.imaginary), MathR.SinCos(c.real));
-        Complex _c = new(mod * unit.Cos, mod * unit.Sin); _c += 1 / _c; return new(_c.real / 2, _c.imaginary / 2);
+        var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
+        Real _mod = (Real)0.25 / mod; return new((mod + _mod) * unit.Cos, (mod - _mod) * unit.Sin);
     }
     public static Complex Tan(Complex c)
     {
-        var (mod, unit) = (MathR.Exp(-c.imaginary - c.imaginary), MathR.SinCos(c.real + c.real));
-        Complex _c = 2 / new Complex(1 + mod * unit.Cos, mod * unit.Sin); return new(-_c.imaginary, _c.real - 1);
+        var (mod, unit) = (MathR.Exp(-c.imaginary - c.imaginary) / 2, MathR.SinCos(c.real + c.real));
+        Real _mod = (Real)0.25 / mod, denom = (_mod + mod) + unit.Cos; return new(unit.Sin / denom, (_mod - mod) / denom);
     }
     public static Complex Asin(Complex c)
     {
