@@ -3221,8 +3221,8 @@ public readonly struct Complex // Manually inlined to reduce overhead
     }
     public static Complex Acosh(Complex c) // Wolfram convention: https://mathworld.wolfram.com/InverseHyperbolicCosine.html
     {
-        Real re = c.real, im = c.imaginary, re1 = 1 + re, re2 = -1 + re, imSq = im * im;
-        var (mod, unit) = (MathR.Pow((re1 * re1 + imSq) * (re2 * re2 + imSq), QUARTER),
+        Real re = c.real, im = c.imaginary, re1 = 1 + re, re2 = -1 + re, imSquare = im * im;
+        var (mod, unit) = (MathR.Pow((re1 * re1 + imSquare) * (re2 * re2 + imSquare), QUARTER),
             MathR.SinCos((MathR.Atan2(im, re1) + MathR.Atan2(im, re2)) / 2));
         Real _re = re + mod * unit.Cos, _im = im + mod * unit.Sin;
         return new(MathR.Log(_re * _re + _im * _im) / 2, MathR.Atan2(_im, _re));
