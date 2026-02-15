@@ -1804,6 +1804,7 @@ public class MyString
         { for (int i = start, j = -1; ; i--) { if (input[i] == ')') j = i; else if (input[i] == '(') return (i, j); } }
         static int pairedInnerBra(ReadOnlySpan<char> input, int start)
         { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
+
         int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
     } // Backward lookup for parenthesis pairs, extremely sensitive
     public static bool CheckParenthesis(ReadOnlySpan<char> input)
@@ -1926,6 +1927,7 @@ public class RealComplex : MyString
         rowChk = rows / step; rowOffs = GetArithProg(rows, columns);
         strd = columns * step; strdInit = GetArithProg(rowChk, step);
         resInit = rowChk * step; res = rows - resInit;
+
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
@@ -3121,9 +3123,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
         return new(re1 * re2 - im1 * im2, re1 * im2 + im1 * re2);
     }
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator /(Real r, Complex c)
-    { Real re = c.real, im = c.imaginary, scale = r / (re * re + im * im); return new(scale * re, -scale * im); }
-    [MethodImpl(256)] // AggressiveInlining
     public static Complex operator /(Complex c, Real r) => new(c.real / r, c.imaginary / r);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator /(Complex c1, Complex c2)
@@ -3197,6 +3196,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * re / denom;
         return new(MathR.Atan2(_im, _re) / 2, -MathR.Log(_re * _re + _im * _im) / 4);
     }
+    //
     public static Complex Sinh(Complex c)
     {
         var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
