@@ -494,7 +494,6 @@ public partial class Graph : Form
     private void Real3(Matrix<Real> output, (Real, Real) mM) => RealLoop123(output, Color.Black, Color.White, 3, mM);
     private void Real4(Matrix<Real> output, (Real, Real) mM) => RealLoop45(output, true, mM);
     private void Real5(Matrix<Real> output, (Real, Real) mM) => RealLoop45(output, false, mM);
-    //
     private void ComplexComputation()
     {
         bool isReIm = contour_mode == 1;
@@ -1695,7 +1694,6 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-    //
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1716,7 +1714,6 @@ public class MyMessageBox : Form
     private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
     private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
-    //
     private void SetUpForm(int width, int height)
     {
         FormBorderStyle = FormBorderStyle.None; TopMost = true; Size = new(width, height);
@@ -1770,7 +1767,6 @@ public class MyMessageBox : Form
         msgBox.Setup(message, width, height, txtColor, btnColor, btnTxtColor);
         msgBox.ShowDialog();
     }
-    //
     public static void ShowFormal(string message, int width, int height)
         => Display(message, width, height, FORMAL_FONT, FORMAL_BUTTON, Color.White);
     public static void ShowCustom(string message, int width, int height)
@@ -1920,8 +1916,7 @@ public class RealComplex : MyString
     public unsafe static int[] GetArithProg(int length, int diff)
     {
         if (length == 0) return []; int[] progression = new int[length];
-        fixed (int* ptr = progression)
-        { int* _ptr = ptr; for (int i = 0, j = 0; i < length; i++, _ptr++, j += diff) *_ptr = j; } // _ptr is necessary
+        fixed (int* ptr = progression) { int* _ptr = ptr; for (int i = 0, j = 0; i < length; i++, _ptr++, j += diff) *_ptr = j; }
         return progression;
     }
     protected static void Initialize<TEntry>(int rows, int columns, ref int rowChk, ref int[]? rowOffs, ref uint colBytes,
@@ -1934,6 +1929,12 @@ public class RealComplex : MyString
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
+    protected unsafe static Real[] GetLogSequence(int end)
+    {
+        Real[] logSequence = new Real[end + 1];
+        fixed (Real* ptr = logSequence) { Real* _ptr = ptr; for (int i = 0; i <= end; i++, _ptr++) *_ptr = MathR.Log(i + 1); }
+        return logSequence;
+    }
     public static void CheckFor(int start, int end, Action<int> action)
     { ThrowException(start > end); for (int i = start; i <= end; i++) action(i); }
     protected static Matrix<Real> ChooseMode(string mode, Matrix<Real> m1, Matrix<Real> m2, int[] rowOffs, int columns)
@@ -2043,7 +2044,6 @@ public class ReplaceTags : RealComplex
         COMP = J_.ToString(), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP),
         CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP),
         PI = P.ToString(), _GA = G.ToString();
-
     private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
         => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
     private static readonly Dictionary<string, string> COMMON_STANDARD = new()
@@ -2123,7 +2123,6 @@ public class ReplaceTags : RealComplex
         foreach (var kvp in dictionary) _dictionary[kvp.Key] = String.Concat(kvp.Value, suffix);
         return _dictionary;
     }
-    //
     private static string ReplaceBase(string input, Dictionary<string, string> dictionary)
     {
         foreach (var kvp in dictionary) input = input.Replace(kvp.Key, kvp.Value);
@@ -2131,7 +2130,6 @@ public class ReplaceTags : RealComplex
     }
     private static string ReplaceCommon(string input) => ReplaceConstant(ReplaceBase(input, AddPrefixSuffix(COMMON)));
     private static string ReplaceConstant(string input) => ReplaceBase(input, CONSTANTS);
-    //
     protected static string ReplaceReal(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(REAL)));
     protected static string ReplaceComplex(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(COMPLEX)));
     public static string ReplaceCurves(string input) => ReplaceBase(input, AddPrefixSuffix(TAGS));
@@ -2163,7 +2161,6 @@ public class RecoverMultiply : ReplaceTags
         }
         return recoveredInput.ToString();
     } // Pulled out of loops
-    //
     private static bool DecideRecovery(char c1, char c2, Func<char, bool> isVar)
     {
         bool isConstNum(char c) => IsConst(c) || Char.IsNumber(c);
@@ -2281,7 +2278,7 @@ public sealed class ComplexSub : RecoverMultiply
     private unsafe Matrix<Complex> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
         => (useList && !readList) ? Const(Complex.ZERO) : HandleMtx(Const(Complex.ZERO), _sum =>
         {
-            var (start, end) = ObtainStartEnd(split, 1, 0, 50);
+            var (start, end) = ObtainStartEnd(split, 1, 0, 50); Real[] logSequence = GetLogSequence(end); // Special for complex
             Matrix<Complex> sum = UninitMtx(), coeff = Const(Complex.ONE), _coeff = UninitMtx(), initial = ObtainValue(split[0]);
             void zeta(int p, int col)
             {
@@ -2294,18 +2291,17 @@ public sealed class ComplexSub : RecoverMultiply
                         *coeffPtr /= 2; *_coeffPtr = Complex.ONE; *sumPtr = Complex.ZERO;
                         for (int j = start; j <= i; j++)
                         {
-                            *sumPtr += *_coeffPtr * Complex.Pow(j + 1, -*initialPtr);
+                            *sumPtr += *_coeffPtr * Complex.Exp(-*initialPtr * logSequence[j]);
                             *_coeffPtr *= (Real)(j - i) / (Real)(j + 1); // (Real) is not redundant
                         }
                         *sumPtr *= *coeffPtr; *_sumPtr += *sumPtr;
                     }
-                    *_sumPtr /= 1 - Complex.Pow(2, 1 - *initialPtr);
+                    *_sumPtr /= 1 - Complex.Exp((1 - *initialPtr) * Complex.LOG2);
                 }
             }
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
-    //
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2322,7 +2318,6 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
     private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
-    //
     private Matrix<Complex> Composite(string[] split)
     {
         Matrix<Complex> _value = ObtainValue(split[0]);
@@ -2647,7 +2642,6 @@ public sealed class RealSub : RecoverMultiply
         Combination(n + 1, r) - Combination(n, r - 1) :
         Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
     private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
-    //
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
         {
@@ -2678,7 +2672,6 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { processMinMax(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
         });
-    //
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathR.Floor(n), MathR.Floor(r)));
     private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathR.Floor(n), MathR.Floor(r)));
@@ -2771,7 +2764,6 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
-    //
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2807,7 +2799,6 @@ public sealed class RealSub : RecoverMultiply
         });
         return ChooseMode(split[^1], buffer1.X, buffer1.Y, rowOffs, columns); // Or, alternatively, buffer2
     } // Special for real
-    //
     private Matrix<Real> Composite1(string[] split)
     {
         Matrix<Real> _value = ObtainValue(split[0]);
@@ -3105,6 +3096,7 @@ public sealed class RealSub : RecoverMultiply
 public readonly struct Complex // Manually inlined to reduce overhead
 {
     public readonly Real real, imaginary;
+    public static readonly Real QUARTER = (Real)0.25, HALF_PI = MathR.PI / 2, LOG2 = MathR.Log(2);
     public static readonly Complex ZERO = new(0), ONE = new(1), I = new(0, 1);
     [MethodImpl(256)] // AggressiveInlining
     public Complex(Real real, Real imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use primary constructor
@@ -3113,15 +3105,15 @@ public readonly struct Complex // Manually inlined to reduce overhead
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator -(Complex c) => new(-c.real, -c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator +(Real f, Complex c) => new(f + c.real, c.imaginary);
+    public static Complex operator +(Real r, Complex c) => new(r + c.real, c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator +(Complex c1, Complex c2) => new(c1.real + c2.real, c1.imaginary + c2.imaginary);
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator -(Real f, Complex c) => new(f - c.real, -c.imaginary);
+    public static Complex operator -(Real r, Complex c) => new(r - c.real, -c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator -(Complex c1, Complex c2) => new(c1.real - c2.real, c1.imaginary - c2.imaginary);
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator *(Complex c, Real f) => new(f * c.real, f * c.imaginary);
+    public static Complex operator *(Complex c, Real r) => new(r * c.real, r * c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator *(Complex c1, Complex c2)
     {
@@ -3129,28 +3121,22 @@ public readonly struct Complex // Manually inlined to reduce overhead
         return new(re1 * re2 - im1 * im2, re1 * im2 + im1 * re2);
     }
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator /(Real f, Complex c)
-    { Real re = c.real, im = c.imaginary, mod = f / (re * re + im * im); return new(mod * re, -mod * im); }
+    public static Complex operator /(Real r, Complex c)
+    { Real re = c.real, im = c.imaginary, scale = r / (re * re + im * im); return new(scale * re, -scale * im); }
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator /(Complex c, Real f) => c * (1 / f);
+    public static Complex operator /(Complex c, Real r) => new(c.real / r, c.imaginary / r);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator /(Complex c1, Complex c2)
     {
-        Real re1 = c1.real, im1 = c1.imaginary, re2 = c2.real, im2 = c2.imaginary, modSquare = re2 * re2 + im2 * im2;
-        return new((re1 * re2 + im1 * im2) / modSquare, (im1 * re2 - re1 * im2) / modSquare);
+        Real re1 = c1.real, im1 = c1.imaginary, re2 = c2.real, im2 = c2.imaginary, denom = re2 * re2 + im2 * im2;
+        return new((re1 * re2 + im1 * im2) / denom, (im1 * re2 - re1 * im2) / denom);
     }
     #endregion
 
     #region Elementary Functions
-    public static Complex Pow(Real f, Complex c)
+    public static Complex Pow(Real r, Complex c)
     {
-        var (mod, unit) = (MathR.Pow(f, c.real), MathR.SinCos(MathR.Log(f) * c.imaginary));
-        return new(mod * unit.Cos, mod * unit.Sin);
-    }
-    public static Complex Pow(Complex c, Real f)
-    {
-        Real re = c.real, im = c.imaginary;
-        var (mod, unit) = (MathR.Pow(re * re + im * im, f / 2), MathR.SinCos(f * MathR.Atan2(im, re)));
+        var (mod, unit) = (MathR.Pow(r, c.real), MathR.SinCos(MathR.Log(r) * c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Pow(Complex c1, Complex c2)
@@ -3179,66 +3165,81 @@ public readonly struct Complex // Manually inlined to reduce overhead
     public static Complex Sin(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
-        Real _mod = (Real)0.25 / mod; return new((_mod + mod) * unit.Sin, (_mod - mod) * unit.Cos);
+        Real _mod = QUARTER / mod; return new((_mod + mod) * unit.Sin, (_mod - mod) * unit.Cos);
     }
     public static Complex Cos(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
-        Real _mod = (Real)0.25 / mod; return new((mod + _mod) * unit.Cos, (mod - _mod) * unit.Sin);
+        Real _mod = QUARTER / mod; return new((mod + _mod) * unit.Cos, (mod - _mod) * unit.Sin);
     }
     public static Complex Tan(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary - c.imaginary) / 2, MathR.SinCos(c.real + c.real));
-        Real _mod = (Real)0.25 / mod, denom = (_mod + mod) + unit.Cos; return new(unit.Sin / denom, (_mod - mod) / denom);
+        Real _mod = QUARTER / mod, denom = (_mod + mod) + unit.Cos; return new(unit.Sin / denom, (_mod - mod) / denom);
     }
     public static Complex Asin(Complex c)
     {
-        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, (Real)0.5); Real re = _c.real, im = _c.imaginary;
-        return new(MathR.Atan2(im, re), -MathR.Log(re * re + im * im) / 2);
+        Real re = c.real, im = c.imaginary, re_ = 1 - re * re + im * im, im_ = -2 * re * im;
+        var (mod, unit) = (MathR.Pow(re_ * re_ + im_ * im_, QUARTER), MathR.SinCos(MathR.Atan2(im_, re_) / 2));
+        Real _re = -im + mod * unit.Cos, _im = re + mod * unit.Sin;
+        return new(MathR.Atan2(_im, _re), -MathR.Log(_re * _re + _im * _im) / 2);
     }
-    public static Complex Acos(Complex c)
+    public static Complex Acos(Complex c) // Wolfram convention: https://mathworld.wolfram.com/InverseCosine.html
     {
-        Complex _c = new Complex(-c.imaginary, c.real) + Pow(1 - c * c, (Real)0.5); Real re = _c.real, im = _c.imaginary;
-        return new(MathR.PI / 2 - MathR.Atan2(im, re), MathR.Log(re * re + im * im) / 2);
-    } // Wolfram convention: https://mathworld.wolfram.com/InverseCosine.html
+        Real re = c.real, im = c.imaginary, re_ = 1 - re * re + im * im, im_ = -2 * re * im;
+        var (mod, unit) = (MathR.Pow(re_ * re_ + im_ * im_, QUARTER), MathR.SinCos(MathR.Atan2(im_, re_) / 2));
+        Real _re = -im + mod * unit.Cos, _im = re + mod * unit.Sin;
+        return new(HALF_PI - MathR.Atan2(_im, _re), MathR.Log(_re * _re + _im * _im) / 2);
+    }
     public static Complex Atan(Complex c)
     {
-        Complex _c = 2 / new Complex(1 + c.imaginary, -c.real); Real re = _c.real - 1, im = _c.imaginary;
-        return new(MathR.Atan2(im, re) / 2, -MathR.Log(re * re + im * im) / 4);
+        Real re = c.real, im = c.imaginary, modSquare = re * re + im * im, denom = (1 + modSquare) + 2 * im,
+            _re = (1 - modSquare) / denom, _im = 2 * re / denom;
+        return new(MathR.Atan2(_im, _re) / 2, -MathR.Log(_re * _re + _im * _im) / 4);
     }
-    //
     public static Complex Sinh(Complex c)
     {
-        var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
-        Complex _c = new(mod * unit.Cos, mod * unit.Sin); _c -= 1 / _c; return new(_c.real / 2, _c.imaginary / 2);
+        var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
+        Real _mod = QUARTER / mod; return new((mod - _mod) * unit.Cos, (mod + _mod) * unit.Sin);
     }
     public static Complex Cosh(Complex c)
     {
-        var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
-        Complex _c = new(mod * unit.Cos, mod * unit.Sin); _c += 1 / _c; return new(_c.real / 2, _c.imaginary / 2);
+        var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
+        Real _mod = QUARTER / mod; return new((mod + _mod) * unit.Cos, (mod - _mod) * unit.Sin);
     }
     public static Complex Tanh(Complex c)
     {
-        var (mod, unit) = (MathR.Exp(c.real + c.real), MathR.SinCos(c.imaginary + c.imaginary));
-        Complex _c = new(1 + mod * unit.Cos, mod * unit.Sin); return 1 - 2 / _c;
+        var (mod, unit) = (MathR.Exp(c.real + c.real) / 2, MathR.SinCos(c.imaginary + c.imaginary));
+        Real _mod = QUARTER / mod, denom = (mod + _mod) + unit.Cos; return new((mod - _mod) / denom, unit.Sin / denom);
     }
     public static Complex Asinh(Complex c)
     {
-        Complex _c = c + Pow(1 + c * c, (Real)0.5); Real re = _c.real, im = _c.imaginary;
-        return new(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
+        Real re = c.real, im = c.imaginary, re_ = 1 + re * re - im * im, im_ = 2 * re * im;
+        var (mod, unit) = (MathR.Pow(re_ * re_ + im_ * im_, QUARTER), MathR.SinCos(MathR.Atan2(im_, re_) / 2));
+        Real _re = re + mod * unit.Cos, _im = im + mod * unit.Sin;
+        return new(MathR.Log(_re * _re + _im * _im) / 2, MathR.Atan2(_im, _re));
     }
-    public static Complex Acosh(Complex c)
+    public static Complex Acosh(Complex c) // Wolfram convention: https://mathworld.wolfram.com/InverseHyperbolicCosine.html
     {
-        Complex _c = c + Pow(1 + c, (Real)0.5) * Pow(-1 + c, (Real)0.5); Real re = _c.real, im = _c.imaginary;
-        return new(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
-    } // Wolfram convention: https://mathworld.wolfram.com/InverseHyperbolicCosine.html
+        Real re = c.real, im = c.imaginary, re1 = 1 + re, re2 = -1 + re, imSq = im * im;
+        var (mod, unit) = (MathR.Pow((re1 * re1 + imSq) * (re2 * re2 + imSq), QUARTER),
+            MathR.SinCos((MathR.Atan2(im, re1) + MathR.Atan2(im, re2)) / 2));
+        Real _re = re + mod * unit.Cos, _im = im + mod * unit.Sin;
+        return new(MathR.Log(_re * _re + _im * _im) / 2, MathR.Atan2(_im, _re));
+    }
     public static Complex Atanh(Complex c)
     {
-        Complex _c = 2 / new Complex(1 - c.real, -c.imaginary); Real re = _c.real - 1, im = _c.imaginary;
-        return new(MathR.Log(re * re + im * im) / 4, MathR.Atan2(im, re) / 2);
+        Real re = c.real, im = c.imaginary, modSquare = re * re + im * im, denom = (1 + modSquare) - 2 * re,
+            _re = (1 - modSquare) / denom, _im = 2 * im / denom;
+        return new(MathR.Log(_re * _re + _im * _im) / 4, MathR.Atan2(_im, _re) / 2);
     }
     //
-    public static Complex Sqrt(Complex c) => Pow(c, (Real)0.5);
+    public static Complex Sqrt(Complex c)
+    {
+        Real re = c.real, im = c.imaginary;
+        var (mod, unit) = (MathR.Pow(re * re + im * im, QUARTER), MathR.SinCos(MathR.Atan2(im, re) / 2));
+        return new(mod * unit.Cos, mod * unit.Sin);
+    }
     public static Real Modulus(Real x, Real y) => Modulus(new(x, y));
     public static Real Modulus(Complex c) => MathR.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
     public static Complex Conjugate(Complex c) => new(c.real, -c.imaginary);
