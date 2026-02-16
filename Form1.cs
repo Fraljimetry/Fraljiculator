@@ -460,7 +460,7 @@ public partial class Graph : Form
             2 => (Color.Black, Color.White),
             3 => (LOWER_BLUE, UPPER_GOLD)
         };
-        bool draw = mode != 1 ? Real.IsEvenInteger(LowIdx(v1, s1) + LowIdx(v2, s2))
+        bool draw = mode != 1 ? Int32.IsEvenInteger(LowIdx(v1, s1) + LowIdx(v2, s2))
             : MathR.Min(MathR.Min(LowDist(v1, s1), LowDist(v2, s2)), MathR.Min(-LowDist(v1, -s1), -LowDist(v2, -s2))) < epsilon;
         return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
     };
