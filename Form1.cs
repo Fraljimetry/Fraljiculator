@@ -376,13 +376,17 @@ public partial class Graph : Form
         => (Image.GetPixelFormatSize(bmp.PixelFormat) / 8, bmp.LockBits(rectangle, ImageLockMode.ReadWrite, bmp.PixelFormat));
     private unsafe static void ClearBitmap(Bitmap bmp)
     {
-        var (bpp, bmpData) = GetBppBmpData(bmp); var bmpInit = (byte*)bmpData.Scan0 + bpp - 1;
-        Parallel.For(0, rectangle.Height, y =>
+        var (bpp, bmpData) = GetBppBmpData(bmp);
+        try
         {
-            byte* pixelPtr = bmpInit + y * bmpData.Stride;
-            for (int x = 0; x < rectangle.Width; x++, pixelPtr += bpp) *pixelPtr = 0; // It suffices to set color.A to zero
-        }); // Deliberate loop order
-        bmp.UnlockBits(bmpData);
+            var bmpInit = (byte*)bmpData.Scan0 + bpp - 1;
+            Parallel.For(0, rectangle.Height, y =>
+            {
+                byte* pixelPtr = bmpInit + y * bmpData.Stride;
+                for (int x = 0; x < rectangle.Width; x++, pixelPtr += bpp) *pixelPtr = 0; // It suffices to set color.A to zero
+            }); // Deliberate loop order
+        }
+        finally { bmp.UnlockBits(bmpData); }
     }
     private unsafe void SetPixel(byte* _ptr, Color color, ref int pixNum)
     { pixNum++; *_ptr = color.B; _ptr++; *_ptr = color.G; _ptr++; *_ptr = color.R; _ptr++; *_ptr = color.A; }
@@ -594,7 +598,6 @@ public partial class Graph : Form
             posBuffer = pos;
         }
     }
-    //
     private void DisplayFPPBase(string input, bool isPolar = false, bool isParam = false)
     {
         string[] split = MyString.SplitString(input);
@@ -1804,7 +1807,6 @@ public class MyString
         { for (int i = start, j = -1; ; i--) { if (input[i] == ')') j = i; else if (input[i] == '(') return (i, j); } }
         static int pairedInnerBra(ReadOnlySpan<char> input, int start)
         { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
-
         int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
     } // Backward lookup for parenthesis pairs, extremely sensitive
     public static bool CheckParenthesis(ReadOnlySpan<char> input)
@@ -1927,7 +1929,6 @@ public class RealComplex : MyString
         rowChk = rows / step; rowOffs = GetArithProg(rows, columns);
         strd = columns * step; strdInit = GetArithProg(rowChk, step);
         resInit = rowChk * step; res = rows - resInit;
-
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
@@ -3196,7 +3197,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * re / denom;
         return new(MathR.Atan2(_im, _re) / 2, -MathR.Log(_re * _re + _im * _im) / 4);
     }
-    //
     public static Complex Sinh(Complex c)
     {
         var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
