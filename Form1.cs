@@ -303,8 +303,7 @@ public partial class Graph : Form
                 if (pos >= xInit && pos < xEnd) graphics.DrawLine(gridPen, pos, yEnd, pos, yInit);
             });
         }
-        drawGrids(xGrid, yGrid, GRID_WIDTH_1);
-        drawGrids(xGrid / GRID, yGrid / GRID, GRID_WIDTH_2);
+        drawGrids(xGrid, yGrid, GRID_WIDTH_1); drawGrids(xGrid / GRID, yGrid / GRID, GRID_WIDTH_2);
 
         var (x, y) = (LinearTransformX(0, borders, ratioRow), LinearTransformY(0, borders, ratioColumn));
         if (y >= yInit && y < yEnd) graphics.DrawLine(AXES_PEN, xInit, y, xEnd, y);
@@ -3136,19 +3135,20 @@ public readonly struct Complex // Manually inlined to reduce overhead
     #region Elementary Functions
     public static Complex Pow(Real r, Complex c)
     {
+        if (r == 0) return ZERO; // Necessary apriori checking
         var (mod, unit) = (MathR.Pow(r, c.real), MathR.SinCos(MathR.Log(r) * c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Pow(Complex c1, Complex c2)
     {
-        Real re = c1.real, im = c1.imaginary;
+        Real re = c1.real, im = c1.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
         Complex c = c2 * new Complex(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
         var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Log(Complex c)
     {
-        Real re = c.real, im = c.imaginary;
+        Real re = c.real, im = c.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
         return new(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
     }
     public static Complex Exp(Complex c)
