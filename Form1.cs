@@ -2312,12 +2312,12 @@ public sealed class ComplexSub : RecoverMultiply
     {
         ThrowInvalidLengths(split, [validLength]);
         int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
-        ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, buffCocs, true);
+        ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, RealSub.ToInt(split[subIdx + 1]).ToString()), initMtx, buffCocs, true);
 
         void resetCount() => buffer.countBra = buffer.countCst = 0;
         buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
 
-        CheckFor(RealSub.ToInt(split[validLength - 2]), RealSub.ToInt(split[validLength - 1]), i =>
+        CheckFor(RealSub.ToInt(split[subIdx + 1]), RealSub.ToInt(split[subIdx + 2]), i =>
         { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
         return buffer.Z;
     } // Meticulously optimized
@@ -2776,12 +2776,12 @@ public sealed class RealSub : RecoverMultiply
     {
         ThrowInvalidLengths(split, [validLength]);
         int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
-        RealSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, null, buffCocs, true);
+        RealSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, ToInt(split[subIdx + 1]).ToString()), initMtx, null, buffCocs, true);
 
         void resetCount() => buffer.countBra = buffer.countCst = 0;
         buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
 
-        CheckFor(ToInt(split[validLength - 2]), ToInt(split[validLength - 1]), i =>
+        CheckFor(ToInt(split[subIdx + 1]), ToInt(split[subIdx + 2]), i =>
         { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
         return buffer.X;
     } // Meticulously optimized
@@ -2792,8 +2792,8 @@ public sealed class RealSub : RecoverMultiply
     {
         ThrowInvalidLengths(split, [8]);
         string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
-        split[0] = replaceLoop(0); split[1] = replaceLoop(1);
-        RealSub obtain(int i) => ObtainSub(ReplaceLoop(split, i, 4, "0"), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
+        split[0] = replaceLoop(0); split[1] = replaceLoop(1); RealSub obtain(int i)
+            => ObtainSub(ReplaceLoop(split, i, 4, ToInt(split[5]).ToString()), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
         RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<Real> temp1, temp2;
 
         void resetCount() => buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
