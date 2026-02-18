@@ -3120,7 +3120,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator -(Complex c1, Complex c2) => new(c1.real - c2.real, c1.imaginary - c2.imaginary);
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator *(Complex c, Real r) => new(r * c.real, r * c.imaginary);
+    public static Complex operator *(Complex c, Real r) => new(c.real * r, c.imaginary * r);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator *(Complex c1, Complex c2)
     {
