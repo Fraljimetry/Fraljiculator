@@ -1716,6 +1716,7 @@ public class MyMessageBox : Form
     private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
     private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
+    //
     private void SetUpForm(int width, int height)
     {
         FormBorderStyle = FormBorderStyle.None; TopMost = true; Size = new(width, height);
@@ -1763,6 +1764,7 @@ public class MyMessageBox : Form
         Graph.ReduceFontSizeByScale(this, ref scale_factor);
         KeyPreview = true; KeyDown += new(Form_KeyDown);
     }
+    //
     private static void Display(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
     {
         MyMessageBox msgBox = new();
@@ -2138,9 +2140,9 @@ public class ReplaceTags : RealComplex
 } /// Function name interpretors
 public class RecoverMultiply : ReplaceTags
 {
-    public static readonly string _ZZ_ = String.Concat(_Z, Z_), LR_BRA = "()",
+    public static readonly string _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_), LR_BRA = "()",
         BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", FUNC, POLAR, PARAM, ITLOOP);
-    private static readonly string VAR_REAL = String.Concat(_X, _Y, X_, Y_), VAR_COMPLEX = String.Concat(_Z, Z_, I),
+    private static readonly string VAR_REAL = String.Concat(_X, X_, _Y, Y_), VAR_COMPLEX = String.Concat(_Z, Z_, I),
         CONST = String.Concat(E, P, G), ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
     private static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
 
@@ -2217,6 +2219,7 @@ public sealed class ComplexSub : RecoverMultiply
     private ComplexSub ObtainSub(ReadOnlySpan<char> input, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs, bool useList = false)
         => new(input, z, Z, buffCocs, rows, columns, useList);
     private Matrix<Complex> ObtainValue(ReadOnlySpan<char> input) => new ComplexSub(input, z, Z, buffCocs, rows, columns).Obtain();
+    private Complex Obtain(ReadOnlySpan<char> input) => new ComplexSub(input, null, null, null, 1, 1).Obtain(false)[0, 0];
     #endregion
 
     #region Calculations
@@ -2304,6 +2307,7 @@ public sealed class ComplexSub : RecoverMultiply
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
+    //
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2320,6 +2324,7 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
     private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
+    //
     private Matrix<Complex> Composite(string[] split)
     {
         Matrix<Complex> _value = ObtainValue(split[0]);
@@ -2579,22 +2584,20 @@ public sealed class ComplexSub : RecoverMultiply
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
-    public Matrix<Complex> Obtain()
+    private Matrix<Complex> ObtainCore(string input)
     {
-        string input = this.input; // Preserving the original input
-        if (input.Contains('('))
+        while (input.Contains(UNDERLINE)) input = SeriesSub(input); // Hard to count
+        var (length, start, end, tagL) = PrepareLoop(input);
+        for (int i = 0; i < length; i++)
         {
-            while (input.Contains(UNDERLINE)) input = SeriesSub(input); // Hard to count
-            var (length, start, end, tagL) = PrepareLoop(input);
-            for (int i = 0; i < length; i++)
-            {
-                ResetStartEnd(input, ref start, ref end);
-                braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end)), ref tagL);
-                input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
-            }
+            ResetStartEnd(input, ref start, ref end);
+            braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end)), ref tagL);
+            input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
         }
         return ComputeBraFreePart(input).matrix; // No need to copy
     }
+    public Matrix<Complex> Obtain(bool checkVar = true)
+        => checkVar && !input.AsSpan().ContainsAny(_ZZ_) ? Const(Obtain(input)) : ObtainCore(input);
     #endregion
 } /// Computing complex-variable expressions
 public sealed class RealSub : RecoverMultiply
@@ -2629,7 +2632,7 @@ public sealed class RealSub : RecoverMultiply
         => new(input, x, y, X, Y, buffCocs, rows, columns, useList);
     private Matrix<Real> ObtainValue(ReadOnlySpan<char> input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
     public static Real Obtain(ReadOnlySpan<char> input, Real? x = null)
-        => new RealSub(input, x != null ? new((Real)x) : null, null, null, null, null, 1, 1).Obtain()[0, 0];
+        => new RealSub(input, x != null ? new((Real)x) : null, null, null, null, null, 1, 1).Obtain(false)[0, 0];
     public static int ToInt(ReadOnlySpan<char> input) => (int)Obtain(input); // Often bound to RealComplex.CheckFor
     #endregion
 
@@ -2644,6 +2647,7 @@ public sealed class RealSub : RecoverMultiply
         Combination(n + 1, r) - Combination(n, r - 1) :
         Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
     private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
+    //
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
         {
@@ -2674,6 +2678,7 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { processMinMax(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
         });
+    //
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathR.Floor(n), MathR.Floor(r)));
     private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathR.Floor(n), MathR.Floor(r)));
@@ -2766,6 +2771,7 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
+    //
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2801,6 +2807,7 @@ public sealed class RealSub : RecoverMultiply
         });
         return ChooseMode(split[^1], buffer1.X, buffer1.Y, rowOffs, columns); // Or, alternatively, buffer2
     } // Special for real
+    //
     private Matrix<Real> Composite1(string[] split)
     {
         Matrix<Real> _value = ObtainValue(split[0]);
@@ -3072,22 +3079,20 @@ public sealed class RealSub : RecoverMultiply
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
-    public Matrix<Real> Obtain()
+    private Matrix<Real> ObtainCore(string input)
     {
-        string input = this.input; // Preserving the original input
-        if (input.Contains('('))
+        while (input.Contains(UNDERLINE)) input = SeriesSub(input); // Hard to count
+        var (length, start, end, tagL) = PrepareLoop(input);
+        for (int i = 0; i < length; i++)
         {
-            while (input.Contains(UNDERLINE)) input = SeriesSub(input); // Hard to count
-            var (length, start, end, tagL) = PrepareLoop(input);
-            for (int i = 0; i < length; i++)
-            {
-                ResetStartEnd(input, ref start, ref end);
-                braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end)), ref tagL);
-                input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
-            }
+            ResetStartEnd(input, ref start, ref end);
+            braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end)), ref tagL);
+            input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
         }
         return ComputeBraFreePart(input).matrix; // No need to copy
     }
+    public Matrix<Real> Obtain(bool checkVar = true)
+        => checkVar && !input.AsSpan().ContainsAny(_XX__YY_) ? Const(Obtain(input)) : ObtainCore(input);
     #endregion
 } /// Computing real-variable expressions
 
@@ -3133,12 +3138,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
     #endregion
 
     #region Elementary Functions
-    public static Complex Pow(Real r, Complex c)
-    {
-        if (r == 0) return ZERO; // Necessary apriori checking
-        var (mod, unit) = (MathR.Pow(r, c.real), MathR.SinCos(MathR.Log(r) * c.imaginary));
-        return new(mod * unit.Cos, mod * unit.Sin);
-    }
     public static Complex Pow(Complex c1, Complex c2)
     {
         Real re = c1.real, im = c1.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
@@ -3148,7 +3147,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
     }
     public static Complex Log(Complex c)
     {
-        Real re = c.real, im = c.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
+        Real re = c.real, im = c.imaginary;
         return new(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
     }
     public static Complex Exp(Complex c)
@@ -3197,6 +3196,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * re / denom;
         return new(MathR.Atan2(_im, _re) / 2, -MathR.Log(_re * _re + _im * _im) / 4);
     }
+    //
     public static Complex Sinh(Complex c)
     {
         var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
