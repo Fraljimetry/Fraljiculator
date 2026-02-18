@@ -362,8 +362,7 @@ public partial class Graph : Form
         var (xCoor, yCoor) = (GetMatrix(rows, columns), GetMatrix(rows, columns));
         Parallel.For(0, rows, p =>
         {
-            Real* xPtr = xCoor.RowPtr(p), yPtr = yCoor.RowPtr(p);
-            var (x, y) = (scopes[0] + (1 + p) * _x, scopes[3] + _y);
+            Real* xPtr = xCoor.RowPtr(p), yPtr = yCoor.RowPtr(p); var (x, y) = (scopes[0] + (1 + p) * _x, scopes[3] + _y);
             for (int q = 0; q < columns; q++, xPtr++, yPtr++, y += _y) (*xPtr, *yPtr) = (x, y);
         }); // Optimized linear transforms
         return (rows, columns, xCoor, yCoor);
@@ -2140,10 +2139,11 @@ public class ReplaceTags : RealComplex
 } /// Function name interpretors
 public class RecoverMultiply : ReplaceTags
 {
-    public static readonly string _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_), LR_BRA = "()",
+    public static readonly string LR_BRA = "()", _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_),
+        _ZZ_BRA = String.Concat(_ZZ_, "{}"), _XX__YY_BRA = String.Concat(_XX__YY_, "{}"),
         BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", FUNC, POLAR, PARAM, ITLOOP);
-    private static readonly string VAR_REAL = String.Concat(_X, X_, _Y, Y_), VAR_COMPLEX = String.Concat(_Z, Z_, I),
-        CONST = String.Concat(E, P, G), ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
+    private static readonly string VAR_REAL = _XX__YY_, VAR_COMPLEX = String.Concat(_ZZ_, I), CONST = String.Concat(E, P, G),
+        ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
     private static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
 
     public static string Simplify(string input, bool isComplex = false)
@@ -2597,7 +2597,7 @@ public sealed class ComplexSub : RecoverMultiply
         return ComputeBraFreePart(input).matrix; // No need to copy
     }
     public Matrix<Complex> Obtain(bool checkVar = true)
-        => checkVar && !input.AsSpan().ContainsAny(_ZZ_) ? Const(Obtain(input)) : ObtainCore(input);
+        => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRA) ? Const(Obtain(input)) : ObtainCore(input);
     #endregion
 } /// Computing complex-variable expressions
 public sealed class RealSub : RecoverMultiply
@@ -3092,7 +3092,7 @@ public sealed class RealSub : RecoverMultiply
         return ComputeBraFreePart(input).matrix; // No need to copy
     }
     public Matrix<Real> Obtain(bool checkVar = true)
-        => checkVar && !input.AsSpan().ContainsAny(_XX__YY_) ? Const(Obtain(input)) : ObtainCore(input);
+        => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : ObtainCore(input);
     #endregion
 } /// Computing real-variable expressions
 
