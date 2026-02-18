@@ -760,7 +760,7 @@ public partial class Graph : Form
     {
         static string trimForMove(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
         SetText(X_CoorDisplay, trimForMove(xCoor)); SetText(Y_CoorDisplay, trimForMove(yCoor));
-        SetText(ModulusDisplay, trimForMove(Complex.Modulus(xCoor, yCoor)));
+        SetText(ModulusDisplay, trimForMove(Real.Hypot(xCoor, yCoor)));
         SetText(AngleDisplay, MyString.GetAngle(xCoor, yCoor));
 
         if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
@@ -778,7 +778,7 @@ public partial class Graph : Form
     {
         static string trimForDown(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
         string _xCoor = trimForDown(xCoor), _yCoor = trimForDown(yCoor),
-            Modulus = trimForDown(Complex.Modulus(xCoor, yCoor)), Angle = MyString.GetAngle(xCoor, yCoor);
+            Modulus = trimForDown(Real.Hypot(xCoor, yCoor)), Angle = MyString.GetAngle(xCoor, yCoor);
 
         string message = String.Empty;
         if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
@@ -1695,6 +1695,7 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
+
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -3240,8 +3241,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
         var (mod, unit) = (MathR.Pow(re * re + im * im, QUARTER), MathR.SinCos(MathR.Atan2(im, re) / 2));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
-    public static Real Modulus(Real x, Real y) => Modulus(new(x, y));
-    public static Real Modulus(Complex c) => MathR.Sqrt(c.real * c.real + c.imaginary * c.imaginary);
+    public static Real Modulus(Complex c) => Real.Hypot(c.real, c.imaginary);
     public static Complex Conjugate(Complex c) => new(c.real, -c.imaginary);
     public static Complex Factorial(Complex c) => new(RealSub.Factorial(c.real));
     #endregion
