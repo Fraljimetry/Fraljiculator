@@ -1061,7 +1061,7 @@ public partial class Graph : Form
         string content = $"DESIGNER: Fraljimetry\r\nDATE: {DATE}\r\nLOCATION: Xi'an, China";
         content += "\r\n\r\nThis software was developed in Visual Studio 2022, written in C#, " +
             "to visualize real/complex functions and equations with no more than two variables." +
-            "\r\n\r\nTo bolster artistry and practicality, numerous modes are rendered, " +
+            "\r\n\r\nTo bolster artistry and practicality, numerous parameters are tunable, " +
             "making it possible to generate images tailored for users of various ends." +
             "\r\n\r\nNote: I wish the definitions of these operations are self-evident if you try yourself or refer to the examples.";
 
@@ -1124,13 +1124,13 @@ public partial class Graph : Form
         content += subTitleContent("SHORTCUTS", "\r\n");
 
         static string getShortcuts(string key, int blank, string meaning) => $"\r\n[{key}]" + new string('\t', blank) + meaning + ";";
-        content += getShortcuts("Control + P", 2, "Graph in the MicroBox");
-        content += getShortcuts("Control + G", 2, "Graph in the MacroBox");
+        content += getShortcuts("Control + P", 2, "Graph in MicroBox");
+        content += getShortcuts("Control + G", 2, "Graph in MacroBox");
         content += getShortcuts("Control + B", 2, "Graph in both regions");
         content += getShortcuts("Control + S", 2, "Save as a snapshot");
         content += getShortcuts("Control + K", 2, "Save the history as a .txt");
         content += getShortcuts("Control + Shift + C", 1, "Check all inputs");
-        content += getShortcuts("Control + R", 2, "Erase all checks");
+        content += getShortcuts("Control + R", 2, "Erase all check results");
         content += getShortcuts("Control + D", 2, "Restore to default");
         content += getShortcuts("Shift + Back", 2, "Clear InputBox");
         content += getShortcuts("Control + D2", 2, "View Fralji's profile");
