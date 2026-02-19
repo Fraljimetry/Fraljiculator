@@ -1132,11 +1132,11 @@ public partial class Graph : Form
         content += getShortcuts("Control + Shift + C", 1, "Check all inputs");
         content += getShortcuts("Control + R", 2, "Erase all checks");
         content += getShortcuts("Control + D", 2, "Restore to default");
-        content += getShortcuts("Shift + Back", 2, "Clear the InputBox");
+        content += getShortcuts("Shift + Back", 2, "Clear InputBox");
         content += getShortcuts("Control + D2", 2, "View Fralji's profile");
         content += getShortcuts("Control + D3", 2, "Clear all ReadOnly controls");
-        content += getShortcuts("Control + OemQuestion", 1, "See the manual");
-        content += getShortcuts("Oemtilde", 2, "Play/pause the music");
+        content += getShortcuts("Control + OemQuestion", 1, "See manual");
+        content += getShortcuts("Oemtilde", 2, "Play/pause music" + (music_sound ? String.Empty : " (obsolete)"));
         content += getShortcuts("Delete", 3, "Clear both regions");
         content += getShortcuts("Escape", 3, "Close Fraljiculator");
         return content + "\r\n\r\nClick [Tab] to witness the process of control design.";
