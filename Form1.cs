@@ -2141,11 +2141,11 @@ public class ReplaceTags : RealComplex
 } /// Function name interpretors
 public class RecoverMultiply : ReplaceTags
 {
-    public static readonly string LR_BRA = "()", _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_),
+    public static readonly string LR_BRA = "()", LR_CBRA = "{}", _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_),
         _ZZ_BRA = String.Concat(_ZZ_, LR_CBRA), _XX__YY_BRA = String.Concat(_XX__YY_, LR_CBRA),
         BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", FUNC, POLAR, PARAM, ITLOOP);
     private static readonly string VAR_REAL = _XX__YY_, VAR_COMPLEX = String.Concat(_ZZ_, I), CONST = String.Concat(E, P, G),
-        ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}", LR_CBRA = "{}";
+        ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
     public static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
 
     public static string Simplify(string input, bool isComplex = false)
