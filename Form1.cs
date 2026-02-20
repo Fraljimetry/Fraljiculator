@@ -945,11 +945,11 @@ public partial class Graph : Form
         Action<object, EventArgs>[] checkActions =
         [
             GeneralInput_DoubleClick,
-                Details_TextChanged, // Sensitive position
-                InputString_DoubleClick,
-                ThickInput_DoubleClick,
-                DenseInput_DoubleClick,
-                AddressInput_DoubleClick
+            Details_TextChanged, // Sensitive position
+            InputString_DoubleClick,
+            ThickInput_DoubleClick,
+            DenseInput_DoubleClick,
+            AddressInput_DoubleClick
         ];
         foreach (var action in checkActions) action(sender, e);
     }
@@ -3141,9 +3141,9 @@ public readonly struct Complex // Manually inlined to reduce overhead
     #region Elementary Functions
     public static Complex Pow(Complex c1, Complex c2)
     {
-        Real re = c1.real, im = c1.imaginary; if (re == 0 && im == 0) return ZERO; // Necessary apriori checking
-        Complex c = c2 * new Complex(MathR.Log(re * re + im * im) / 2, MathR.Atan2(im, re));
-        var (mod, unit) = (MathR.Exp(c.real), MathR.SinCos(c.imaginary));
+        Real re1 = c1.real, im1 = c1.imaginary; if (re1 == 0 && im1 == 0) return ZERO; // Necessary apriori checking
+        Real re2 = c2.real, im2 = c2.imaginary, re3 = MathR.Log(re1 * re1 + im1 * im1) / 2, im3 = MathR.Atan2(im1, re1);
+        var (mod, unit) = (MathR.Exp(re2 * re3 - im2 * im3), MathR.SinCos(re2 * im3 + im2 * re3));
         return new(mod * unit.Cos, mod * unit.Sin);
     }
     public static Complex Log(Complex c)
