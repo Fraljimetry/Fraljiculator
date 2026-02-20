@@ -420,18 +420,16 @@ public partial class Graph : Form
     private unsafe void RealLoop(Matrix<Real> output, Color _zero, Color _pole, Func<Real, Color> extractor, (Real, Real) mM)
         => LoopBase((x, y, pixelPtr, ref pixNum) =>
         {
-            Real _value = output[x, y];
+            Real _value = output[x, y]; var _pixelPtr = (byte*)pixelPtr;
             if (Real.IsNaN(_value)) return;
-            var _pixelPtr = (byte*)pixelPtr;
             SetPixel(_pixelPtr, extractor(_value), ref pixNum);
             if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathR.Atan(_value), mM, ref pixNum);
         });
     private unsafe void ComplexLoop(Matrix<Complex> output, Color _zero, Color _pole, Func<Complex, Color> extractor)
         => LoopBase((x, y, pixelPtr, ref pixNum) =>
         {
-            Complex _value = output[x, y];
+            Complex _value = output[x, y]; var _pixelPtr = (byte*)pixelPtr;
             if (Real.IsNaN(_value.real) || Real.IsNaN(_value.imaginary)) return;
-            var _pixelPtr = (byte*)pixelPtr;
             SetPixel(_pixelPtr, extractor(_value), ref pixNum);
             if (!delete_point) ComplexSpecial(_pixelPtr, _zero, _pole, Complex.Modulus(_value), ref pixNum);
         });
@@ -763,7 +761,7 @@ public partial class Graph : Form
         SetText(ModulusDisplay, trimForMove(Real.Hypot(xCoor, yCoor)));
         SetText(AngleDisplay, MyString.GetAngle(xCoor, yCoor));
 
-        if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
+        if (!MyString.ContainsAny(MyString.BeautifyInput(InputString.Text), MyString.FPP_NAMES))
         {
             if (is_complex)
             {
@@ -781,7 +779,7 @@ public partial class Graph : Form
             Modulus = trimForDown(Real.Hypot(xCoor, yCoor)), Angle = MyString.GetAngle(xCoor, yCoor);
 
         string message = String.Empty;
-        if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
+        if (!MyString.ContainsAny(MyString.BeautifyInput(InputString.Text), MyString.FPP_NAMES))
         {
             message += "\r\n\r\n";
             var (x, y) = (e.X - AddOne(borders[0]), e.Y - AddOne(borders[2]));
@@ -836,7 +834,7 @@ public partial class Graph : Form
     private async Task Async(Action runClick)
     {
         if (NoInput()) return;
-        Clipboard.SetText(InputString.Text); // Problematic on JSX's PC
+        Clipboard.SetText(MyString.BeautifyInput(InputString.Text)); // Problematic on JSX's PC
         BlockInput(true);
         StartTimers();
         await Task.Run(() => { Thread.CurrentThread.Priority = ThreadPriority.Highest; runClick(); });
@@ -873,11 +871,11 @@ public partial class Graph : Form
     private void Ending(string mode)
     {
         StopTimers();
-        string refinedInput = MyString.ReplaceSubstrings(InputString.Text, RecoverMultiply.ENTER_BLANK, String.Empty).Replace(",", ", ");
+        string refinedInput = MyString.BeautifyInput(InputString.Text);
         if (is_main) SetText(CaptionBox, $"{refinedInput}\r\n" + CaptionBox.Text);
 
         SetText(TimeDisplay, $"{TimeCount:hh\\:mm\\:ss\\.fff}");
-        AddDraft($"\r\n{SEP} No.{loop_number} [{mode}] {SEP}\r\n" + $"\r\n{InputString.Text}\r\n" +
+        AddDraft($"\r\n{SEP} No.{loop_number} [{mode}] {SEP}\r\n" + $"\r\n{refinedInput}\r\n" +
             $"\r\nPixels: {PointNumDisplay.Text}\r\nDuration: {TimeDisplay.Text}\r\n");
 
         if (is_auto && !error_address) RunStore();
@@ -1855,6 +1853,8 @@ public class MyString
     public static string ReplaceSubstrings(string input, ReadOnlySpan<string> substrings, string substitution)
     { foreach (string s in substrings) input = input.Replace(s, substitution); return input; }
     public static string ReplaceZetas(string input) => ReplaceSubstrings(input, ZETAS, "(");
+    protected static string RemoveEnterBlank(string input) => ReplaceSubstrings(input, RecoverMultiply.ENTER_BLANK, String.Empty);
+    public static string BeautifyInput(string input) => RemoveEnterBlank(input).Replace(",", ", ");
     #endregion
 
     #region Miscellaneous
@@ -2152,7 +2152,7 @@ public class RecoverMultiply : ReplaceTags
     {
         ThrowException(!CheckParenthesis(input) || input.Contains(LR_BRA) || input.AsSpan().ContainsAny(BARRED_CHARS));
         Func<string, string> replaceTags = isComplex ? ReplaceComplex : ReplaceReal;
-        return replaceTags(ReplaceSubstrings(input, ENTER_BLANK, String.Empty));
+        return replaceTags(RemoveEnterBlank(input));
     } // Used only once at the beginning
     protected static string Recover(ReadOnlySpan<char> input, bool isComplex)
     {
