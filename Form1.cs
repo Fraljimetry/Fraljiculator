@@ -872,6 +872,7 @@ public partial class Graph : Form
     }
     private void Ending(string mode)
     {
+        StopTimers();
         string refinedInput = MyString.ReplaceSubstrings(InputString.Text, RecoverMultiply.ENTER_BLANK, String.Empty).Replace(",", ", ");
         if (is_main) SetText(CaptionBox, $"{refinedInput}\r\n" + CaptionBox.Text);
 
@@ -3252,8 +3253,7 @@ public readonly struct Matrix<TEntry>
     private readonly int[] rowOffs; // For row extraction
 
     [MethodImpl(256)] // AggressiveInlining
-    public Matrix(int[] rowOffs, int columns)
-    { this.rowOffs = rowOffs; matrix = GC.AllocateUninitializedArray<TEntry>(rowOffs[^1] + columns); }
+    public Matrix(int[] rowOffs, int col) { this.rowOffs = rowOffs; matrix = GC.AllocateUninitializedArray<TEntry>(rowOffs[^1] + col); }
     [MethodImpl(256)] // AggressiveInlining
     public Matrix(TEntry x) { matrix = [x]; rowOffs = [0]; } // Special for real
     public TEntry this[int row, int column]
