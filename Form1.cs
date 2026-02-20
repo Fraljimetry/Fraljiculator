@@ -872,8 +872,8 @@ public partial class Graph : Form
     }
     private void Ending(string mode)
     {
-        StopTimers();
-        if (is_main) SetText(CaptionBox, $"{InputString.Text}\r\n" + CaptionBox.Text);
+        string refinedInput = MyString.ReplaceSubstrings(InputString.Text, RecoverMultiply.ENTER_BLANK, String.Empty).Replace(",", ", ");
+        if (is_main) SetText(CaptionBox, $"{refinedInput}\r\n" + CaptionBox.Text);
 
         SetText(TimeDisplay, $"{TimeCount:hh\\:mm\\:ss\\.fff}");
         AddDraft($"\r\n{SEP} No.{loop_number} [{mode}] {SEP}\r\n" + $"\r\n{InputString.Text}\r\n" +
@@ -1851,7 +1851,7 @@ public class MyString
     } // To prevent the interior ',' from interfering with exterior splitting
     private static string[] ReplaceRecover(ReadOnlySpan<char> input)
         => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
-    protected static string ReplaceSubstrings(string input, ReadOnlySpan<string> substrings, string substitution)
+    public static string ReplaceSubstrings(string input, ReadOnlySpan<string> substrings, string substitution)
     { foreach (string s in substrings) input = input.Replace(s, substitution); return input; }
     public static string ReplaceZetas(string input) => ReplaceSubstrings(input, ZETAS, "(");
     #endregion
@@ -2141,11 +2141,11 @@ public class ReplaceTags : RealComplex
 public class RecoverMultiply : ReplaceTags
 {
     public static readonly string LR_BRA = "()", _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_),
-        _ZZ_BRA = String.Concat(_ZZ_, "{}"), _XX__YY_BRA = String.Concat(_XX__YY_, "{}"),
+        _ZZ_BRA = String.Concat(_ZZ_, LR_CBRA), _XX__YY_BRA = String.Concat(_XX__YY_, LR_CBRA),
         BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", FUNC, POLAR, PARAM, ITLOOP);
     private static readonly string VAR_REAL = _XX__YY_, VAR_COMPLEX = String.Concat(_ZZ_, I), CONST = String.Concat(E, P, G),
-        ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
-    private static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
+        ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}", LR_CBRA = "{}";
+    public static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
 
     public static string Simplify(string input, bool isComplex = false)
     {
