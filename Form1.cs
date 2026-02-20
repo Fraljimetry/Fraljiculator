@@ -78,7 +78,6 @@ public partial class Graph : Form
     }
     private void Graph_Load(object sender, EventArgs e) => TextBoxFocus(sender, e);
     private void Graph_Paint(object sender, PaintEventArgs e) { if (!bdp_painted && !clicked) SubtitleBox_DoubleClick(sender, e); }
-    //
     private int SetTitleBarColor()
     {
         int mode = 1;  // Set to 1 to apply immersive color mode
@@ -98,18 +97,17 @@ public partial class Graph : Form
         => System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream($"{typeof(Program).Namespace}.{file}.wav");
     private static void InitializeMusicClick(Stream? stream, string message, Action<Stream> setUpStream)
     { if (stream != null) setUpStream(stream); else GetMusicClickErrorBox(message); }
-    private void InitializeMusicPlayer() => InitializeMusicClick(GetStream("bgm"), MUSIC, soundStream =>
+    private void InitializeMusicPlayer() => InitializeMusicClick(GetStream("bgm"), MUSIC, stream =>
     {
         MediaPlayer = new(); // Saving the stream to a temp file, since WMP cannot play directly from the stream
         string tempFile = Path.Combine(Path.GetTempPath(), $"{TEMP_BGM_NAME}.wav");
         using FileStream fileStream = new(tempFile, FileMode.Create, FileAccess.Write); // "using" should not be removed
-        soundStream.CopyTo(fileStream);
+        stream.CopyTo(fileStream);
         MediaPlayer.URL = tempFile; // Setting the media file
         MediaPlayer.settings.setMode("loop", true); // Looping the music
         MediaPlayer.controls.stop();
     });
-    private static void InitializeClickSound() => InitializeMusicClick(GetStream("click"), SOUND, soundStream =>
-    { ClickPlayer = new(soundStream); });
+    private static void InitializeClickSound() => InitializeMusicClick(GetStream("click"), SOUND, stream => { ClickPlayer = new(stream); });
     private static void AttachClickEvents(Control ctrl)
     {
         ctrl.Click += (sender, e) => ClickPlayer?.Play();
@@ -178,15 +176,13 @@ public partial class Graph : Form
     private void RecoverInput()
     {
         SetText(InputString, INPUT_DEFAULT); SetText(AddressInput, ADDRESS_DEFAULT);
-        SetText(GeneralInput, GENERAL_DEFAULT);
-        SetText(ThickInput, THICK_DEFAULT); SetText(DenseInput, DENSE_DEFAULT);
+        SetText(GeneralInput, GENERAL_DEFAULT); SetText(ThickInput, THICK_DEFAULT); SetText(DenseInput, DENSE_DEFAULT);
         InputString_Focus();
     }
     private void InitializeData() { RecoverInput(); SetText(DraftBox, DRAFT_DEFAULT); SetText(CaptionBox, CAPTION_DEFAULT); }
     private void SetThicknessDensenessScopesBorders(bool autoFill = true)
     {
-        FillEmpty(GeneralInput, GENERAL_DEFAULT);
-        FillEmpty(ThickInput, THICK_DEFAULT); FillEmpty(DenseInput, DENSE_DEFAULT);
+        FillEmpty(GeneralInput, GENERAL_DEFAULT); FillEmpty(ThickInput, THICK_DEFAULT); FillEmpty(DenseInput, DENSE_DEFAULT);
 
         TextBox[] tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]; // Crucial ordering
         if (autoFill) foreach (var tbx in tbxDetails) FillEmpty(tbx, ZERO);
@@ -314,9 +310,8 @@ public partial class Graph : Form
         if (!IsFrozen) { DrawBackdrop(borders); SetAxesDrawn(isMain); }
         if (!delete_coor && !ReturnAxesDrawn(isMain)) { DrawAxesGrids(borders); SetAxesDrawn(isMain, true); }
     } // Sensitive
-    private void DrawReferenceRectangles(Color color)
-        => graphics.FillRectangle(new SolidBrush(color), VScrollBarX.Location.X - REF_POS_1, Y_UP_MIC + REF_POS_2,
-            2 * (VScrollBarX.Width + REF_POS_1), VScrollBarX.Height - 2 * REF_POS_2);
+    private void DrawReferenceRectangles(Color color) => graphics.FillRectangle(new SolidBrush(color), VScrollBarX.Location.X - REF_POS_1,
+        Y_UP_MIC + REF_POS_2, 2 * (VScrollBarX.Width + REF_POS_1), VScrollBarX.Height - 2 * REF_POS_2);
     private void DrawScrollBar((Real x, Real y) xyCoor)
     {
         int range = VScrollBarX.Maximum - VScrollBarX.Minimum;
@@ -416,7 +411,6 @@ public partial class Graph : Form
         }
         finally { bmp.UnlockBits(bmpData); }
     }
-    //
     private unsafe void RealLoop(Matrix<Real> output, Color _zero, Color _pole, Func<Real, Color> extractor, (Real, Real) mM)
         => LoopBase((x, y, pixelPtr, ref pixNum) =>
         {
@@ -444,11 +438,10 @@ public partial class Graph : Form
         };
     };
     private static Func<Real, Color> GetColorReal45(bool mode, (Real min, Real max) mM) => _value => mode ?
-        ObtainColorStrip(_value, mM.min, mM.max) :
-        ObtainColorStrip(_value, mM.min, mM.max, GetShade(LowRatio(_value, stride_real)));
+        ObtainColorStrip(_value, mM.min, mM.max) : ObtainColorStrip(_value, mM.min, mM.max, GetShade(LowRatio(_value, stride_real)));
     private static Func<Complex, Color> GetColorComplex123(int mode, bool isReIm) => input =>
     {
-        Complex _value = isReIm ? input : Complex.Log(input); var (v1, v2) = (_value.real, _value.imaginary);
+        var (v1, v2) = Complex.ReIm(isReIm ? input : Complex.Log(input));
         var (s1, s2) = isReIm ? (stride, stride) : (mod_stride, arg_stride);
         var (c1, c2) = mode switch
         {
@@ -972,7 +965,6 @@ public partial class Graph : Form
             }, e);
         else if (e.KeyCode == Keys.Delete) ExecuteSuppress(null, e); // Banning the original deletion
     }
-
     private static void HandleModifierKeys(KeyEventArgs e, bool isKeyDown)
     {
         if (e.KeyCode == Keys.ControlKey) { ctrl_pressed = isKeyDown; e.Handled = true; }
@@ -1092,11 +1084,11 @@ public partial class Graph : Form
             "\r\n\r\nSum (f(x,y,k) & f(z,k), k, int a, int b)" +
             "\r\nProduct & Prod (f(x,y,k) & f(z,k), k, int a, int b)" +
             "\r\n\r\nIterate1 (f(x,y,X,k), g(x,y), k, int a, int b)" +
-            "\r\nIterate2 (f1(x,y,X,Y,k), f2(...), g1(x,y), g2(...), k, int a, int b, 1&2)" +
+            "\r\nIterate2 (f1(x,y,X,Y,k), f2(...), g1(x,y), g2(...), k, int a, int b, 1&2&f(z))" +
             "\r\nIterate (f(z,Z,k), g(z), k, int a, int b)" +
             $"\r\n{GetComment("g: initial values; f: iterations.")}" +
             "\r\n\r\nComposite1 & Comp1(f(x,y), g1(x,y,X), ... , gn(x,y,X))" +
-            $"\r\nComposite2 & Comp2\r\n{TAB}(f1(x,y), f2(...), g1(x,y,X,Y), h1(...), ... , gn(...), hn(...), 1&2)" +
+            $"\r\nComposite2 & Comp2\r\n{TAB}(f1(x,y), f2(...), g1(x,y,X,Y), h1(...), ... , gn(...), hn(...), 1&2&f(z))" +
             "\r\nComposite & Comp (f(z), g1(z,Z), ... , gn(z,Z))" +
             $"\r\n{GetComment("f: initial values; g: compositions.")}" +
             $"\r\n\r\nCocoon & Coc\r\n{TAB}" + "(f(z,{0},...,{n})&f(x,y,...), g1(z)&g1(x,y), ... , gn(z)&gn(x,y))" +
@@ -1197,7 +1189,6 @@ public partial class Graph : Form
         "The input will be saved both in this box and to the clipboard.",
         "Clicked points, along with the timestamps of snapshots and history entries, will also be recorded in detail."
     ]);
-
     private void ExampleLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("EXAMPLES",
     [
         "These examples illustrate the wide variety of supported input formats.",
@@ -1219,7 +1210,6 @@ public partial class Graph : Form
         "Both options apply ONLY to the complex version, for contouring meromorphic functions.",
         "Only the Polar option supports translucent display, representing the decay rate of the modulus."
     ]);
-
     private void PointNumLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("PIXELS",
     [
         "Logs the number of points or line segments in the previous loop, roughly proportional to time and iteration count.",
@@ -1299,7 +1289,6 @@ public partial class Graph : Form
             InputString.SelectionStart + InputString.SelectionLength - 1));
         InputString.Focus(); InputString.SelectionStart--; // Should not place before .Focus()
     }
-
     private void ComboExamples_SelectedIndexChanged(object sender, EventArgs e)
     {
         string? selection = ComboExamples.SelectedItem?.ToString();
@@ -1436,7 +1425,6 @@ public partial class Graph : Form
         catch (Exception) { checkScopes(InvalidScopesX(), InvalidScopesY(), ERROR_RED); }
         finally { checkScopes(!InvalidScopesX(), !InvalidScopesY(), CORRECT_GREEN); } // Should not declare the bools ahead
     } // Sensitive
-
     private void X_Left_TextChanged(object sender, EventArgs e) => Details_TextChanged(sender, e);
     private void X_Right_TextChanged(object sender, EventArgs e) => Details_TextChanged(sender, e);
     private void Y_Left_TextChanged(object sender, EventArgs e) => Details_TextChanged(sender, e);
@@ -1555,7 +1543,6 @@ public partial class Graph : Form
     { tbx.BackColor = lbl.ForeColor == Color.White ? FOCUS_GRAY : lbl.ForeColor; tbx.ForeColor = Color.Black; SetFont(lbl); }
     private static void LeaveEffect(TextBox tbx, Label lbl)
     { tbx.BackColor = CONTROL_GRAY; tbx.ForeColor = Color.White; RecoverFont(lbl); }
-
     private void InputString_MouseHover(object sender, EventArgs e) => SetFont(InputLabel);
     private void InputString_MouseLeave(object sender, EventArgs e) => RecoverFont(InputLabel);
     private void AddressInput_MouseHover(object sender, EventArgs e) => HoverEffect(AddressInput, AtLabel);
@@ -1606,7 +1593,6 @@ public partial class Graph : Form
     private void ComboColoring_MouseLeave(object sender, EventArgs e) => ModeLabel.ForeColor = Color.White;
     private void ComboContour_MouseHover(object sender, EventArgs e) => ContourLabel.ForeColor = COMBO_BLUE;
     private void ComboContour_MouseLeave(object sender, EventArgs e) => ContourLabel.ForeColor = Color.White;
-
     private void CheckComplex_MouseHover(object sender, EventArgs e) => CheckComplex.ForeColor = COMBO_BLUE;
     private void CheckComplex_MouseLeave(object sender, EventArgs e) => CheckComplex.ForeColor = Color.White;
     private void CheckSwap_MouseHover(object sender, EventArgs e) => CheckSwap.ForeColor = COMBO_BLUE;
@@ -1674,7 +1660,6 @@ public partial class Graph : Form
     }
     private static void EnlargePicture(PictureBox pbx, int increment) => ResizeControl(pbx, increment, true);
     private static void ShrinkPicture(PictureBox pbx, int decrement) => ResizeControl(pbx, decrement, false);
-
     private void PictureLogo_MouseHover(object sender, EventArgs e) => EnlargePicture(PictureLogo, 5);
     private void PictureLogo_MouseLeave(object sender, EventArgs e) => ShrinkPicture(PictureLogo, 5);
     private void PicturePlay_MouseHover(object sender, EventArgs e) => EnlargePicture(PicturePlay, 2);
@@ -1694,7 +1679,6 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1715,7 +1699,6 @@ public class MyMessageBox : Form
     private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
     private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
-    //
     private void SetUpForm(int width, int height)
     {
         FormBorderStyle = FormBorderStyle.None; TopMost = true; Size = new(width, height);
@@ -1763,7 +1746,6 @@ public class MyMessageBox : Form
         Graph.ReduceFontSizeByScale(this, ref scale_factor);
         KeyPreview = true; KeyDown += new(Form_KeyDown);
     }
-    //
     private static void Display(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
     {
         MyMessageBox msgBox = new();
@@ -1905,8 +1887,8 @@ public class RealComplex : MyString
     protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replacing "+-*/"
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
-        M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r',
-        _S = 's', S_ = 'S', SP = '#', _T = 't', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
+        M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r', _S = 's', S_ = 'S',
+        SP = '#', _T = 't', TILDE = '~', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
 
     protected static int CountChars(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck)
     {
@@ -1942,8 +1924,8 @@ public class RealComplex : MyString
     }
     public static void CheckFor(int start, int end, Action<int> action)
     { ThrowException(start > end); for (int i = start; i <= end; i++) action(i); }
-    protected static Matrix<Real> ChooseMode(string mode, Matrix<Real> m1, Matrix<Real> m2, int[] rowOffs, int columns)
-        => Char.Parse(mode) switch { MODE_1 => m1, MODE_2 => m2 };
+    protected static Matrix<Real> ChooseMode((string mode, Matrix<Real> m1, Matrix<Real> m2) mode12)
+        => Char.Parse(mode12.mode) switch { MODE_1 => mode12.m1, MODE_2 => mode12.m2 };
     protected static MatrixCopy<TEntry> HandleSolo<TEntry>(ReadOnlySpan<char> input, MatrixCopy<TEntry> mc)
     { ThrowException(input.Length != 1); return mc; }
     protected static string[] PrepareBreakPower(string input, int THRESHOLD)
@@ -2034,7 +2016,7 @@ public class ReplaceTags : RealComplex
             "param(sin(7k),cos(9k),k,0,2pi,0.001)",
             "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,10)"
         ];
-    public static readonly char FUNC_HEAD = '~', UNDERLINE = '_', DOLLAR = _D_;
+    public static readonly char FUNC_HEAD = TILDE, UNDERLINE = '_', DOLLAR = _D_;
     public static readonly string FUNC = "φ", POLAR = "ψ", PARAM = "ρ", ITLOOP = "ι",
         LOG = _L.ToString(), EXP = E_.ToString(), SQRT = _Q.ToString(), ABS = _A.ToString(), FACT = _F_.ToString(),
         SIN = _S.ToString(), COS = _C.ToString(), TAN = _T.ToString(), // This should come first
@@ -2079,6 +2061,8 @@ public class ReplaceTags : RealComplex
             { "gamma", GA }, { "Gamma", GA }, { "ga", GA }, { "Ga", GA },
             { "beta", BETA }, { "Beta", BETA },
             { "zeta", ZETA }, { "Zeta", ZETA },
+            { "iterate2", IT2 }, { "Iterate2", IT2 },
+            { "composite2", COMP2 }, { "Composite2", COMP2 }, { "comp2", COMP2 }, { "Comp2", COMP2 },
             { "cocoon", COC}, { "Cocoon", COC}, { "coc", COC}, { "Coc", COC}
         }, UNDERLINE);
     private static readonly Dictionary<string, string> COMMON = Concat(COMMON_SERIES, COMMON_STANDARD);
@@ -2094,9 +2078,8 @@ public class ReplaceTags : RealComplex
             { "mod", MOD }, { "Mod", MOD },
             { "nCr", NCR }, { "nPr", NPR },
             { "max", _MAX }, { "Max", _MAX }, { "min", _MIN }, { "Min", _MIN },
-            { "iterate1", IT1 }, { "Iterate1", IT1 }, { "iterate2", IT2 }, { "Iterate2", IT2 },
+            { "iterate1", IT1 }, { "Iterate1", IT1 },
             { "composite1", COMP1 }, { "Composite1", COMP1 }, { "comp1", COMP1 }, { "Comp1", COMP1 },
-            { "composite2", COMP2 }, { "Composite2", COMP2 }, { "comp2", COMP2 }, { "Comp2", COMP2 }
         }, UNDERLINE);
     private static readonly Dictionary<string, string> REAL = Concat(REAL_SERIES, REAL_STANDARD);
     private static readonly Dictionary<string, string> COMPLEX_STANDARD = new()
@@ -2217,7 +2200,7 @@ public sealed class ComplexSub : RecoverMultiply
             ref strd, ref strdInit, ref strdBytes, ref res, ref resInit, ref resBytes);
     }
     public ComplexSub(ReadOnlySpan<char> input, Matrix<Real> xCoor, Matrix<Real> yCoor, int rows, int columns)
-        : this(input, InitilizeZ(xCoor, yCoor, rows, columns), null, null, rows, columns) { } // Special for complex
+        : this(input, InitilizeZ(xCoor, yCoor, rows, columns), null, null, rows, columns) { }
     private ComplexSub ObtainSub(ReadOnlySpan<char> input, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs, bool useList = false)
         => new(input, z, Z, buffCocs, rows, columns, useList);
     private Matrix<Complex> ObtainValue(ReadOnlySpan<char> input) => new ComplexSub(input, z, Z, buffCocs, rows, columns).Obtain();
@@ -2309,7 +2292,6 @@ public sealed class ComplexSub : RecoverMultiply
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
-    //
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2323,16 +2305,22 @@ public sealed class ComplexSub : RecoverMultiply
         { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
         return buffer.Z;
     } // Meticulously optimized
+    private Matrix<Complex> ProcessI2C2(string[] split, Func<string[], (string, Matrix<Real>, Matrix<Real>)> function)
+    {
+        var (input, xCoor, yCoor) = function(split);
+        return new ComplexSub(input, xCoor, yCoor, rows, columns).Obtain();
+    }
     private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
     private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
-    //
+    private Matrix<Complex> Iterate2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessIterate2);
     private Matrix<Complex> Composite(string[] split)
     {
         Matrix<Complex> _value = ObtainValue(split[0]);
         for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, buffCocs).Obtain();
         return _value;
     } // Do not use HandleMtx
+    private Matrix<Complex> Composite2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessComposite2);
     private Matrix<Complex> Cocoon(string[] split)
     {
         ComplexSub body = ObtainSub(split[0], Z, new Matrix<Complex>[split.Length - 1]);
@@ -2345,13 +2333,13 @@ public sealed class ComplexSub : RecoverMultiply
     [MethodImpl(512)] // AggressiveOptimization
     public unsafe static Matrix<Complex> InitilizeZ(Matrix<Real> xCoor, Matrix<Real> yCoor, int rows, int columns)
     {
-        Matrix<Complex> z = new(GetArithProg(rows, columns), columns);
+        Matrix<Complex> zCoor = new(GetArithProg(rows, columns), columns);
         Parallel.For(0, rows, p =>
         {
-            Complex* zPtr = z.RowPtr(p); Real* xCoorPtr = xCoor.RowPtr(p), yCoorPtr = yCoor.RowPtr(p);
-            for (int q = 0; q < columns; q++, zPtr++, xCoorPtr++, yCoorPtr++) *zPtr = new(*xCoorPtr, *yCoorPtr);
+            Complex* zCoorPtr = zCoor.RowPtr(p); Real* xCoorPtr = xCoor.RowPtr(p), yCoorPtr = yCoor.RowPtr(p);
+            for (int q = 0; q < columns; q++, zCoorPtr++, xCoorPtr++, yCoorPtr++) *zCoorPtr = new(*xCoorPtr, *yCoorPtr);
         });
-        return z;
+        return zCoor;
     } // Cannot use HandleMtx in a static method
     [MethodImpl(512)] // AggressiveOptimization
     private unsafe Matrix<Complex> Copy(Matrix<Complex> src) => HandleMtx(UninitMtx(), dest =>
@@ -2579,8 +2567,8 @@ public sealed class ComplexSub : RecoverMultiply
             _Z_ => handleSub(Zeta, 2),
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
-            I_ => handleSub(Iterate, 2),
-            J_ => handleSub(Composite, 2),
+            I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
+            J_ => input[idx - 2] switch { TILDE => handleSub(Composite, 2), MODE_2 => handleSub(Composite2, 3) },
             K_ => handleSub(Cocoon, 2)
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
@@ -2630,6 +2618,10 @@ public sealed class RealSub : RecoverMultiply
         Initialize<Real>(rows, columns, ref rowChk, ref rowOffs, ref colBytes,
             ref strd, ref strdInit, ref strdBytes, ref res, ref resInit, ref resBytes);
     }
+    private RealSub(ReadOnlySpan<char> input, (Matrix<Real> X, Matrix<Real> Y) xyCoor, int rows, int columns)
+        : this(input, xyCoor.X, xyCoor.Y, null, null, null, rows, columns) { } // A helper constructor
+    public RealSub(ReadOnlySpan<char> input, Matrix<Complex> zCoor, int rows, int columns)
+        : this(input, InitilizeXY(zCoor, rows, columns), rows, columns) { }
     private RealSub ObtainSub(ReadOnlySpan<char> input, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs, bool useList = false)
         => new(input, x, y, X, Y, buffCocs, rows, columns, useList);
     private Matrix<Real> ObtainValue(ReadOnlySpan<char> input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
@@ -2649,7 +2641,6 @@ public sealed class RealSub : RecoverMultiply
         Combination(n + 1, r) - Combination(n, r - 1) :
         Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
     private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
-    //
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
         {
@@ -2680,7 +2671,6 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { processMinMax(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
         });
-    //
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathR.Floor(n), MathR.Floor(r)));
     private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathR.Floor(n), MathR.Floor(r)));
@@ -2773,7 +2763,6 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
-    //
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2790,7 +2779,7 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
     private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
     private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
-    private Matrix<Real> Iterate2(string[] split)
+    public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split)
     {
         ThrowInvalidLengths(split, [8]);
         string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
@@ -2807,16 +2796,16 @@ public sealed class RealSub : RecoverMultiply
             resetCount(); temp1 = buffer1.Obtain(); temp2 = buffer2.Obtain(); // Necessary
             buffer1.X = buffer2.X = temp1; buffer1.Y = buffer2.Y = temp2;
         });
-        return ChooseMode(split[^1], buffer1.X, buffer1.Y, rowOffs, columns); // Or, alternatively, buffer2
-    } // Special for real
-    //
+        return (split[^1], buffer1.X, buffer1.Y); // Or, alternatively, buffer2
+    }
+    private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
     private Matrix<Real> Composite1(string[] split)
     {
         Matrix<Real> _value = ObtainValue(split[0]);
         for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, null, buffCocs).Obtain();
         return _value;
     } // Do not use HandleMtx
-    private Matrix<Real> Composite2(string[] split)
+    public (string, Matrix<Real>, Matrix<Real>) ProcessComposite2(string[] split)
     {
         ThrowException(Int32.IsEvenInteger(split.Length));
         Matrix<Real> value1 = ObtainValue(split[0]), value2 = ObtainValue(split[1]), temp1, temp2;
@@ -2826,8 +2815,9 @@ public sealed class RealSub : RecoverMultiply
             Matrix<Real> obtainValue() => ObtainSub(split[j++], temp1, temp2, buffCocs).Obtain();
             value1 = obtainValue(); value2 = obtainValue(); // Even and odd terms respectively
         }
-        return ChooseMode(split[^1], value1, value2, rowOffs, columns);
-    } // Special for real
+        return (split[^1], value1, value2);
+    }
+    private Matrix<Real> Composite2(string[] split) => ChooseMode(ProcessComposite2(split));
     private Matrix<Real> Cocoon(string[] split)
     {
         RealSub body = ObtainSub(split[0], X, Y, new Matrix<Real>[split.Length - 1]);
@@ -2837,6 +2827,17 @@ public sealed class RealSub : RecoverMultiply
     #endregion
 
     #region Elements
+    [MethodImpl(512)] // AggressiveOptimization
+    public unsafe static (Matrix<Real>, Matrix<Real>) InitilizeXY(Matrix<Complex> zCoor, int rows, int columns)
+    {
+        Matrix<Real> xCoor = new(GetArithProg(rows, columns), columns), yCoor = new(GetArithProg(rows, columns), columns);
+        Parallel.For(0, rows, p =>
+        {
+            Real* xCoorPtr = xCoor.RowPtr(p), yCoorPtr = yCoor.RowPtr(p); Complex* zCoorPtr = zCoor.RowPtr(p);
+            for (int q = 0; q < columns; q++, xCoorPtr++, yCoorPtr++, zCoorPtr++) (*xCoorPtr, *yCoorPtr) = Complex.ReIm(*zCoorPtr);
+        });
+        return (xCoor, yCoor);
+    } // Cannot use HandleMtx in a static method
     [MethodImpl(512)] // AggressiveOptimization
     private unsafe Matrix<Real> Copy(Matrix<Real> src) => HandleMtx(UninitMtx(), dest =>
     {
@@ -3109,6 +3110,8 @@ public readonly struct Complex // Manually inlined to reduce overhead
     public static readonly Complex ZERO = new(0), ONE = new(1), I = new(0, 1);
     [MethodImpl(256)] // AggressiveInlining
     public Complex(Real real, Real imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use primary constructor
+    [MethodImpl(256)] // AggressiveInlining
+    public static (Real, Real) ReIm(Complex c) => (c.real, c.imaginary);
 
     #region Operators
     [MethodImpl(256)] // AggressiveInlining
@@ -3162,7 +3165,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
         var (mod, unit) = (MathR.Exp(-MathR.Tau * c.imaginary), MathR.SinCos(MathR.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
     } // Often used in analytic number theory, represented by 'q'
-    //
     public static Complex Sin(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
@@ -3198,7 +3200,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * re / denom;
         return new(MathR.Atan2(_im, _re) / 2, -MathR.Log(_re * _re + _im * _im) / 4);
     }
-    //
     public static Complex Sinh(Complex c)
     {
         var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
@@ -3235,7 +3236,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * im / denom;
         return new(MathR.Log(_re * _re + _im * _im) / 4, MathR.Atan2(_im, _re) / 2);
     }
-    //
     public static Complex Sqrt(Complex c)
     {
         Real re = c.real, im = c.imaginary;
