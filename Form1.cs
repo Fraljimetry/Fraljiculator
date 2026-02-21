@@ -60,7 +60,7 @@ public partial class Graph : Form
         WRONG_FORMAT = "THE INPUT IS IN A WRONG FORMAT.", WRONG_ADDRESS = "THE ADDRESS DOES NOT EXIST.",
         DISPLAY_ERROR = "UNAVAILABLE.", DRAFT_DEFAULT = $"\r\nPrecision of real numbers: \r\n{typeof(Real)}.",
         TEMP_BGM_NAME = "background_music", MUSIC = "music", SOUND = "click sound", TIP = "ReadOnly",
-        SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 3), _SEP = new('*', 20), TAB = new(' ', 4);
+        SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 3), _SEP = new('-', 74), TAB = new(' ', 4);
     private static readonly string[] CONTOUR_MODES = ["Cartesian (x,y)", "Polar (r,θ)"], COLOR_MODES =
         ["Commonplace", "Monochromatic", "Bichromatic", "Kaleidoscopic", "Miscellaneous"];
     #endregion
@@ -153,14 +153,11 @@ public partial class Graph : Form
     {
         static void coloringContour_AddItem(ComboBox cbx, int index, string[] options)
         { cbx.Items.AddRange(options); cbx.SelectedIndex = index; }
-        coloringContour_AddItem(ComboColoring, 4, COLOR_MODES);
-        coloringContour_AddItem(ComboContour, 1, CONTOUR_MODES);
+        coloringContour_AddItem(ComboColoring, 4, COLOR_MODES); coloringContour_AddItem(ComboContour, 1, CONTOUR_MODES);
 
         void addExamples(string[] items) { foreach (string item in items) ComboExamples.Items.Add(item); }
-        addExamples(ReplaceTags.EX_COMPLEX);
-        ComboExamples.Items.Add(String.Empty);
-        addExamples(ReplaceTags.EX_REAL);
-        ComboExamples.Items.Add(String.Empty);
+        addExamples(ReplaceTags.EX_COMPLEX); ComboExamples.Items.Add(String.Empty);
+        addExamples(ReplaceTags.EX_REAL); ComboExamples.Items.Add(String.Empty);
         addExamples(ReplaceTags.EX_CURVES);
 
         void functionsSpecial_AddItem(string[] options, bool isFunc)
@@ -170,8 +167,7 @@ public partial class Graph : Form
             Action<string[]> addOptions = isFunc ? ComboFunctions.Items.AddRange : ComboSpecial.Items.AddRange;
             addOptions(modifiedOptions);
         }
-        functionsSpecial_AddItem(ReplaceTags.FUNCTIONS, true);
-        functionsSpecial_AddItem(ReplaceTags.SPECIALS, false);
+        functionsSpecial_AddItem(ReplaceTags.FUNCTIONS, true); functionsSpecial_AddItem(ReplaceTags.SPECIALS, false);
     }
     private void RecoverInput()
     {
@@ -183,7 +179,6 @@ public partial class Graph : Form
     private void SetThicknessDensenessScopesBorders(bool autoFill = true)
     {
         FillEmpty(GeneralInput, GENERAL_DEFAULT); FillEmpty(ThickInput, THICK_DEFAULT); FillEmpty(DenseInput, DENSE_DEFAULT);
-
         TextBox[] tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]; // Crucial ordering
         if (autoFill) foreach (var tbx in tbxDetails) FillEmpty(tbx, ZERO);
 
@@ -202,7 +197,6 @@ public partial class Graph : Form
         } // Never using scientific notation
         else for (int i = 0; i < tbxDetails.Length; i++) scopes[i] = Obtain(tbxDetails[i]);
         MyString.ThrowException(InvalidScopesX() || InvalidScopesY()); // The detailed exception is determined later
-
         borders = [x_left, x_right, y_up, y_down];
     }
     private void BanMouseWheel()
@@ -346,8 +340,7 @@ public partial class Graph : Form
         {
             Real* destPtr = outputAtan.RowPtr(p), _destPtr = destPtr, srcPtr = output.RowPtr(p);
             for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = MathR.Atan(*srcPtr);
-            minMax[0, p] = seekM(MathR.Min, _destPtr, columns);
-            minMax[1, p] = seekM(MathR.Max, _destPtr, columns);
+            minMax[0, p] = seekM(MathR.Min, _destPtr, columns); minMax[1, p] = seekM(MathR.Max, _destPtr, columns);
         });
         return (seekM(MathR.Min, minMax.RowPtr(0), rows), seekM(MathR.Max, minMax.RowPtr(1), rows));
     } // To find the min and max of the atan'ed matrix to prevent infinitude
@@ -576,7 +569,6 @@ public partial class Graph : Form
                 };
                 if (color_mode > 3) vividPen.Color = ObtainColorWheelCurve(ratio);
                 graphics.DrawLine(selectedPen, posBuffer, pos);
-
                 SetScrollBars(true); // Necessary for each loop
                 DrawScrollBar(LinearTransform(pos.X, pos.Y, ratioRow, ratioColumn, borders));
                 _ratio = Frac(REFRESH, ratio);
@@ -627,28 +619,44 @@ public partial class Graph : Form
     private void DisplayIterateLoop(string[] split)
     {
         var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
-        string replaceLoop(int pos, int loops) => MyString.ReplaceLoop(split, pos, 2, loops.ToString(), true);
-        string obtainDisplayInput(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(5, loops) : defaultInput;
+        string replaceLoop(int loops, int origIdx, int subIdx) => MyString.ReplaceLoop(split, origIdx, subIdx, loops.ToString(), true);
+        string obtainDisplay(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(loops, 5, 2) : defaultInput;
 
-        MyString.ThrowInvalidLengths(split, [5, 6]);
+        MyString.ThrowInvalidLengths(split, [5, 6, 8]);
         if (is_complex)
         {
-            Matrix<Complex> z = ComplexSub.InitilizeZ(xCoor, yCoor, rows, columns); // Special for complex
-            Matrix<Complex> Z = new ComplexSub(split[1], z, null, null, rows, columns).Obtain();
-            RealComplex.CheckFor(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
+            if (split.Length != 8)
             {
-                Z = new ComplexSub(replaceLoop(0, loops), z, Z, null, rows, columns).Obtain();
-                output_complex = new ComplexSub(obtainDisplayInput(loops, "Z"), z, Z, null, rows, columns).Obtain();
-                RunDisplayBase(ComplexComputation);
-            });
+                Matrix<Complex> z = ComplexSub.InitilizeZ(xCoor, yCoor, rows, columns); // Special for complex
+                Matrix<Complex> Z = new ComplexSub(split[1], z, null, null, rows, columns).Obtain();
+                RealComplex.CheckFor(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
+                {
+                    Z = new ComplexSub(replaceLoop(loops, 0, 2), z, Z, null, rows, columns).Obtain();
+                    output_complex = new ComplexSub(obtainDisplay(loops, "Z"), z, Z, null, rows, columns).Obtain();
+                    RunDisplayBase(ComplexComputation);
+                });
+            }
+            else
+            {
+                Matrix<Real> X = new RealSub(split[2], xCoor, yCoor, null, null, null, rows, columns).Obtain(), temp1;
+                Matrix<Real> Y = new RealSub(split[3], xCoor, yCoor, null, null, null, rows, columns).Obtain(), temp2;
+                RealComplex.CheckFor(RealSub.ToInt(split[5]), RealSub.ToInt(split[6]), loops =>
+                {
+                    temp1 = new RealSub(replaceLoop(loops, 0, 4), xCoor, yCoor, X, Y, null, rows, columns).Obtain();
+                    temp2 = new RealSub(replaceLoop(loops, 1, 4), xCoor, yCoor, X, Y, null, rows, columns).Obtain();
+                    X = temp1; Y = temp2;
+                    output_complex = new ComplexSub(replaceLoop(loops, 7, 4), X, Y, rows, columns).Obtain();
+                    RunDisplayBase(ComplexComputation);
+                });
+            }
         }
         else
         {
             Matrix<Real> X = new RealSub(split[1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
             RealComplex.CheckFor(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
             {
-                X = new RealSub(replaceLoop(0, loops), xCoor, yCoor, X, null, null, rows, columns).Obtain();
-                output_real = new RealSub(obtainDisplayInput(loops, "y-X"), xCoor, yCoor, X, null, null, rows, columns).Obtain();
+                X = new RealSub(replaceLoop(loops, 0, 2), xCoor, yCoor, X, null, null, rows, columns).Obtain();
+                output_real = new RealSub(obtainDisplay(loops, "y-X"), xCoor, yCoor, X, null, null, rows, columns).Obtain();
                 RunDisplayBase(RealComputation);
             });
         }
@@ -740,7 +748,6 @@ public partial class Graph : Form
         chosen_number++;
         HandleMouseAction(e, borders, v => { DisplayMouseDown(e, v.Item1, v.Item2); });
     }
-    //
     private bool ActivateMoveDown() => activate_mouse && !error_input && !is_checking && !NoInput();
     private static void RunMouse(MouseEventArgs e, int[] b, Action<MouseEventArgs, int[]> action, Action? _action)
     { if (e.X > b[0] && e.X < b[1] && e.Y > b[2] && e.Y < b[3]) action(e, b); else _action?.Invoke(); }
@@ -800,7 +807,6 @@ public partial class Graph : Form
     });
     private void RunConfirm_Click(object sender, EventArgs e) => RunClick(sender, e, GetBorders(1), true, () => Ending(MACRO));
     private void RunPreview_Click(object sender, EventArgs e) => RunClick(sender, e, GetBorders(2), false, () => Ending(MICRO));
-    //
     private void RunClick(object sender, EventArgs e, int[] borders, bool isMain, Action endAction)
     {
         try
@@ -864,11 +870,10 @@ public partial class Graph : Form
     private void Ending(string mode)
     {
         StopTimers();
-        string refinedInput = MyString.BeautifyInput(InputString.Text);
-        if (is_main) SetText(CaptionBox, $"{refinedInput}\r\n" + CaptionBox.Text);
+        if (is_main) SetText(CaptionBox, $"{MyString.BeautifyInput(InputString.Text)}\r\n" + CaptionBox.Text);
 
         SetText(TimeDisplay, $"{TimeCount:hh\\:mm\\:ss\\.fff}");
-        AddDraft($"\r\n{SEP} No.{loop_number} [{mode}] {SEP}\r\n" + $"\r\n{refinedInput}\r\n" +
+        AddDraft($"\r\n{SEP} No.{loop_number} [{mode}] {SEP}\r\n" + $"\r\n{MyString.BeautifyInput(InputString.Text)}\r\n" +
             $"\r\nPixels: {PointNumDisplay.Text}\r\nDuration: {TimeDisplay.Text}\r\n");
 
         if (is_auto && !error_address) RunStore();
@@ -881,7 +886,6 @@ public partial class Graph : Form
     private void StoreButton_Click(object sender, EventArgs e) { Graph_DoubleClick(sender, e); RunStore(); }
     private void RunExport() => HandleExportStore(ExportGraph, REMIND_EXPORT);
     private void RunStore() => HandleExportStore(StoreHistory, REMIND_STORE);
-    //
     private void HandleExportStore(Action exportStoreHandler, string prefix)
     {
         try
@@ -945,7 +949,6 @@ public partial class Graph : Form
         ];
         foreach (var action in checkActions) action(sender, e);
     }
-    //
     private void Graph_KeyUp(object sender, KeyEventArgs e)
     {
         HandleModifierKeys(e, false);
@@ -1045,76 +1048,78 @@ public partial class Graph : Form
         "The address quoted automatically.",
         "The file storage being full."
     ]);
-    //
-    private static string GetComment(string input) => $"# {input}";
+    private static string GetComment(string input) => TAB + $"# {input}";
     private static string GetManual()
     {
         string content = $"DESIGNER: Fraljimetry\r\nDATE: {DATE}\r\nLOCATION: Xi'an, China";
-        content += "\r\n\r\nThis software was developed in Visual Studio 2022, written in C#, " +
+        content += $"\r\n\r\n{TAB}This software was developed in Visual Studio 2022, written in C#, " +
             "to visualize real/complex functions and equations with no more than two variables." +
-            "\r\n\r\nTo bolster artistry and practicality, numerous parameters are tunable, " +
+            $"\r\n\r\n{TAB}To bolster artistry and practicality, numerous parameters are tunable, " +
             "making it possible to generate images tailored for users of various ends." +
-            "\r\n\r\nNote: I wish the definitions of these operations are self-evident if you try yourself or refer to the examples.";
+            $"\r\n\r\n{TAB}Note: I wish the definitions of these operations are self-evident if you try yourself or refer to the examples.";
 
-        static string subTitleContent(string subtitle, string content) => $"\r\n\r\n{_SEP} {subtitle} {_SEP}" + content;
+        static string subTitleContent(string subtitle, string content) => $"\r\n\r\n{_SEP}\r\n{TAB}{subtitle}\r\n{_SEP}" + content;
         content += subTitleContent("ELEMENTS",
-            "\r\n\r\n+ - * / ^ ( )" +
-            "\r\n\r\nSin, Cos, Tan, Sinh, Cosh, Tanh," +
-            "\r\nArcsin & Asin, Arccos & Acos, Arctan & Atan," +
-            "\r\nArsinh & Asinh, Arcosh & Acosh, Artanh & Atanh," +
-            "\r\n\r\nLog & Ln, Exp, Sqrt, Abs (f(x,y) & f(z))" +
-            $"\r\n\r\nConjugate & Conj (f(z)), e(f(z)){TAB}{GetComment("e(z) := exp (2*pi*i*z).")}");
+            $"\r\n\r\n{TAB}+ - * / ^ ( )" +
+            $"\r\n\r\n{TAB}Sin, Cos, Tan, Sinh, Cosh, Tanh," +
+            $"\r\n{TAB}Arcsin & Asin, Arccos & Acos, Arctan & Atan," +
+            $"\r\n{TAB}Arsinh & Asinh, Arcosh & Acosh, Artanh & Atanh," +
+            $"\r\n\r\n{TAB}Log & Ln, Exp, Sqrt, Abs(f(x,y) & f(z))" +
+            $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), e(f(z)){GetComment("e(z) := Exp(2πiz).")}");
         content += subTitleContent("COMBINATORICS",
-            "\r\n\r\nFloor, Ceil, Round, Sign & Sgn (Real a)" +
-            "\r\n\r\nMod (Real a, Real n), nCr, nPr (int n, int r)" +
-            "\r\n\r\nMax, Min (Real a, Real b, ...), Factorial & Fact (int n)");
+            $"\r\n\r\n{TAB}Floor, Ceil, Round, Sign & Sgn(Real a)" +
+            $"\r\n\r\n{TAB}Mod(Real a, Real n), nCr, nPr(int n, int r)" +
+            $"\r\n\r\n{TAB}Max, Min(Real a, Real b, ...), Factorial & Fact(int n)");
         content += subTitleContent("SPECIALTIES",
             $"\r\n\r\n{GetComment("R&C := Real & Complex.")}" +
-            "\r\n\r\nF (R&C a, R&C b, R&C c, f(x,y) & f(z)) & " +
-            "\r\nF (R&C a, R&C b, R&C c, f(x,y) & f(z), int n)" +
+            $"\r\n\r\n{TAB}F(R&C a, R&C b, R&C c, f(x,y) & f(z)) & " +
+            $"\r\n{TAB}F(R&C a, R&C b, R&C c, f(x,y) & f(z), int n)" +
             $"\r\n{GetComment("HyperGeometric Series (case-sensitive).")}" +
-            "\r\n\r\nGamma & Ga (f(x,y) & f(z)) & " +
-            "\r\nGamma & Ga (f(x,y) & f(z), int n)" +
-            "\r\n\r\nBeta (f(x,y) & f(z), g(x,y) & g(z)) & " +
-            "\r\nBeta (f(x,y) & f(z), g(x,y) & g(z), int n)" +
-            "\r\n\r\nZeta (f(x,y) & f(z)) & " +
-            $"\r\nZeta (f(x,y) & f(z), int n){TAB}{GetComment("This is a mess for n too large.")}");
+            $"\r\n\r\n{TAB}Gamma & Ga(f(x,y) & f(z)) & " +
+            $"\r\n{TAB}Gamma & Ga(f(x,y) & f(z), int n)" +
+            $"\r\n\r\n{TAB}Beta(f(x,y) & f(z), g(x,y) & g(z)) & " +
+            $"\r\n{TAB}Beta(f(x,y) & f(z), g(x,y) & g(z), int n)" +
+            $"\r\n\r\n{TAB}Zeta(f(x,y) & f(z)) & " +
+            $"\r\n{TAB}Zeta(f(x,y) & f(z), int n){GetComment("This is a mess for n too large.")}");
         content += subTitleContent("REPETITIONS",
             $"\r\n\r\n{GetComment("Capitalizations represent substitutions of variables.")}" +
-            "\r\n\r\nSum (f(x,y,k) & f(z,k), k, int a, int b)" +
-            "\r\nProduct & Prod (f(x,y,k) & f(z,k), k, int a, int b)" +
-            "\r\n\r\nIterate1 (f(x,y,X,k), g(x,y), k, int a, int b)" +
-            "\r\nIterate2 (f1(x,y,X,Y,k), f2(...), g1(x,y), g2(...), k, int a, int b, 1&2&f(z))" +
-            "\r\nIterate (f(z,Z,k), g(z), k, int a, int b)" +
+            $"\r\n\r\n{TAB}Sum(f(x,y,k) & f(z,k), k, int a, int b)" +
+            $"\r\n{TAB}Product & Prod(f(x,y,k) & f(z,k), k, int a, int b)" +
+            $"\r\n\r\n{TAB}Iterate1(f(x,y,X,k), g(x,y), k, int a, int b)" +
+            $"\r\n{TAB}Iterate2(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(...), k, int a, int b, 1&2&F(z))" +
+            $"\r\n{TAB}Iterate(f(z,Z,k), g(z), k, int a, int b)" +
             $"\r\n{GetComment("g: initial values; f: iterations.")}" +
-            "\r\n\r\nComposite1 & Comp1(f(x,y), g1(x,y,X), ... , gn(x,y,X))" +
-            $"\r\nComposite2 & Comp2\r\n{TAB}(f1(x,y), f2(...), g1(x,y,X,Y), h1(...), ... , gn(...), hn(...), 1&2&f(z))" +
-            "\r\nComposite & Comp (f(z), g1(z,Z), ... , gn(z,Z))" +
+            $"\r\n\r\n{TAB}Composite1 & Comp1(f(x,y), g1(x,y,X), ... , gn(x,y,X))" +
+            $"\r\n{TAB}Composite2 & Comp2" +
+            $"\r\n{TAB}{TAB}(f1(x,y), f2(...), g1(x,y,X,Y), h1(...), ... , gn(...), hn(...), 1&2&F(z))" +
+            $"\r\n{TAB}Composite & Comp(f(z), g1(z,Z), ... , gn(z,Z))" +
             $"\r\n{GetComment("f: initial values; g: compositions.")}" +
-            $"\r\n\r\nCocoon & Coc\r\n{TAB}" + "(f(z,{0},...,{n})&f(x,y,...), g1(z)&g1(x,y), ... , gn(z)&gn(x,y))" +
+            $"\r\n\r\n{TAB}Cocoon & Coc" +
+            $"\r\n{TAB}{TAB}" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
             $"\r\n{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}");
         content += subTitleContent("PLANAR CURVES",
-            "\r\n\r\nFunc (f(x)) & " +
-            "\r\nFunc (f(x), Real increment) & " +
-            "\r\nFunc (f(x), Real a, Real b) & " +
-            "\r\nFunc (f(x), Real a, Real b, Real increment)" +
-            "\r\n\r\nPolar (f(θ), θ, Real a, Real b) & " +
-            "\r\nPolar (f(θ), θ, Real a, Real b, Real increment)" +
-            "\r\n\r\nParam (f(u), g(u), u, Real a, Real b) & " +
-            "\r\nParam (f(u), g(u), u, Real a, Real b, Real increment)");
+            $"\r\n\r\n{TAB}Func(f(x)) & " +
+            $"\r\n{TAB}Func(f(x), Real increment) & " +
+            $"\r\n{TAB}Func(f(x), Real a, Real b) & " +
+            $"\r\n{TAB}Func(f(x), Real a, Real b, Real increment)" +
+            $"\r\n\r\n{TAB}Polar(f(θ), θ, Real a, Real b) & " +
+            $"\r\n{TAB}Polar(f(θ), θ, Real a, Real b, Real increment)" +
+            $"\r\n\r\n{TAB}Param(f(u), g(u), u, Real a, Real b) & " +
+            $"\r\n{TAB}Param(f(u), g(u), u, Real a, Real b, Real increment)");
         content += subTitleContent("RECURSIONS",
             $"\r\n\r\n{GetComment("These methods should be combined with all above.")}" +
-            "\r\n\r\nLoop (Input(k), k, int a, int b)" +
-            "\r\n\r\nIterateLoop (f(x,y,X,k), g(x,y), k, int a, int b) & " +
-            "\r\nIterateLoop (f(x,y,X,k), g(x,y), k, int a, int b, h(x,y,X,k))" +
-            "\r\n\r\nIterateLoop (f(z,Z,k), g(z), k, int a, int b) & " +
-            "\r\nIterateLoop (f(z,Z,k), g(z), k, int a, int b, h(z,Z,k))" +
+            $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
+            $"\r\n\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b) & " +
+            $"\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b, F(x,y,X,k))" +
+            $"\r\n{TAB}IterateLoop(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(...), k, int a, int b, F(z,k))" +
+            $"\r\n\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b) & " +
+            $"\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b, F(z,Z,k))" +
             $"\r\n\r\n{GetComment("Displaying each loop of iteration.")}" +
-            $"\r\n\r\n... | ... | ...{TAB}{GetComment("Displaying one by one.")}");
-        content += subTitleContent("CONSTANTS", "\r\n\r\npi, e, gamma & ga, i");
+            $"\r\n\r\n{TAB}... | ... | ...{GetComment("Displaying one by one.")}");
+        content += subTitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i");
         content += subTitleContent("SHORTCUTS", "\r\n");
 
-        static string getShortcuts(string key, int blank, string meaning) => $"\r\n[{key}]" + new string('\t', blank) + meaning + ";";
+        static string getShortcuts(string key, int blank, string meaning) => $"\r\n{TAB}[{key}]" + new string('\t', blank) + meaning + ";";
         content += getShortcuts("Control + P", 2, "Graph in MicroBox");
         content += getShortcuts("Control + G", 2, "Graph in MacroBox");
         content += getShortcuts("Control + B", 2, "Graph in both regions");
@@ -1128,17 +1133,17 @@ public partial class Graph : Form
         content += getShortcuts("Control + D3", 2, "Clear all ReadOnly controls");
         content += getShortcuts("Control + OemQuestion", 1, "See manual");
         content += getShortcuts("Oemtilde", 2, "Play/pause music" + (music_sound ? String.Empty : " (obsolete)"));
-        content += getShortcuts("Delete", 3, "Clear both regions");
-        content += getShortcuts("Escape", 3, "Close Fraljiculator");
-        return content + "\r\n\r\nClick [Tab] to witness the process of control design.";
+        content += getShortcuts("Delete", 2, "Clear both regions");
+        content += getShortcuts("Escape", 2, "Close Fraljiculator");
+        return content + $"\r\n\r\n{TAB}Click [Tab] to witness the process of control design.";
     }
     private static string AddContact(string platform, string account, string note)
-        => $"\r\n\r\n{platform}: {account}" + (note != String.Empty ? (new string(' ', 4) + GetComment(note)) : note);
+        => $"\r\n\r\n{TAB}{platform}: {account}" + (note != String.Empty ? (new string(' ', 4) + GetComment(note)) : note);
     private static string GetProfile()
     {
         string content = "Dear math lovers & mathematicians:" +
-            "\r\n\r\nHi! I'm Fralji, a content creator on Bilibili since July, 2021, when I was a pre-freshman before entering college." +
-            "\r\n\r\nI aim to deliver unique lectures on many branches of mathematics. " +
+            $"\r\n\r\n{TAB}Hi! I'm Fralji, a content creator on Bilibili since July of 2021, when I was a freshman before entering college." +
+            $"\r\n\r\n{TAB}I aim to deliver unique lectures on many branches of mathematics. " +
             "If you have any problem on the usage of this application, or anything concerning math, please reach to me via:";
         content += AddContact("Bilibili", "355884223", String.Empty);
         content += AddContact("Email", "frankjiiiiiiii@gmail.com", String.Empty);
@@ -1146,13 +1151,12 @@ public partial class Graph : Form
         content += AddContact("QQ", "472955101", String.Empty);
         content += AddContact("Facebook", "Fraljimetry", String.Empty);
         content += AddContact("Instagram", "shaodaji", "NOT recommended");
-        return content + "\r\n\r\n" + new string(' ', 72) + $"{DATE}";
+        return content + "\r\n\r\n" + new string(' ', 75) + $"{DATE}";
     }
-    private void TitleLabel_DoubleClick(object sender, EventArgs e) => MyMessageBox.ShowFormal(GetManual(), 640, 480);
+    private void TitleLabel_DoubleClick(object sender, EventArgs e) => MyMessageBox.ShowFormal(GetManual(), 720, 540);
     private void PictureLogo_DoubleClick(object sender, EventArgs e) => MyMessageBox.ShowFormal(GetProfile(), 600, 450);
     private static void ShowCustomBox(string title, string[] contents)
         => ShowBoxBase(MyMessageBox.ShowCustom, $"[{title}]" + new string(' ', 12) + $"{DATE}", contents, 2);
-    //
     private void InputLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("FORMULA INPUT",
     [
         "Space and Enter keys are both acceptable. Unsupported keys are blocked, and removed if pasted from the clipboard.",
@@ -1260,7 +1264,7 @@ public partial class Graph : Form
                 case 4: _general = "0"; setDetails("-10", "0", "0", "10"); _thick = "0.1"; _color = 1; _points = true; break;
                 case 5: _general = "5"; _color = 1; break;
                 case 6: _general = "3"; break;
-                case 7: _general = "3"; _thick = "0.05"; _color = 2; _points = true; break;
+                case 7: _general = "3"; _color = 4; break;
             }
         else if (index > complexL + realL + 1 && index < complexL + realL + curveL + 2)
             switch (index - complexL - realL - 2)
@@ -1526,7 +1530,6 @@ public partial class Graph : Form
     private void Y_Right_KeyDown(object sender, KeyEventArgs e) => AutoKeyDown(Y_Right, e);
     private void ThickInput_KeyDown(object sender, KeyEventArgs e) => AutoKeyDown(ThickInput, e);
     private void DenseInput_KeyDown(object sender, KeyEventArgs e) => AutoKeyDown(DenseInput, e);
-
     private static void Combo_KeyDown(KeyEventArgs e) // To ban the default keyboard search
         => e.SuppressKeyPress = e.KeyCode >= Keys.A && e.KeyCode <= Keys.Z;
     private void ComboExamples_KeyDown(object sender, KeyEventArgs e) => Combo_KeyDown(e);
@@ -1582,7 +1585,7 @@ public partial class Graph : Form
         DraftBox.ForeColor = DraftBox.ReadOnly ? READONLY_GRAY : Color.White;
         DraftLabel.ForeColor = Color.White;
     }
-
+    //
     private void ComboExamples_MouseHover(object sender, EventArgs e) => ExampleLabel.ForeColor = COMBO_BLUE;
     private void ComboExamples_MouseLeave(object sender, EventArgs e) => ExampleLabel.ForeColor = Color.White;
     private void ComboFunctions_MouseHover(object sender, EventArgs e) => FunctionLabel.ForeColor = COMBO_BLUE;
@@ -1609,7 +1612,7 @@ public partial class Graph : Form
     private void CheckAuto_MouseLeave(object sender, EventArgs e) => CheckAuto.ForeColor = Color.White;
     private void CheckEdit_MouseHover(object sender, EventArgs e) => CheckEdit.ForeColor = COMBO_BLUE;
     private void CheckEdit_MouseLeave(object sender, EventArgs e) => CheckEdit.ForeColor = Color.White;
-
+    //
     private void PointNumDisplay_MouseHover(object sender, EventArgs e)
     { PointNumLabel.ForeColor = READONLY_PURPLE; PointNumDisplay.ForeColor = Color.White; }
     private void PointNumDisplay_MouseLeave(object sender, EventArgs e)
@@ -1638,7 +1641,7 @@ public partial class Graph : Form
     { ValueLabel.ForeColor = READONLY_PURPLE; FunctionDisplay.ForeColor = Color.White; }
     private void FunctionDisplay_MouseLeave(object sender, EventArgs e)
     { ValueLabel.ForeColor = Color.White; FunctionDisplay.ForeColor = READONLY_GRAY; }
-
+    //
     private void SubtitleBox_MouseHover(object sender, EventArgs e) => SubtitleBox.ForeColor = ERROR_RED;
     private void SubtitleBox_MouseLeave(object sender, EventArgs e) => SubtitleBox.ForeColor = Color.White;
     private void CaptionBox_MouseHover(object sender, EventArgs e) => CaptionBox.ForeColor = Color.White;
@@ -1649,7 +1652,7 @@ public partial class Graph : Form
     private void X_Bar_MouseLeave(object sender, EventArgs e) => X_Bar.ForeColor = Color.White;
     private void Y_Bar_MouseHover(object sender, EventArgs e) => Y_Bar.ForeColor = READONLY_PURPLE;
     private void Y_Bar_MouseLeave(object sender, EventArgs e) => Y_Bar.ForeColor = Color.White;
-
+    //
     private static void ResizeControl(PictureBox pbx, int delta, bool isLarge)
     {
         if (isLarge ? is_resized : !is_resized) return; // To prevent repetitive call
@@ -1666,7 +1669,7 @@ public partial class Graph : Form
     private void PicturePlay_MouseLeave(object sender, EventArgs e) => ShrinkPicture(PicturePlay, 2);
     private void PictureIncorrect_MouseHover(object sender, EventArgs e) => EnlargePicture(PictureIncorrect, 2);
     private void PictureIncorrect_MouseLeave(object sender, EventArgs e) => ShrinkPicture(PictureIncorrect, 2);
-
+    //
     private void ExportButton_MouseHover(object sender, EventArgs e) => AddressInput_DoubleClick(sender, e);
     private void StoreButton_MouseHover(object sender, EventArgs e) => AddressInput_DoubleClick(sender, e);
     #endregion
@@ -2003,7 +2006,7 @@ public class ReplaceTags : RealComplex
             "iterate1(x/X+X/y,xy,k,1,5)",
             "iterate2(1/X+1/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
             "comp1(xy,tan(Xx),artanh(X-y))",
-            "comp2(xy,xx+yy,sin(X+Y),cos(X-Y),2)"
+            "comp2(xy,xx+yy,sin(X+Y),cos(X-Y),z)"
         ];
     public static readonly string[] EX_CURVES =
         [
@@ -2099,6 +2102,7 @@ public class ReplaceTags : RealComplex
             { "param", PARAM }, { "Param", PARAM },
             { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }
         }, UNDERLINE);
+    private static readonly Dictionary<string, string> REAL_COMPLEX = Concat(REAL, COMPLEX);
     private static Dictionary<string, string> AddPrefixSuffix(Dictionary<string, string> dictionary)
     {
         Dictionary<string, string> _dictionary = [];
@@ -2116,10 +2120,9 @@ public class ReplaceTags : RealComplex
         foreach (var kvp in dictionary) input = input.Replace(kvp.Key, kvp.Value);
         return input;
     }
-    private static string ReplaceCommon(string input) => ReplaceConstant(ReplaceBase(input, AddPrefixSuffix(COMMON)));
     private static string ReplaceConstant(string input) => ReplaceBase(input, CONSTANTS);
-    protected static string ReplaceReal(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(REAL)));
-    protected static string ReplaceComplex(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(COMPLEX)));
+    private static string ReplaceCommon(string input) => ReplaceConstant(ReplaceBase(input, AddPrefixSuffix(COMMON)));
+    protected static string ReplaceRealComplex(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(REAL_COMPLEX)));
     public static string ReplaceCurves(string input) => ReplaceBase(input, AddPrefixSuffix(TAGS));
 } /// Function name interpretors
 public class RecoverMultiply : ReplaceTags
@@ -2134,8 +2137,7 @@ public class RecoverMultiply : ReplaceTags
     public static string Simplify(string input, bool isComplex = false)
     {
         ThrowException(!CheckParenthesis(input) || input.Contains(LR_BRA) || input.AsSpan().ContainsAny(BARRED_CHARS));
-        Func<string, string> replaceTags = isComplex ? ReplaceComplex : ReplaceReal;
-        return replaceTags(RemoveEnterBlank(input));
+        return ReplaceRealComplex(RemoveEnterBlank(input));
     } // Used only once at the beginning
     protected static string Recover(ReadOnlySpan<char> input, bool isComplex)
     {
@@ -2183,7 +2185,6 @@ public sealed class ComplexSub : RecoverMultiply
     private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Complex>> cstMtcs = []; // To store reusable constant matrices
-
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
@@ -2601,7 +2602,6 @@ public sealed class RealSub : RecoverMultiply
     private readonly Matrix<Real>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Real>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Real>> cstMtcs = []; // To store reusable constant matrices
-
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
