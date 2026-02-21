@@ -60,7 +60,7 @@ public partial class Graph : Form
         WRONG_FORMAT = "THE INPUT IS IN A WRONG FORMAT.", WRONG_ADDRESS = "THE ADDRESS DOES NOT EXIST.",
         DISPLAY_ERROR = "UNAVAILABLE.", DRAFT_DEFAULT = $"\r\nPrecision of real numbers: \r\n{typeof(Real)}.",
         TEMP_BGM_NAME = "background_music", MUSIC = "music", SOUND = "click sound", TIP = "ReadOnly",
-        SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 3), _SEP = new('-', 74), TAB = new(' ', 4);
+        SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 5), _SEP = new('-', 72), TAB = new(' ', 4);
     private static readonly string[] CONTOUR_MODES = ["Cartesian (x,y)", "Polar (r,θ)"], COLOR_MODES =
         ["Commonplace", "Monochromatic", "Bichromatic", "Kaleidoscopic", "Miscellaneous"];
     #endregion
@@ -1051,7 +1051,7 @@ public partial class Graph : Form
     private static string GetComment(string input) => TAB + $"# {input}";
     private static string GetManual()
     {
-        string content = $"DESIGNER: Fraljimetry\r\nDATE: {DATE}\r\nLOCATION: Xi'an, China";
+        string content = $" DESIGNER:\tFraljimetry\r\n DATE:\t\t{DATE}\r\n LOCATION:\tXi'an, China";
         content += $"\r\n\r\n{TAB}This software was developed in Visual Studio 2022, written in C#, " +
             "to visualize real/complex functions and equations with no more than two variables." +
             $"\r\n\r\n{TAB}To bolster artistry and practicality, numerous parameters are tunable, " +
@@ -1137,20 +1137,20 @@ public partial class Graph : Form
         content += getShortcuts("Escape", 2, "Close Fraljiculator");
         return content + $"\r\n\r\n{TAB}Click [Tab] to witness the process of control design.";
     }
-    private static string AddContact(string platform, string account, string note)
-        => $"\r\n\r\n{TAB}{platform}: {account}" + (note != String.Empty ? (new string(' ', 4) + GetComment(note)) : note);
+    private static string AddContact(string platform, int blank, string account, string note)
+        => $"\r\n\r\n{TAB}{platform}:" + new string('\t', blank) + account + (note != String.Empty ? (TAB + GetComment(note)) : note);
     private static string GetProfile()
     {
         string content = "Dear math lovers & mathematicians:" +
             $"\r\n\r\n{TAB}Hi! I'm Fralji, a content creator on Bilibili since July of 2021, when I was a freshman before entering college." +
             $"\r\n\r\n{TAB}I aim to deliver unique lectures on many branches of mathematics. " +
             "If you have any problem on the usage of this application, or anything concerning math, please reach to me via:";
-        content += AddContact("Bilibili", "355884223", String.Empty);
-        content += AddContact("Email", "frankjiiiiiiii@gmail.com", String.Empty);
-        content += AddContact("Wechat", "F1r4a2n8k5y7", "recommended");
-        content += AddContact("QQ", "472955101", String.Empty);
-        content += AddContact("Facebook", "Fraljimetry", String.Empty);
-        content += AddContact("Instagram", "shaodaji", "NOT recommended");
+        content += AddContact("Bilibili", 2, "355884223", String.Empty);
+        content += AddContact("Email", 2, "frankjiiiiiiii@gmail.com", String.Empty);
+        content += AddContact("Wechat", 1, "F1r4a2n8k5y7", "recommended");
+        content += AddContact("QQ", 2, "472955101", String.Empty);
+        content += AddContact("Facebook", 1, "Fraljimetry", String.Empty);
+        content += AddContact("Instagram", 1, "shaodaji", "NOT recommended");
         return content + "\r\n\r\n" + new string(' ', 75) + $"{DATE}";
     }
     private void TitleLabel_DoubleClick(object sender, EventArgs e) => MyMessageBox.ShowFormal(GetManual(), 720, 540);
