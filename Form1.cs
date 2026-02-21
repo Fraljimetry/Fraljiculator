@@ -2621,7 +2621,7 @@ public sealed class RealSub : RecoverMultiply
     private RealSub(ReadOnlySpan<char> input, (Matrix<Real> X, Matrix<Real> Y) xyCoor, int rows, int columns)
         : this(input, xyCoor.X, xyCoor.Y, null, null, null, rows, columns) { } // A helper constructor
     public RealSub(ReadOnlySpan<char> input, Matrix<Complex> zCoor, int rows, int columns)
-        : this(input, InitilizeXY(zCoor, rows, columns), rows, columns) { }
+        : this(input, InitializeXY(zCoor, rows, columns), rows, columns) { }
     private RealSub ObtainSub(ReadOnlySpan<char> input, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs, bool useList = false)
         => new(input, x, y, X, Y, buffCocs, rows, columns, useList);
     private Matrix<Real> ObtainValue(ReadOnlySpan<char> input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
@@ -2828,7 +2828,7 @@ public sealed class RealSub : RecoverMultiply
 
     #region Elements
     [MethodImpl(512)] // AggressiveOptimization
-    public unsafe static (Matrix<Real>, Matrix<Real>) InitilizeXY(Matrix<Complex> zCoor, int rows, int columns)
+    public unsafe static (Matrix<Real>, Matrix<Real>) InitializeXY(Matrix<Complex> zCoor, int rows, int columns)
     {
         Matrix<Real> xCoor = new(GetArithProg(rows, columns), columns), yCoor = new(GetArithProg(rows, columns), columns);
         Parallel.For(0, rows, p =>
