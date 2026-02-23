@@ -17,11 +17,9 @@ public partial class Graph : Form
 {
     // 1. PREPARATIONS
     #region Fields
-    private static System.Media.SoundPlayer ClickPlayer;
-    private static WMPLib.WindowsMediaPlayer MediaPlayer;
     private static DateTime TimeNow = new();
     private static TimeSpan TimeCount = new();
-    private static System.Windows.Forms.Timer GraphTimer, ColorTimer, WaitTimer, DisplayTimer;
+    private static System.Windows.Forms.Timer GraphTimer, WaitTimer, DisplayTimer;
     private static Graphics graphics;
     private static Rectangle rectangle, rect_mac, rect_mic; // rect_: slightly larger than the display regions
     private static Bitmap bmp_mac, bmp_mic, bmp_screen; // bmp_screen: snapshots
@@ -35,10 +33,10 @@ public partial class Graph : Form
         CONTROL_GRAY = Argb(105, 105, 105), GRID_GRAY = Argb(75, 255, 255, 255), READONLY_GRAY = Color.Gainsboro,
         UPPER_GOLD = Color.Gold, LOWER_BLUE = Color.RoyalBlue, ZERO_BLUE = Color.Lime, POLE_PURPLE = Color.Magenta;
     //
-    private static Real scale_factor, title_elapsed, pause_pos, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
+    private static Real scale_factor, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
     private static readonly Real GRID_WIDTH_1 = 3, GRID_WIDTH_2 = 2, CURVE_WIDTH_LIMIT = 20, STRIDE = (Real)0.25, MOD = (Real)0.25,
-        ARG = MathR.PI / 12, STRIDE_REAL = 1, EPS_REAL = (Real)0.015, EPS_COMPLEX = (Real)0.015, SIZE_REAL = (Real)0.5, DECAY = (Real)0.2,
-        DEPTH = 2, CURVE_WIDTH = 5, INCREMENT = (Real)0.01, TITLE = (Real)0.01;
+        ARG = MathR.PI / 12, STRIDE_REAL = 1, EPS_REAL = (Real)0.015, EPS_COMPLEX = (Real)0.015, SIZE_REAL = (Real)0.5,
+        DECAY = (Real)0.2, DEPTH = 2, CURVE_WIDTH = 5, INCREMENT = (Real)0.01;
     private static int display_elapsed, x_left, x_right, y_up, y_down, color_mode, contour_mode,
         loop_number, chosen_number, export_number, pixel_number, segment_number;
     private static readonly int X_LEFT_MAC = 620, X_RIGHT_MAC = 1520, Y_UP_MAC = 45, Y_DOWN_MAC = 945,
@@ -50,16 +48,15 @@ public partial class Graph : Form
     private static Matrix<Complex> output_complex;
     private static Matrix<Real> output_real;
     //
-    private static bool is_flashing, is_paused = true, is_complex = true, delete_point = true, delete_coor, swap_colors,
-        is_auto, freeze_graph, clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking,
-        error_input, error_address, is_resized, ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound;
-    private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile",
-        INPUT_DEFAULT = "z", GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO",
-        MICRO = "MICRO", ZERO = "0", REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History stored at",
-        CAPTION_DEFAULT = "Yours inputs will be shown here.", MISTAKES_HEAD = "\r\nCommon mistakes include:",
-        WRONG_FORMAT = "THE INPUT IS IN A WRONG FORMAT.", WRONG_ADDRESS = "THE ADDRESS DOES NOT EXIST.",
-        DISPLAY_ERROR = "UNAVAILABLE.", DRAFT_DEFAULT = $"\r\nPrecision of real numbers: \r\n{typeof(Real)}.",
-        TEMP_BGM_NAME = "background_music", MUSIC = "music", SOUND = "click sound", TIP = "ReadOnly",
+    private static bool is_flashing, is_complex = true, delete_point = true, delete_coor, swap_colors, is_auto, freeze_graph,
+        clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking, error_input, error_address, is_resized,
+        ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound;
+    private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile", INPUT_DEFAULT = "z",
+        GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO", MICRO = "MICRO", ZERO = "0",
+        REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History stored at", CAPTION_DEFAULT = "Yours inputs will be shown here.",
+        MISTAKES_HEAD = "\r\nCommon mistakes include:", WRONG_FORMAT = "THE INPUT IS IN A WRONG FORMAT.",
+        WRONG_ADDRESS = "THE ADDRESS DOES NOT EXIST.", DISPLAY_ERROR = "UNAVAILABLE.",
+        DRAFT_DEFAULT = $"\r\nPrecision of real numbers: \r\n{typeof(Real)}.", TIP = "ReadOnly",
         SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 5), _SEP = new('-', 72), TAB = new(' ', 4);
     private static readonly string[] CONTOUR_MODES = ["Cartesian (x,y)", "Polar (r,θ)"], COLOR_MODES =
         ["Commonplace", "Monochromatic", "Bichromatic", "Kaleidoscopic", "Miscellaneous"];
@@ -70,7 +67,6 @@ public partial class Graph : Form
     {
         InitializeComponent();
         SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor);
-        if (music_sound) { InitializeMusicPlayer(); InitializeClickSound(); AttachClickEvents(this); }
         InitializeTimers(); InitializeGraphics();
         InitializeCombo(); InitializeData();
         SetThicknessDensenessScopesBorders();
@@ -93,36 +89,11 @@ public partial class Graph : Form
             if (ctrl.Controls.Count > 0) ReduceFontSizeByScale(ctrl, ref scalingFactor);
         }
     } // Also used for Message Boxes, so scalingFactor should not be passed as a field
-    private static Stream? GetStream(string file)
-        => System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream($"{typeof(Program).Namespace}.{file}.wav");
-    private static void InitializeMusicClick(Stream? stream, string message, Action<Stream> setUpStream)
-    { if (stream != null) setUpStream(stream); else GetMusicClickErrorBox(message); }
-    private void InitializeMusicPlayer() => InitializeMusicClick(GetStream("bgm"), MUSIC, stream =>
-    {
-        MediaPlayer = new(); // Saving the stream to a temp file, since WMP cannot play directly from the stream
-        string tempFile = Path.Combine(Path.GetTempPath(), $"{TEMP_BGM_NAME}.wav");
-        using FileStream fileStream = new(tempFile, FileMode.Create, FileAccess.Write); // "using" should not be removed
-        stream.CopyTo(fileStream);
-        MediaPlayer.URL = tempFile; // Setting the media file
-        MediaPlayer.settings.setMode("loop", true); // Looping the music
-        MediaPlayer.controls.stop();
-    });
-    private static void InitializeClickSound() => InitializeMusicClick(GetStream("click"), SOUND, stream => { ClickPlayer = new(stream); });
-    private static void AttachClickEvents(Control ctrl)
-    {
-        ctrl.Click += (sender, e) => ClickPlayer?.Play();
-        foreach (Control childCtrl in ctrl.Controls) AttachClickEvents(childCtrl);
-    }
     private void InitializeTimers()
     {
         static System.Windows.Forms.Timer setT(int interval) => new() { Interval = interval };
-        GraphTimer = setT(1000); ColorTimer = setT(50); WaitTimer = setT(500); DisplayTimer = setT(1000 / UPDATE);
+        GraphTimer = setT(1000); WaitTimer = setT(500); DisplayTimer = setT(1000 / UPDATE);
 
-        ColorTimer.Tick += (sender, e) =>
-        {
-            title_elapsed += TITLE;
-            TitleLabel.ForeColor = ObtainColorWheelCurve(title_elapsed % 1);
-        };
         WaitTimer.Tick += (sender, e) =>
         {
             ReverseBool(ref is_flashing); // Cannot pass properties as reference
@@ -1080,7 +1051,8 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Beta(f(x,y) & f(z), g(x,y) & g(z)) & " +
             $"\r\n{TAB}Beta(f(x,y) & f(z), g(x,y) & g(z), int n)" +
             $"\r\n\r\n{TAB}Zeta(f(x,y) & f(z)) & " +
-            $"\r\n{TAB}Zeta(f(x,y) & f(z), int n){GetComment("This is a mess for n too large.")}");
+            $"\r\n{TAB}Zeta(f(x,y) & f(z), int n){GetComment("This is a mess for n too large.")}") +
+            $"\r\n\r\n{TAB}Stereographic & Stereo(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))";
         content += subTitleContent("REPETITIONS",
             $"\r\n\r\n{GetComment("Capitalizations represent substitutions of variables.")}" +
             $"\r\n\r\n{TAB}Sum(f(x,y,k) & f(z,k), k, int a, int b)" +
@@ -1245,7 +1217,7 @@ public partial class Graph : Form
         if (index < complexL)
             switch (index)
             {
-                case 0: _general = "2"; _color = 4; _points = true; break;
+                case 0: _general = "1.1"; _color = 4; _axes = false; break;
                 case 1: _general = "1.2"; break;
                 case 2: _color = 2; _points = true; break;
                 case 3: _general = "pi/2"; _color = 4; break;
@@ -1257,14 +1229,14 @@ public partial class Graph : Form
         else if (index > complexL && index < complexL + realL + 1)
             switch (index - complexL - 1)
             {
-                case 0: _general = "10"; _color = 3; break;
+                case 0: _general = "10"; _color = 2; break;
                 case 1: _general = "2pi"; _color = 4; break;
-                case 2: _general = "4"; _color = 2; break;
+                case 2: _general = "4"; _color = 0; break;
                 case 3: _general = "0"; setDetails("0", "1", "0", "1"); _thick = "0.2"; _color = 0; _retain = true; break;
                 case 4: _general = "0"; setDetails("-10", "0", "0", "10"); _thick = "0.1"; _color = 1; _points = true; break;
                 case 5: _general = "5"; _color = 1; break;
                 case 6: _general = "3"; break;
-                case 7: _general = "3"; _color = 4; break;
+                case 7: _general = "3"; _color = 3; break;
             }
         else if (index > complexL + realL + 1 && index < complexL + realL + curveL + 2)
             switch (index - complexL - realL - 2)
@@ -1348,24 +1320,7 @@ public partial class Graph : Form
         foreach (var tbx in textBoxes) SetText(tbx, String.Empty);
         InputString_Focus();
     }
-    private void PicturePlay_Click(object sender, EventArgs e)
-    {
-        if (!music_sound) return;
-        if (is_paused)
-        {
-            MediaPlayer.controls.currentPosition = pause_pos;
-            MediaPlayer.controls.play();
-            ColorTimer.Start();
-        }
-        else
-        {
-            pause_pos = (Real)MediaPlayer.controls.currentPosition;
-            MediaPlayer.controls.pause();
-            ColorTimer.Stop();
-            TitleLabel.ForeColor = Color.White;
-        }
-        ReverseBool(ref is_paused);
-    }
+    private void PicturePlay_Click(object sender, EventArgs e) { } // Obsolete
     private void PictureIncorrect_Click(object sender, EventArgs e)
     { if (!ProcessingGraphics()) CheckValidityCore(() => InputErrorBox(sender, e, WRONG_FORMAT)); }
     //
@@ -1890,8 +1845,8 @@ public class RealComplex : MyString
     protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replacing "+-*/"
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
-        M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r', _S = 's', S_ = 'S',
-        SP = '#', _T = 't', TILDE = '~', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
+        M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r', R_ = 'R',
+        _S = 's', S_ = 'S', SP = '#', _T = 't', TILDE = '~', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
 
     protected static int CountChars(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck)
     {
@@ -1984,11 +1939,11 @@ public class ReplaceTags : RealComplex
             "max", "min", "log", "exp", "sqrt", "abs", "factorial", "arsinh", "arcosh", "artanh",
             "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "conjugate", "e" ];
     public static readonly string[] SPECIALS =
-        [ "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2", "cocoon",
+        [ "stereo", "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2", "cocoon",
             "iterateLoop", "loop", "func", "polar", "param" ];
     public static readonly string[] EX_COMPLEX =
         [
-            "(z-1)/(z+1)",
+            "stereo(3,1,1,z)",
             "z^(1+10i)cos((z-1)/(z^13+z+1))",
             "sum(1/(1-z^n),n,1,100)-100",
             "prod(exp(2/(e(-k/5)z-1)+1),k,1,5)",
@@ -2027,7 +1982,7 @@ public class ReplaceTags : RealComplex
         SH = String.Concat(SIN, _H), CH = String.Concat(COS, _H), TH = String.Concat(TAN, _H),
         ASH = String.Concat(AS, _H), ACH = String.Concat(AC, _H), ATH = String.Concat(AT, _H),
         PROD = P_.ToString(), SUM = S_.ToString(), COC = K_.ToString(),
-        F = F_.ToString(), GA = G_.ToString(), BETA = B_.ToString(), ZETA = _Z_.ToString(),
+        F = F_.ToString(), GA = G_.ToString(), BETA = B_.ToString(), ZETA = _Z_.ToString(), STEREO = R_.ToString(),
         FLOOR = _F.ToString(), CEIL = _C.ToString(), ROUND = _R.ToString(), SIGN = _S.ToString(),
         MOD = M_.ToString(), NCR = C_.ToString(), NPR = A_.ToString(), _MAX = MAX.ToString(), _MIN = MIN.ToString(),
         IT = I_.ToString(), IT1 = String.Concat(MODE_1, IT), IT2 = String.Concat(MODE_2, IT),
@@ -2064,6 +2019,7 @@ public class ReplaceTags : RealComplex
             { "gamma", GA }, { "Gamma", GA }, { "ga", GA }, { "Ga", GA },
             { "beta", BETA }, { "Beta", BETA },
             { "zeta", ZETA }, { "Zeta", ZETA },
+            { "stereographic", STEREO }, { "Stereographic", STEREO}, { "stereo", STEREO}, { "Stereo", STEREO},
             { "iterate2", IT2 }, { "Iterate2", IT2 },
             { "composite2", COMP2 }, { "Composite2", COMP2 }, { "comp2", COMP2 }, { "Comp2", COMP2 },
             { "cocoon", COC}, { "Cocoon", COC}, { "coc", COC}, { "Coc", COC}
@@ -2185,6 +2141,7 @@ public sealed class ComplexSub : RecoverMultiply
     private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Complex>> cstMtcs = []; // To store reusable constant matrices
+
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
@@ -2293,6 +2250,21 @@ public sealed class ComplexSub : RecoverMultiply
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
+    private unsafe Matrix<Complex> Stereographic(string[] split)
+    {
+        if (useList && !readList) return Const(Complex.ZERO); ThrowInvalidLengths(split, [4]);
+        Matrix<Complex> _z = UninitMtx();
+        Real obtain(int i) => RealSub.Obtain(split[i]); Real r = obtain(0), ctrX = obtain(1), ctrY = obtain(2);
+        void processStereo(int p, int col)
+        {
+            Complex* zPtr = z.RowPtr(p), _zPtr = _z.RowPtr(p);
+            for (int q = 0; q < col; q++, zPtr++, _zPtr++) *_zPtr = RealSub.Stereographic(Complex.ReIm(*zPtr), r, ctrX, ctrY);
+        }
+        if (rows == 1) processStereo(0, columns);
+        else { Parallel.For(0, rowChk, p => { processStereo(strdInit[p], strd); }); if (res != 0) processStereo(resInit, res); }
+        return new ComplexSub(split[3], _z, Z, buffCocs, rows, columns).Obtain();
+    }
+
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2315,6 +2287,7 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
     private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
     private Matrix<Complex> Iterate2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessIterate2);
+
     private Matrix<Complex> Composite(string[] split)
     {
         Matrix<Complex> _value = ObtainValue(split[0]);
@@ -2566,6 +2539,7 @@ public sealed class ComplexSub : RecoverMultiply
             G_ => handleSub(Gamma, 2),
             B_ => handleSub(Beta, 2),
             _Z_ => handleSub(Zeta, 2),
+            R_ => handleSub(Stereographic, 2),
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
             I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
@@ -2602,6 +2576,7 @@ public sealed class RealSub : RecoverMultiply
     private readonly Matrix<Real>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Real>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Real>> cstMtcs = []; // To store reusable constant matrices
+
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
@@ -2641,6 +2616,9 @@ public sealed class RealSub : RecoverMultiply
         Combination(n + 1, r) - Combination(n, r - 1) :
         Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
     private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
+    public static Complex Stereographic((Real x, Real y) pt, Real r, Real ctrX, Real ctrY)
+    { Real x = pt.x, y = pt.y, scal = r / (1 + MathR.Sqrt(1 - x * x - y * y)); return new(scal * x + ctrX, scal * y + ctrY); }
+
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
         {
@@ -2671,6 +2649,7 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { processMinMax(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
         });
+
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathR.Floor(n), MathR.Floor(r)));
     private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathR.Floor(n), MathR.Floor(r)));
@@ -2763,6 +2742,22 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
+    private unsafe Matrix<Real> Stereographic(string[] split)
+    {
+        if (useList && !readList) return Const(0); ThrowInvalidLengths(split, [4]);
+        Matrix<Real> _x = UninitMtx(), _y = UninitMtx();
+        Real obtain(int i) => Obtain(split[i]); Real r = obtain(0), ctrX = obtain(1), ctrY = obtain(2);
+        void processStereo(int p, int col)
+        {
+            Real* xPtr = x.RowPtr(p), yPtr = y.RowPtr(p), _xPtr = _x.RowPtr(p), _yPtr = _y.RowPtr(p);
+            for (int q = 0; q < col; q++, xPtr++, yPtr++, _xPtr++, _yPtr++)
+                (*_xPtr, *_yPtr) = Complex.ReIm(Stereographic((*xPtr, *yPtr), r, ctrX, ctrY));
+        }
+        if (rows == 1) processStereo(0, columns);
+        else { Parallel.For(0, rowChk, p => { processStereo(strdInit[p], strd); }); if (res != 0) processStereo(resInit, res); }
+        return new RealSub(split[3], _x, _y, X, Y, buffCocs, rows, columns).Obtain();
+    }
+
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2799,6 +2794,7 @@ public sealed class RealSub : RecoverMultiply
         return (split[^1], buffer1.X, buffer1.Y); // Or, alternatively, buffer2
     }
     private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
+
     private Matrix<Real> Composite1(string[] split)
     {
         Matrix<Real> _value = ObtainValue(split[0]);
@@ -3073,6 +3069,7 @@ public sealed class RealSub : RecoverMultiply
             G_ => handleSub(Gamma, 2),
             B_ => handleSub(Beta, 2),
             _Z_ => handleSub(Zeta, 2),
+            R_ => handleSub(Stereographic, 2),
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
             I_ => input[idx - 2] switch { MODE_1 => handleSub(Iterate1, 3), MODE_2 => handleSub(Iterate2, 3) },
@@ -3165,6 +3162,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
         var (mod, unit) = (MathR.Exp(-MathR.Tau * c.imaginary), MathR.SinCos(MathR.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
     } // Often used in analytic number theory, represented by 'q'
+
     public static Complex Sin(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
@@ -3200,6 +3198,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * re / denom;
         return new(MathR.Atan2(_im, _re) / 2, -MathR.Log(_re * _re + _im * _im) / 4);
     }
+
     public static Complex Sinh(Complex c)
     {
         var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
@@ -3236,6 +3235,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * im / denom;
         return new(MathR.Log(_re * _re + _im * _im) / 4, MathR.Atan2(_im, _re) / 2);
     }
+
     public static Complex Sqrt(Complex c)
     {
         Real re = c.real, im = c.imaginary;
