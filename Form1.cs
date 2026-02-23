@@ -28,9 +28,8 @@ public partial class Graph : Form
     private static readonly SolidBrush BACK_BRUSH = new(Color.Black);
     private static readonly Pen BDR_PEN = new(Color.Gray), _BDR_PEN = new(Color.White), AXES_PEN = new(Color.DarkGray, 4);
     private static readonly Color CORRECT_GREEN = Argb(192, 255, 192), ERROR_RED = Argb(255, 192, 192),
-        UNCHECK_YELLOW = Argb(255, 255, 128), READONLY_PURPLE = Argb(255, 192, 255),
-        COMBO_BLUE = Argb(192, 255, 255), FOCUS_GRAY = Color.LightGray, BACKDROP_GRAY = Argb(64, 64, 64),
-        CONTROL_GRAY = Argb(105, 105, 105), GRID_GRAY = Argb(75, 255, 255, 255), READONLY_GRAY = Color.Gainsboro,
+        UNCHECK_YELLOW = Argb(255, 255, 128), READONLY_PURPLE = Argb(255, 192, 255), COMBO_BLUE = Argb(192, 255, 255),
+        FOCUS_GRAY = Color.LightGray, CTRL_GRAY = Argb(105, 105, 105), GRID_GRAY = Argb(75, 255, 255, 255), READONLY_GRAY = Color.Gainsboro,
         UPPER_GOLD = Color.Gold, LOWER_BLUE = Color.RoyalBlue, ZERO_BLUE = Color.Lime, POLE_PURPLE = Color.Magenta;
     //
     private static Real scale_factor, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
@@ -50,7 +49,7 @@ public partial class Graph : Form
     //
     private static bool is_flashing, is_complex = true, delete_point = true, delete_coor, swap_colors, is_auto, freeze_graph,
         clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking, error_input, error_address, is_resized,
-        ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted, music_sound;
+        ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted;
     private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile", INPUT_DEFAULT = "z",
         GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO", MICRO = "MICRO", ZERO = "0",
         REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History stored at", CAPTION_DEFAULT = "Yours inputs will be shown here.",
@@ -593,9 +592,9 @@ public partial class Graph : Form
         string replaceLoop(int loops, int origIdx, int subIdx) => MyString.ReplaceLoop(split, origIdx, subIdx, loops.ToString(), true);
         string obtainDisplay(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(loops, 5, 2) : defaultInput;
 
-        MyString.ThrowInvalidLengths(split, [5, 6, 8]);
         if (is_complex)
         {
+            MyString.ThrowInvalidLengths(split, [5, 6, 8]);
             if (split.Length != 8)
             {
                 Matrix<Complex> z = ComplexSub.InitilizeZ(xCoor, yCoor, rows, columns); // Special for complex
@@ -623,6 +622,7 @@ public partial class Graph : Form
         }
         else
         {
+            MyString.ThrowInvalidLengths(split, [5, 6]);
             Matrix<Real> X = new RealSub(split[1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
             RealComplex.CheckFor(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
             {
@@ -950,7 +950,6 @@ public partial class Graph : Form
         return e.KeyCode switch
         {
             Keys.Escape => handleReturn(e => { ExecuteSuppress(Close, e); }),
-            Keys.Oemtilde => handleReturn(e => { ExecuteSuppress(() => PicturePlay_Click(null, e), e); }),
             Keys.Delete => handleReturn(e => { ExecuteSuppress(() => { Graph_DoubleClick(null, e); Delete_Click(e); }, e); }),
             _ => false
         };
@@ -1104,7 +1103,6 @@ public partial class Graph : Form
         content += getShortcuts("Control + D2", 2, "View Fralji's profile");
         content += getShortcuts("Control + D3", 2, "Clear all ReadOnly controls");
         content += getShortcuts("Control + OemQuestion", 1, "See manual");
-        content += getShortcuts("Oemtilde", 2, "Play/pause music" + (music_sound ? String.Empty : " (obsolete)"));
         content += getShortcuts("Delete", 2, "Clear both regions");
         content += getShortcuts("Escape", 2, "Close Fraljiculator");
         return content + $"\r\n\r\n{TAB}Click [Tab] to witness the process of control design.";
@@ -1320,7 +1318,6 @@ public partial class Graph : Form
         foreach (var tbx in textBoxes) SetText(tbx, String.Empty);
         InputString_Focus();
     }
-    private void PicturePlay_Click(object sender, EventArgs e) { } // Obsolete
     private void PictureIncorrect_Click(object sender, EventArgs e)
     { if (!ProcessingGraphics()) CheckValidityCore(() => InputErrorBox(sender, e, WRONG_FORMAT)); }
     //
@@ -1500,7 +1497,7 @@ public partial class Graph : Form
     private static void HoverEffect(TextBox tbx, Label lbl)
     { tbx.BackColor = lbl.ForeColor == Color.White ? FOCUS_GRAY : lbl.ForeColor; tbx.ForeColor = Color.Black; SetFont(lbl); }
     private static void LeaveEffect(TextBox tbx, Label lbl)
-    { tbx.BackColor = CONTROL_GRAY; tbx.ForeColor = Color.White; RecoverFont(lbl); }
+    { tbx.BackColor = CTRL_GRAY; tbx.ForeColor = Color.White; RecoverFont(lbl); }
     private void InputString_MouseHover(object sender, EventArgs e) => SetFont(InputLabel);
     private void InputString_MouseLeave(object sender, EventArgs e) => RecoverFont(InputLabel);
     private void AddressInput_MouseHover(object sender, EventArgs e) => HoverEffect(AddressInput, AtLabel);
@@ -1536,7 +1533,7 @@ public partial class Graph : Form
     }
     private void DraftBox_MouseLeave(object sender, EventArgs e)
     {
-        if (!DraftBox.ReadOnly) DraftBox.BackColor = CONTROL_GRAY;
+        if (!DraftBox.ReadOnly) DraftBox.BackColor = CTRL_GRAY;
         DraftBox.ForeColor = DraftBox.ReadOnly ? READONLY_GRAY : Color.White;
         DraftLabel.ForeColor = Color.White;
     }
@@ -1637,6 +1634,7 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
+
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1657,6 +1655,7 @@ public class MyMessageBox : Form
     private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
     private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
+    //
     private void SetUpForm(int width, int height)
     {
         FormBorderStyle = FormBorderStyle.None; TopMost = true; Size = new(width, height);
@@ -1704,6 +1703,7 @@ public class MyMessageBox : Form
         Graph.ReduceFontSizeByScale(this, ref scale_factor);
         KeyPreview = true; KeyDown += new(Form_KeyDown);
     }
+    //
     private static void Display(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
     {
         MyMessageBox msgBox = new();
@@ -2255,13 +2255,13 @@ public sealed class ComplexSub : RecoverMultiply
         if (useList && !readList) return Const(Complex.ZERO); ThrowInvalidLengths(split, [4]);
         Matrix<Complex> _z = UninitMtx();
         Real obtain(int i) => RealSub.Obtain(split[i]); Real r = obtain(0), ctrX = obtain(1), ctrY = obtain(2);
-        void processStereo(int p, int col)
+        void stereographic(int p, int col)
         {
             Complex* zPtr = z.RowPtr(p), _zPtr = _z.RowPtr(p);
             for (int q = 0; q < col; q++, zPtr++, _zPtr++) *_zPtr = RealSub.Stereographic(Complex.ReIm(*zPtr), r, ctrX, ctrY);
         }
-        if (rows == 1) processStereo(0, columns);
-        else { Parallel.For(0, rowChk, p => { processStereo(strdInit[p], strd); }); if (res != 0) processStereo(resInit, res); }
+        if (rows == 1) stereographic(0, columns);
+        else { Parallel.For(0, rowChk, p => { stereographic(strdInit[p], strd); }); if (res != 0) stereographic(resInit, res); }
         return new ComplexSub(split[3], _z, Z, buffCocs, rows, columns).Obtain();
     }
 
@@ -2747,14 +2747,14 @@ public sealed class RealSub : RecoverMultiply
         if (useList && !readList) return Const(0); ThrowInvalidLengths(split, [4]);
         Matrix<Real> _x = UninitMtx(), _y = UninitMtx();
         Real obtain(int i) => Obtain(split[i]); Real r = obtain(0), ctrX = obtain(1), ctrY = obtain(2);
-        void processStereo(int p, int col)
+        void stereographic(int p, int col)
         {
             Real* xPtr = x.RowPtr(p), yPtr = y.RowPtr(p), _xPtr = _x.RowPtr(p), _yPtr = _y.RowPtr(p);
             for (int q = 0; q < col; q++, xPtr++, yPtr++, _xPtr++, _yPtr++)
                 (*_xPtr, *_yPtr) = Complex.ReIm(Stereographic((*xPtr, *yPtr), r, ctrX, ctrY));
         }
-        if (rows == 1) processStereo(0, columns);
-        else { Parallel.For(0, rowChk, p => { processStereo(strdInit[p], strd); }); if (res != 0) processStereo(resInit, res); }
+        if (rows == 1) stereographic(0, columns);
+        else { Parallel.For(0, rowChk, p => { stereographic(strdInit[p], strd); }); if (res != 0) stereographic(resInit, res); }
         return new RealSub(split[3], _x, _y, X, Y, buffCocs, rows, columns).Obtain();
     }
 
