@@ -591,7 +591,6 @@ public partial class Graph : Form
         var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
         string replaceLoop(int loops, int origIdx, int subIdx) => MyString.ReplaceLoop(split, origIdx, subIdx, loops.ToString(), true);
         string obtainDisplay(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(loops, 5, 2) : defaultInput;
-
         if (is_complex)
         {
             MyString.ThrowInvalidLengths(split, [5, 6, 8]);
@@ -1634,7 +1633,6 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1655,7 +1653,6 @@ public class MyMessageBox : Form
     private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
     private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
-    //
     private void SetUpForm(int width, int height)
     {
         FormBorderStyle = FormBorderStyle.None; TopMost = true; Size = new(width, height);
@@ -1695,15 +1692,11 @@ public class MyMessageBox : Form
     }
     private void Setup(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
     {
-        SetUpForm(width, height);
-        SetUpTextBox(message, width, height, txtColor);
-        SetUpButton(width, height, btnColor, btnTxtColor);
+        SetUpForm(width, height); SetUpTextBox(message, width, height, txtColor); SetUpButton(width, height, btnColor, btnTxtColor);
         Controls.Add(txtMessage); Controls.Add(btnOk);
-
         Graph.ReduceFontSizeByScale(this, ref scale_factor);
         KeyPreview = true; KeyDown += new(Form_KeyDown);
     }
-    //
     private static void Display(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
     {
         MyMessageBox msgBox = new();
@@ -1898,8 +1891,7 @@ public class RealComplex : MyString
     }
     protected static (string[], StringBuilder) PrepareBreakPSMD(string input, ReadOnlySpan<char> signs, int THRESHOLD)
     {
-        Span<bool> lookup = stackalloc bool[1024]; // ASCII + Greek
-        foreach (char c in signs) lookup[c] = true;
+        Span<bool> lookup = stackalloc bool[1024]; foreach (char c in signs) lookup[c] = true; // ASCII + Greek
         StringBuilder signsBuilder = new(input), result = new(input);
         for (int i = 0, flag = 0; i < result.Length; i++)
         {
@@ -1915,19 +1907,16 @@ public class RealComplex : MyString
     }
     private static StringBuilder GetSignsBuilder(ReadOnlySpan<char> input, ReadOnlySpan<char> signs)
     {
-        Span<bool> lookup = stackalloc bool[1024]; // ASCII + Greek
-        foreach (char c in signs) lookup[c] = true;
+        Span<bool> lookup = stackalloc bool[1024]; foreach (char c in signs) lookup[c] = true; // ASCII + Greek
         StringBuilder signsBuilder = new(input.Length);
         foreach (char c in input) if (lookup[c]) signsBuilder.Append(c);
         return signsBuilder;
     }
-    protected static (string[], StringBuilder) GetPlusSubtractComponents(ReadOnlySpan<char> input)
+    protected static (string[], StringBuilder) GetPSMDComponents(ReadOnlySpan<char> input, ReadOnlySpan<char> signs)
     {
-        bool minusHead = input[0] == '-'; string _input = TrimStartChar(input, '-');
-        return (SplitByChars(_input, "+-"), GetSignsBuilder(String.Concat(minusHead ? '-' : '+', _input), "+-"));
+        bool signHead = input[0] == signs[1]; string _input = TrimStartChar(input, signs[1]);
+        return (SplitByChars(_input, signs), GetSignsBuilder(String.Concat(signHead ? signs[1] : signs[0], _input), signs));
     } // Sensitive
-    protected static (string[], StringBuilder) GetMultiplyDivideComponents(ReadOnlySpan<char> input)
-        => (SplitByChars(input, "*/"), GetSignsBuilder(input, "*/"));
     protected static (bool trig, bool hyper) IsInverseFunc(ReadOnlySpan<char> input, int start)
         => (start > 1 ? input[start - 2] == _A : true, start > 2 ? input[start - 3] == _A : true); // Should not simplify
     protected static (int, int, int, int) PrepareLoop(ReadOnlySpan<char> input) => (CountChars(input, "("), input.Length - 1, -1, 0);
@@ -1947,7 +1936,7 @@ public class ReplaceTags : RealComplex
             "z^(1+10i)cos((z-1)/(z^13+z+1))",
             "sum(1/(1-z^n),n,1,100)-100",
             "prod(exp(2/(e(-k/5)z-1)+1),k,1,5)",
-            "coc(iterate((1/Z+Z){0},z,k,1,1000),e(0.02))",
+            "coc(iterate((/Z+Z){0},z,k,1,1000),e(0.02))",
             "iterate(exp(zZ),z,k,1,100)",
             "iterateLoop(ZZ+z,0,k,1,30)",
             "comp(zz,sin(zZ),cos(z/Z))"
@@ -2072,10 +2061,7 @@ public class ReplaceTags : RealComplex
         return _dictionary;
     }
     private static string ReplaceBase(string input, Dictionary<string, string> dictionary)
-    {
-        foreach (var kvp in dictionary) input = input.Replace(kvp.Key, kvp.Value);
-        return input;
-    }
+    { foreach (var kvp in dictionary) input = input.Replace(kvp.Key, kvp.Value); return input; }
     private static string ReplaceConstant(string input) => ReplaceBase(input, CONSTANTS);
     private static string ReplaceCommon(string input) => ReplaceConstant(ReplaceBase(input, AddPrefixSuffix(COMMON)));
     protected static string ReplaceRealComplex(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(REAL_COMPLEX)));
@@ -2141,7 +2127,6 @@ public sealed class ComplexSub : RecoverMultiply
     private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Complex>> cstMtcs = []; // To store reusable constant matrices
-
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
@@ -2264,7 +2249,6 @@ public sealed class ComplexSub : RecoverMultiply
         else { Parallel.For(0, rowChk, p => { stereographic(strdInit[p], strd); }); if (res != 0) stereographic(resInit, res); }
         return new ComplexSub(split[3], _z, Z, buffCocs, rows, columns).Obtain();
     }
-
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2287,7 +2271,6 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
     private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
     private Matrix<Complex> Iterate2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessIterate2);
-
     private Matrix<Complex> Composite(string[] split)
     {
         Matrix<Complex> _value = ObtainValue(split[0]);
@@ -2340,6 +2323,17 @@ public sealed class ComplexSub : RecoverMultiply
         }
         if (useList && !readList) return; if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
+    }
+    [MethodImpl(512)] // AggressiveOptimization
+    private unsafe void Invert(Matrix<Complex> _value)
+    {
+        void invert(int p, int col)
+        {
+            Complex* _valuePtr = _value.RowPtr(p);
+            for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = ~*_valuePtr;
+        }
+        if (useList && !readList) return; if (rows == 1) { invert(0, columns); return; }
+        Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
     private unsafe void Plus(Matrix<Complex> src, Matrix<Complex> dest)
@@ -2455,21 +2449,21 @@ public sealed class ComplexSub : RecoverMultiply
     }
     private MatrixCopy<Complex> BreakMultiplyDivide(string input)
     {
-        var (chunks, signs) = PrepareBreakPSMD(String.Concat('*', input), "*/", THRESHOLD);
+        var (chunks, signs) = PrepareBreakPSMD(input[0] == '/' ? input : String.Concat('*', input), "*/", THRESHOLD);
         Matrix<Complex> product = CopyMtx(MultiplyDivideCore(TrimStartChar(chunks[0], '*')));
         for (int j = 1; j < chunks.Length; j++)
-            Multiply(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat("1/", chunks[j])).matrix, product);
+            Multiply(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat('/', chunks[j])).matrix, product);
         return new(product);
     }
     private MatrixCopy<Complex> MultiplyDivideCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("*/")) return PowerCore(input);
         if (brkChk) if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input.ToString());
-        var (split, signs) = GetMultiplyDivideComponents(input);
-        Matrix<Complex> product = CopyMtx(PowerCore(split[0]));
+        var (split, signs) = GetPSMDComponents(input, "*/");
+        Matrix<Complex> product = CopyMtx(PowerCore(split[0])); if (signs[0] == '/') Invert(product);
         for (int j = 1; j < split.Length; j++)
         {
-            Action<Matrix<Complex>, Matrix<Complex>> operation = signs[j - 1] switch { '*' => Multiply, '/' => Divide };
+            Action<Matrix<Complex>, Matrix<Complex>> operation = signs[j] switch { '*' => Multiply, '/' => Divide };
             operation(PowerCore(split[j]).matrix, product);
         }
         return new(product);
@@ -2486,8 +2480,8 @@ public sealed class ComplexSub : RecoverMultiply
     {
         if (!input.ContainsAny("+-")) return MultiplyDivideCore(input);
         if (brkChk) if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input.ToString());
-        var (split, signs) = GetPlusSubtractComponents(input);
-        Matrix<Complex> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
+        var (split, signs) = GetPSMDComponents(input, "+-");
+        Matrix<Complex> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum);
         for (int i = 1; i < split.Length; i++)
         {
             Action<Matrix<Complex>, Matrix<Complex>> operation = signs[i] switch { '+' => Plus, '-' => Subtract };
@@ -2576,7 +2570,6 @@ public sealed class RealSub : RecoverMultiply
     private readonly Matrix<Real>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Real>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Real>> cstMtcs = []; // To store reusable constant matrices
-
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
@@ -2618,7 +2611,6 @@ public sealed class RealSub : RecoverMultiply
     private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
     public static Complex Stereographic((Real x, Real y) pt, Real r, Real ctrX, Real ctrY)
     { Real x = pt.x, y = pt.y, scal = r / (1 + MathR.Sqrt(1 - x * x - y * y)); return new(scal * x + ctrX, scal * y + ctrY); }
-
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
         {
@@ -2649,7 +2641,6 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { processMinMax(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
         });
-
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathR.Floor(n), MathR.Floor(r)));
     private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathR.Floor(n), MathR.Floor(r)));
@@ -2757,7 +2748,6 @@ public sealed class RealSub : RecoverMultiply
         else { Parallel.For(0, rowChk, p => { stereographic(strdInit[p], strd); }); if (res != 0) stereographic(resInit, res); }
         return new RealSub(split[3], _x, _y, X, Y, buffCocs, rows, columns).Obtain();
     }
-
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2794,7 +2784,6 @@ public sealed class RealSub : RecoverMultiply
         return (split[^1], buffer1.X, buffer1.Y); // Or, alternatively, buffer2
     }
     private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
-
     private Matrix<Real> Composite1(string[] split)
     {
         Matrix<Real> _value = ObtainValue(split[0]);
@@ -2859,6 +2848,17 @@ public sealed class RealSub : RecoverMultiply
         }
         if (useList && !readList) return; if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
+    }
+    [MethodImpl(512)] // AggressiveOptimization
+    private unsafe void Invert(Matrix<Real> _value)
+    {
+        void invert(int p, int col)
+        {
+            Real* _valuePtr = _value.RowPtr(p);
+            for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = 1 / *_valuePtr;
+        }
+        if (useList && !readList) return; if (rows == 1) { invert(0, columns); return; }
+        Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
     private unsafe void Plus(Matrix<Real> src, Matrix<Real> dest)
@@ -2975,21 +2975,21 @@ public sealed class RealSub : RecoverMultiply
     }
     private MatrixCopy<Real> BreakMultiplyDivide(string input)
     {
-        var (chunks, signs) = PrepareBreakPSMD(String.Concat('*', input), "*/", THRESHOLD);
+        var (chunks, signs) = PrepareBreakPSMD(input[0] == '/' ? input : String.Concat('*', input), "*/", THRESHOLD);
         Matrix<Real> product = CopyMtx(MultiplyDivideCore(TrimStartChar(chunks[0], '*')));
         for (int j = 1; j < chunks.Length; j++)
-            Multiply(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat("1/", chunks[j])).matrix, product);
+            Multiply(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat('/', chunks[j])).matrix, product);
         return new(product);
     }
     private MatrixCopy<Real> MultiplyDivideCore(ReadOnlySpan<char> input)
     {
         if (!input.ContainsAny("*/")) return PowerCore(input);
         if (brkChk) if (CountChars(input, "*/") > THRESHOLD) return BreakMultiplyDivide(input.ToString());
-        var (split, signs) = GetMultiplyDivideComponents(input);
-        Matrix<Real> product = CopyMtx(PowerCore(split[0]));
+        var (split, signs) = GetPSMDComponents(input, "*/");
+        Matrix<Real> product = CopyMtx(PowerCore(split[0])); if (signs[0] == '/') Invert(product);
         for (int j = 1; j < split.Length; j++)
         {
-            Action<Matrix<Real>, Matrix<Real>> operation = signs[j - 1] switch { '*' => Multiply, '/' => Divide };
+            Action<Matrix<Real>, Matrix<Real>> operation = signs[j] switch { '*' => Multiply, '/' => Divide };
             operation(PowerCore(split[j]).matrix, product);
         }
         return new(product);
@@ -3006,8 +3006,8 @@ public sealed class RealSub : RecoverMultiply
     {
         if (!input.ContainsAny("+-")) return MultiplyDivideCore(input);
         if (brkChk) if (CountChars(input, "+-") > THRESHOLD) return BreakPlusSubtract(input.ToString());
-        var (split, signs) = GetPlusSubtractComponents(input);
-        Matrix<Real> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum); // Special for "+-"
+        var (split, signs) = GetPSMDComponents(input, "+-");
+        Matrix<Real> sum = CopyMtx(MultiplyDivideCore(split[0])); if (signs[0] == '-') Negate(sum);
         for (int i = 1; i < split.Length; i++)
         {
             Action<Matrix<Real>, Matrix<Real>> operation = signs[i] switch { '+' => Plus, '-' => Subtract };
@@ -3112,11 +3112,11 @@ public readonly struct Complex // Manually inlined to reduce overhead
 
     #region Operators
     [MethodImpl(256)] // AggressiveInlining
-    public static Complex operator -(Complex c) => new(-c.real, -c.imaginary);
-    [MethodImpl(256)] // AggressiveInlining
     public static Complex operator +(Real r, Complex c) => new(r + c.real, c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator +(Complex c1, Complex c2) => new(c1.real + c2.real, c1.imaginary + c2.imaginary);
+    [MethodImpl(256)] // AggressiveInlining
+    public static Complex operator -(Complex c) => new(-c.real, -c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator -(Real r, Complex c) => new(r - c.real, -c.imaginary);
     [MethodImpl(256)] // AggressiveInlining
@@ -3129,6 +3129,9 @@ public readonly struct Complex // Manually inlined to reduce overhead
         Real re1 = c1.real, im1 = c1.imaginary, re2 = c2.real, im2 = c2.imaginary;
         return new(re1 * re2 - im1 * im2, re1 * im2 + im1 * re2);
     }
+    [MethodImpl(256)] // AggressiveInlining
+    public static Complex operator ~(Complex c)
+    { Real re = c.real, im = c.imaginary, denom = re * re + im * im; return new(re / denom, -im / denom); }
     [MethodImpl(256)] // AggressiveInlining
     public static Complex operator /(Complex c, Real r) => new(c.real / r, c.imaginary / r);
     [MethodImpl(256)] // AggressiveInlining
@@ -3162,7 +3165,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
         var (mod, unit) = (MathR.Exp(-MathR.Tau * c.imaginary), MathR.SinCos(MathR.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
     } // Often used in analytic number theory, represented by 'q'
-
     public static Complex Sin(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
@@ -3198,7 +3200,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * re / denom;
         return new(MathR.Atan2(_im, _re) / 2, -MathR.Log(_re * _re + _im * _im) / 4);
     }
-
     public static Complex Sinh(Complex c)
     {
         var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
@@ -3235,7 +3236,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * im / denom;
         return new(MathR.Log(_re * _re + _im * _im) / 4, MathR.Atan2(_im, _re) / 2);
     }
-
     public static Complex Sqrt(Complex c)
     {
         Real re = c.real, im = c.imaginary;
