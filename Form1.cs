@@ -229,6 +229,7 @@ public partial class Graph : Form
     private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
+    //
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
     private bool GeneralInput_Undo() => GeneralInput.Text == ZERO;
@@ -1214,7 +1215,7 @@ public partial class Graph : Form
         if (index < complexL)
             switch (index)
             {
-                case 0: _general = "1.1"; _color = 4; _axes = false; break;
+                case 0: _color = 4; _axes = false; break;
                 case 1: _general = "1.2"; break;
                 case 2: _color = 2; _points = true; break;
                 case 3: _general = "pi/2"; _color = 4; break;
@@ -1233,7 +1234,7 @@ public partial class Graph : Form
                 case 4: _general = "0"; setDetails("-10", "0", "0", "10"); _thick = "0.1"; _color = 1; _points = true; break;
                 case 5: _general = "5"; _color = 1; break;
                 case 6: _general = "3"; break;
-                case 7: _general = "3"; _color = 3; break;
+                case 7: _general = "3"; break;
             }
         else if (index > complexL + realL + 1 && index < complexL + realL + curveL + 2)
             switch (index - complexL - realL - 2)
@@ -1795,8 +1796,7 @@ public class MyString
         => ReplaceRecover(BraFreePart(input, input.IndexOf('('), PairedParenthesis(input, input.IndexOf('('))));
     public static string[] SplitByChars(ReadOnlySpan<char> input, ReadOnlySpan<char> delimiters)
     {
-        Span<bool> lookup = stackalloc bool[1024]; // ASCII + Greek
-        foreach (char d in delimiters) lookup[d] = true;
+        Span<bool> lookup = stackalloc bool[1024]; foreach (char d in delimiters) lookup[d] = true; // ASCII + Greek
         List<string> segments = []; StringBuilder segmentBuilder = new(input.Length);
         foreach (char c in input)
         {
