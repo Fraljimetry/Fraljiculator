@@ -2490,7 +2490,7 @@ public sealed class ComplexSub : RecoverMultiply
         return new(sum);
     }
     private MatrixCopy<Complex> ComputeBraFreePart(ReadOnlySpan<char> input)
-        => Int32.TryParse(input, out int result) ? ConstMtx(new(result)) : PlusSubtractCore(input); // Real.Parse is slower
+        => Int32.TryParse(input, out int result) ? ConstMtx(new(result)) : PlusSubtractCore(input); // Real.TryParse is slower
     private MatrixCopy<Complex> SubCore(string input, int start, MatrixCopy<Complex> bFValue, ref int tagL)
     {
         if (start == 0) return bFValue;
@@ -3016,7 +3016,7 @@ public sealed class RealSub : RecoverMultiply
         return new(sum);
     }
     private MatrixCopy<Real> ComputeBraFreePart(ReadOnlySpan<char> input)
-       => Int32.TryParse(input, out int result) ? ConstMtx(result) : PlusSubtractCore(input); // Real.Parse is slower
+       => Int32.TryParse(input, out int result) ? ConstMtx(result) : PlusSubtractCore(input); // Real.TryParse is slower
     private MatrixCopy<Real> SubCore(string input, int start, MatrixCopy<Real> bFValue, ref int tagL)
     {
         if (start == 0) return bFValue;
