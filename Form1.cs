@@ -667,8 +667,8 @@ public partial class Graph : Form
     private static Color ObtainColorBase(Real argument, Real alpha, int decay) // alpha: brightness
     {
         if (IllegalRatio(alpha)) return Color.Empty; // Necessary
-        Real _argument = argument * 3 / MathR.PI; int proportion, region = argument < 0 ? -1 : (int)_argument;
-        if (region == 6) region = proportion = 0; else proportion = Frac(255, _argument - region);
+        argument /= Complex.PI_THIRD; int proportion, region = argument < 0 ? -1 : (int)argument;
+        if (region == 6) region = proportion = 0; else proportion = Frac(255, argument - region);
         return region switch
         {
             0 => Argb(decay, Frac(255, alpha), Frac(proportion, alpha), 0),
@@ -3103,7 +3103,7 @@ public sealed class RealSub : RecoverMultiply
 public readonly struct Complex // Manually inlined to reduce overhead
 {
     public readonly Real real, imaginary;
-    public static readonly Real QUARTER = (Real)0.25, HALF_PI = MathR.PI / 2, LOG2 = MathR.Log(2);
+    public static readonly Real QUARTER = (Real)0.25, PI_HALF = MathR.PI / 2, PI_THIRD = MathR.PI / 3, LOG2 = MathR.Log(2);
     public static readonly Complex ZERO = new(0), ONE = new(1), I = new(0, 1);
     [MethodImpl(256)] // AggressiveInlining
     public Complex(Real real, Real imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use primary constructor
@@ -3192,7 +3192,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
         Real re = c.real, im = c.imaginary, re_ = 1 - re * re + im * im, im_ = -2 * re * im;
         var (mod, unit) = (MathR.Pow(re_ * re_ + im_ * im_, QUARTER), MathR.SinCos(MathR.Atan2(im_, re_) / 2));
         Real _re = -im + mod * unit.Cos, _im = re + mod * unit.Sin;
-        return new(HALF_PI - MathR.Atan2(_im, _re), MathR.Log(_re * _re + _im * _im) / 2);
+        return new(PI_HALF - MathR.Atan2(_im, _re), MathR.Log(_re * _re + _im * _im) / 2);
     }
     public static Complex Atan(Complex c)
     {
