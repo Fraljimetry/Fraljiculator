@@ -229,7 +229,6 @@ public partial class Graph : Form
     private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
-    //
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
     private bool GeneralInput_Undo() => GeneralInput.Text == ZERO;
@@ -1877,6 +1876,7 @@ public class RealComplex : MyString
     { ThrowException(start > end); for (int i = start; i <= end; i++) action(i); }
     protected static Matrix<Real> ChooseMode((string mode, Matrix<Real> m1, Matrix<Real> m2) mode12)
         => Char.Parse(mode12.mode) switch { MODE_1 => mode12.m1, MODE_2 => mode12.m2 };
+    protected static Matrix<TEntry> HandleMtx<TEntry>(Matrix<TEntry> mtx, Action<Matrix<TEntry>> action) { action(mtx); return mtx; }
     protected static MatrixCopy<TEntry> HandleSolo<TEntry>(ReadOnlySpan<char> input, MatrixCopy<TEntry> mc)
     { ThrowException(input.Length != 1); return mc; }
     protected static string[] PrepareBreakPower(string input, int THRESHOLD)
@@ -2127,6 +2127,7 @@ public sealed class ComplexSub : RecoverMultiply
     private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Complex>> cstMtcs = []; // To store reusable constant matrices
+
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
@@ -2405,7 +2406,6 @@ public sealed class ComplexSub : RecoverMultiply
 
     #region Assembly
     private Matrix<Complex> UninitMtx() => new(rowOffs, columns);
-    private Matrix<Complex> HandleMtx(Matrix<Complex> mtx, Action<Matrix<Complex>> action) { action(mtx); return mtx; }
     private Matrix<Complex> CopyMtx(MatrixCopy<Complex> mc) => mc.copy ? Copy(mc.matrix) : mc.matrix;
     private MatrixCopy<Complex> ConstMtx(Complex _const)
     {
@@ -2570,6 +2570,7 @@ public sealed class RealSub : RecoverMultiply
     private readonly Matrix<Real>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Real>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Real>> cstMtcs = []; // To store reusable constant matrices
+
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
@@ -2930,7 +2931,6 @@ public sealed class RealSub : RecoverMultiply
 
     #region Assembly
     private Matrix<Real> UninitMtx() => new(rowOffs, columns);
-    private Matrix<Real> HandleMtx(Matrix<Real> mtx, Action<Matrix<Real>> action) { action(mtx); return mtx; }
     private Matrix<Real> CopyMtx(MatrixCopy<Real> mc) => mc.copy ? Copy(mc.matrix) : mc.matrix;
     private MatrixCopy<Real> ConstMtx(Real _const)
     {
