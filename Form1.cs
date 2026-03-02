@@ -2255,7 +2255,7 @@ public sealed class ComplexSub : RecoverMultiply
     {
         ThrowInvalidLengths(split, [validLength]);
         int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
-        ComplexSub buffer = ObtainSub(split[0], initMtx, buffCocs, true);
+        ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, buffCocs, true);
 
         CheckFor(RealSub.ToInt(split[subIdx + 1]), RealSub.ToInt(split[subIdx + 2]), i =>
         {
@@ -2754,7 +2754,7 @@ public sealed class RealSub : RecoverMultiply
     {
         ThrowInvalidLengths(split, [validLength]);
         int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
-        RealSub buffer = ObtainSub(split[0], initMtx, null, buffCocs, true);
+        RealSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, null, buffCocs, true);
 
         CheckFor(ToInt(split[subIdx + 1]), ToInt(split[subIdx + 2]), i =>
         {
@@ -2770,7 +2770,7 @@ public sealed class RealSub : RecoverMultiply
     {
         ThrowInvalidLengths(split, [8]);
         string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
-        RealSub obtain(int i) => ObtainSub(split[i], ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
+        RealSub obtain(int i) => ObtainSub(ReplaceLoop(split, i, 4, "0"), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
         split[0] = replaceLoop(0); split[1] = replaceLoop(1); RealSub buffer1 = obtain(0), buffer2 = obtain(1);
         Matrix<Real> temp1, temp2;
 
