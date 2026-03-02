@@ -229,6 +229,7 @@ public partial class Graph : Form
     private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
+    //
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
     private bool GeneralInput_Undo() => GeneralInput.Text == ZERO;
@@ -2153,7 +2154,7 @@ public sealed class ComplexSub : RecoverMultiply
 
     #region Calculations
     private unsafe Matrix<Complex> Hypergeometric(string[] split) // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
-        => (useList && !readList) ? Const(Complex.ZERO) : HandleMtx(Const(Complex.ZERO), sum =>
+        => HandleMtx(Const(Complex.ZERO), sum =>
         {
             var (start, end) = ObtainStartEnd(split, 4, 0, 100);
             Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
@@ -2175,7 +2176,7 @@ public sealed class ComplexSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
         });
     private unsafe Matrix<Complex> Gamma(string[] split) // Reference: https://en.wikipedia.org/wiki/Gamma_function
-        => (useList && !readList) ? Const(Complex.ZERO) : HandleMtx(UninitMtx(), output =>
+        => HandleMtx(UninitMtx(), output =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 1, 100);
             Matrix<Complex> product = Const(Complex.ONE), initial = ObtainValue(split[0]);
@@ -2192,7 +2193,7 @@ public sealed class ComplexSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
         });
     private unsafe Matrix<Complex> Beta(string[] split) // Reference: https://en.wikipedia.org/wiki/Beta_function
-        => (useList && !readList) ? Const(Complex.ZERO) : HandleMtx(UninitMtx(), output =>
+        => HandleMtx(UninitMtx(), output =>
         {
             var (start, end) = ObtainStartEnd(split, 2, 1, 100);
             Matrix<Complex> product = Const(Complex.ONE), input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
@@ -2210,7 +2211,7 @@ public sealed class ComplexSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
         });
     private unsafe Matrix<Complex> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
-        => (useList && !readList) ? Const(Complex.ZERO) : HandleMtx(Const(Complex.ZERO), _sum =>
+        => HandleMtx(Const(Complex.ZERO), _sum =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 0, 50); Real[] logSequence = GetLogSequence(end); // Special for complex
             Matrix<Complex> sum = UninitMtx(), coeff = Const(Complex.ONE), _coeff = UninitMtx(), initial = ObtainValue(split[0]);
@@ -2238,7 +2239,7 @@ public sealed class ComplexSub : RecoverMultiply
         });
     private unsafe Matrix<Complex> Stereographic(string[] split)
     {
-        if (useList && !readList) return Const(Complex.ZERO); ThrowInvalidLengths(split, [4]);
+        ThrowInvalidLengths(split, [4]);
         Matrix<Complex> _z = UninitMtx();
         Real obtain(int i) => RealSub.Obtain(split[i]); Real r = obtain(0), ctrX = obtain(1), ctrY = obtain(2);
         void stereographic(int p, int col)
@@ -2254,13 +2255,13 @@ public sealed class ComplexSub : RecoverMultiply
     {
         ThrowInvalidLengths(split, [validLength]);
         int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
-        ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, RealSub.ToInt(split[subIdx + 1]).ToString()), initMtx, buffCocs, true);
-
-        void resetCount() => buffer.countBra = buffer.countCst = 0;
-        buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
+        ComplexSub buffer = ObtainSub(split[0], initMtx, buffCocs, true);
 
         CheckFor(RealSub.ToInt(split[subIdx + 1]), RealSub.ToInt(split[subIdx + 2]), i =>
-        { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
+        {
+            buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
+            action(buffer); if (!buffer.readList) buffer.readList = true; // To precompute cstMtcs
+        });
         return buffer.Z;
     } // Meticulously optimized
     private Matrix<Complex> ProcessI2C2(string[] split, Func<string[], (string, Matrix<Real>, Matrix<Real>)> function)
@@ -2322,7 +2323,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
         }
-        if (useList && !readList) return; if (rows == 1) { negate(0, columns); return; }
+        if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2333,7 +2334,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = ~*_valuePtr;
         }
-        if (useList && !readList) return; if (rows == 1) { invert(0, columns); return; }
+        if (rows == 1) { invert(0, columns); return; }
         Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2344,7 +2345,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
         }
-        if (useList && !readList) return; if (rows == 1) { plus(0, columns); return; }
+        if (rows == 1) { plus(0, columns); return; }
         Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2355,7 +2356,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
         }
-        if (useList && !readList) return; if (rows == 1) { subtract(0, columns); return; }
+        if (rows == 1) { subtract(0, columns); return; }
         Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2366,7 +2367,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
         }
-        if (useList && !readList) return; if (rows == 1) { multiply(0, columns); return; }
+        if (rows == 1) { multiply(0, columns); return; }
         Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2377,7 +2378,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
         }
-        if (useList && !readList) return; if (rows == 1) { divide(0, columns); return; }
+        if (rows == 1) { divide(0, columns); return; }
         Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2388,7 +2389,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = Complex.Pow(*srcPtr, *destPtr);
         }
-        if (useList && !readList) return; if (rows == 1) { power(0, columns); return; }
+        if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2399,7 +2400,7 @@ public sealed class ComplexSub : RecoverMultiply
             Complex* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
         }
-        if (useList && !readList) return; if (rows == 1) { funcSub(0, columns); return; }
+        if (rows == 1) { funcSub(0, columns); return; }
         Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
     }
     #endregion
@@ -2613,7 +2614,7 @@ public sealed class RealSub : RecoverMultiply
     public static Complex Stereographic((Real x, Real y) pt, Real r, Real ctrX, Real ctrY)
     { Real x = pt.x, y = pt.y, scal = r / (1 + MathR.Sqrt(1 - x * x - y * y)); return new(scal * x + ctrX, scal * y + ctrY); }
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
-        => (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
+        => HandleMtx(UninitMtx(), output =>
         {
             ThrowInvalidLengths(split, [2]);
             Matrix<Real> input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
@@ -2626,7 +2627,7 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
         });
     private unsafe Matrix<Real> ProcessMinMax(string[] split, Func<Real[], Real> function)
-        => (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
+        => HandleMtx(UninitMtx(), output =>
         {
             Matrix<Real>[] _value = new Matrix<Real>[split.Length];
             for (int i = 0; i < split.Length; i++) _value[i] = ObtainValue(split[i]);
@@ -2651,7 +2652,7 @@ public sealed class RealSub : RecoverMultiply
 
     #region Additional Calculations
     private unsafe Matrix<Real> Hypergeometric(string[] split) // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
-        => (useList && !readList) ? Const(0) : HandleMtx(Const(0), sum =>
+        => HandleMtx(Const(0), sum =>
         {
             var (start, end) = ObtainStartEnd(split, 4, 0, 100);
             Matrix<Real> obtain(int index) => ObtainValue(split[index]);
@@ -2673,7 +2674,7 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
         });
     private unsafe Matrix<Real> Gamma(string[] split) // Reference: https://en.wikipedia.org/wiki/Gamma_function
-        => (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
+        => HandleMtx(UninitMtx(), output =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 1, 100);
             Matrix<Real> product = Const(1), initial = ObtainValue(split[0]);
@@ -2690,7 +2691,7 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
         });
     private unsafe Matrix<Real> Beta(string[] split) // Reference: https://en.wikipedia.org/wiki/Beta_function
-        => (useList && !readList) ? Const(0) : HandleMtx(UninitMtx(), output =>
+        => HandleMtx(UninitMtx(), output =>
         {
             var (start, end) = ObtainStartEnd(split, 2, 1, 100);
             Matrix<Real> product = Const(1), input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
@@ -2708,7 +2709,7 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
         });
     private unsafe Matrix<Real> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
-        => (useList && !readList) ? Const(0) : HandleMtx(Const(0), _sum =>
+        => HandleMtx(Const(0), _sum =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 0, 50);
             Matrix<Real> sum = UninitMtx(), coeff = Const(1), _coeff = UninitMtx(), initial = ObtainValue(split[0]);
@@ -2736,7 +2737,7 @@ public sealed class RealSub : RecoverMultiply
         });
     private unsafe Matrix<Real> Stereographic(string[] split)
     {
-        if (useList && !readList) return Const(0); ThrowInvalidLengths(split, [4]);
+        ThrowInvalidLengths(split, [4]);
         Matrix<Real> _x = UninitMtx(), _y = UninitMtx();
         Real obtain(int i) => Obtain(split[i]); Real r = obtain(0), ctrX = obtain(1), ctrY = obtain(2);
         void stereographic(int p, int col)
@@ -2753,13 +2754,13 @@ public sealed class RealSub : RecoverMultiply
     {
         ThrowInvalidLengths(split, [validLength]);
         int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
-        RealSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, ToInt(split[subIdx + 1]).ToString()), initMtx, null, buffCocs, true);
-
-        void resetCount() => buffer.countBra = buffer.countCst = 0;
-        buffer.Obtain(); resetCount(); buffer.readList = true; // To precompute cstMtcs
+        RealSub buffer = ObtainSub(split[0], initMtx, null, buffCocs, true);
 
         CheckFor(ToInt(split[subIdx + 1]), ToInt(split[subIdx + 2]), i =>
-        { buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); resetCount(); action(buffer); });
+        {
+            buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
+            action(buffer); if (!buffer.readList) buffer.readList = true; // To precompute cstMtcs
+        });
         return buffer.X;
     } // Meticulously optimized
     private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
@@ -2769,18 +2770,17 @@ public sealed class RealSub : RecoverMultiply
     {
         ThrowInvalidLengths(split, [8]);
         string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
-        split[0] = replaceLoop(0); split[1] = replaceLoop(1); RealSub obtain(int i)
-            => ObtainSub(ReplaceLoop(split, i, 4, ToInt(split[5]).ToString()), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
-        RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<Real> temp1, temp2;
-
-        void resetCount() => buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
-        buffer1.Obtain(); buffer2.Obtain(); resetCount(); buffer1.readList = buffer2.readList = true; // To precompute cstMtcs
+        RealSub obtain(int i) => ObtainSub(split[i], ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
+        split[0] = replaceLoop(0); split[1] = replaceLoop(1); RealSub buffer1 = obtain(0), buffer2 = obtain(1);
+        Matrix<Real> temp1, temp2;
 
         CheckFor(ToInt(split[5]), ToInt(split[6]), i =>
         {
             buffer1.input = ReplaceLoop(split, 0, 4, i.ToString()); buffer2.input = ReplaceLoop(split, 1, 4, i.ToString());
-            resetCount(); temp1 = buffer1.Obtain(); temp2 = buffer2.Obtain(); // Necessary
+            buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
+            temp1 = buffer1.Obtain(); temp2 = buffer2.Obtain(); // Necessary
             buffer1.X = buffer2.X = temp1; buffer1.Y = buffer2.Y = temp2;
+            if (!buffer1.readList) buffer1.readList = buffer2.readList = true; // To precompute cstMtcs
         });
         return (split[^1], buffer1.X, buffer1.Y); // Or, alternatively, buffer2
     }
@@ -2847,7 +2847,7 @@ public sealed class RealSub : RecoverMultiply
             Real* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
         }
-        if (useList && !readList) return; if (rows == 1) { negate(0, columns); return; }
+        if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2858,7 +2858,7 @@ public sealed class RealSub : RecoverMultiply
             Real* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = 1 / *_valuePtr;
         }
-        if (useList && !readList) return; if (rows == 1) { invert(0, columns); return; }
+        if (rows == 1) { invert(0, columns); return; }
         Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2869,7 +2869,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
         }
-        if (useList && !readList) return; if (rows == 1) { plus(0, columns); return; }
+        if (rows == 1) { plus(0, columns); return; }
         Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2880,7 +2880,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
         }
-        if (useList && !readList) return; if (rows == 1) { subtract(0, columns); return; }
+        if (rows == 1) { subtract(0, columns); return; }
         Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2891,7 +2891,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
         }
-        if (useList && !readList) return; if (rows == 1) { multiply(0, columns); return; }
+        if (rows == 1) { multiply(0, columns); return; }
         Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2902,7 +2902,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
         }
-        if (useList && !readList) return; if (rows == 1) { divide(0, columns); return; }
+        if (rows == 1) { divide(0, columns); return; }
         Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2913,7 +2913,7 @@ public sealed class RealSub : RecoverMultiply
             Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
             for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathR.Pow(*srcPtr, *destPtr);
         }
-        if (useList && !readList) return; if (rows == 1) { power(0, columns); return; }
+        if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
     }
     [MethodImpl(512)] // AggressiveOptimization
@@ -2924,7 +2924,7 @@ public sealed class RealSub : RecoverMultiply
             Real* _valuePtr = _value.RowPtr(p);
             for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
         }
-        if (useList && !readList) return; if (rows == 1) { funcSub(0, columns); return; }
+        if (rows == 1) { funcSub(0, columns); return; }
         Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
     }
     #endregion
