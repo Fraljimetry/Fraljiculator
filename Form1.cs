@@ -229,7 +229,6 @@ public partial class Graph : Form
     private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
-    //
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
     private bool GeneralInput_Undo() => GeneralInput.Text == ZERO;
@@ -1617,8 +1616,6 @@ public partial class Graph : Form
     private static void ShrinkPicture(PictureBox pbx, int decrement) => ResizeControl(pbx, decrement, false);
     private void PictureLogo_MouseHover(object sender, EventArgs e) => EnlargePicture(PictureLogo, 5);
     private void PictureLogo_MouseLeave(object sender, EventArgs e) => ShrinkPicture(PictureLogo, 5);
-    private void PicturePlay_MouseHover(object sender, EventArgs e) => EnlargePicture(PicturePlay, 2);
-    private void PicturePlay_MouseLeave(object sender, EventArgs e) => ShrinkPicture(PicturePlay, 2);
     private void PictureIncorrect_MouseHover(object sender, EventArgs e) => EnlargePicture(PictureIncorrect, 2);
     private void PictureIncorrect_MouseLeave(object sender, EventArgs e) => ShrinkPicture(PictureIncorrect, 2);
     //
@@ -3165,6 +3162,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
         var (mod, unit) = (MathR.Exp(-MathR.Tau * c.imaginary), MathR.SinCos(MathR.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
     } // Often used in analytic number theory, represented by 'q'
+    //
     public static Complex Sin(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
@@ -3200,6 +3198,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * re / denom;
         return new(MathR.Atan2(_im, _re) / 2, -MathR.Log(_re * _re + _im * _im) / 4);
     }
+    //
     public static Complex Sinh(Complex c)
     {
         var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
@@ -3236,6 +3235,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * im / denom;
         return new(MathR.Log(_re * _re + _im * _im) / 4, MathR.Atan2(_im, _re) / 2);
     }
+    //
     public static Complex Sqrt(Complex c)
     {
         Real re = c.real, im = c.imaginary;
