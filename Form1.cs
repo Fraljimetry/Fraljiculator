@@ -1,5 +1,3 @@
-/// GitHub link: https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
-
 using Real = System.Double;
 using MathR = System.Math;
 
@@ -2200,8 +2198,9 @@ public sealed class ComplexSub : RecoverMultiply
                     input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
                 {
-                    for (int i = start; i <= end; i++) *productPtr *= 1 + *input1Ptr * *input2Ptr / ((i + *input1Ptr + *input2Ptr) * i);
-                    *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
+                    Complex inputSum = *input1Ptr + *input2Ptr, inputProduct = *input1Ptr * *input2Ptr;
+                    for (int i = start; i <= end; i++) *productPtr *= 1 + inputProduct / (i + inputSum) / i;
+                    *outputPtr = inputSum / inputProduct / *productPtr;
                 }
             }
             if (rows == 1) { beta(0, columns); return; }
@@ -2698,8 +2697,9 @@ public sealed class RealSub : RecoverMultiply
                     input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
                 {
-                    for (int i = start; i <= end; i++) *productPtr *= 1 + *input1Ptr * *input2Ptr / ((i + *input1Ptr + *input2Ptr) * i);
-                    *outputPtr = (*input1Ptr + *input2Ptr) / (*input1Ptr * *input2Ptr) / *productPtr;
+                    Real inputSum = *input1Ptr + *input2Ptr, inputProduct = *input1Ptr * *input2Ptr;
+                    for (int i = start; i <= end; i++) *productPtr *= 1 + inputProduct / (i + inputSum) / i;
+                    *outputPtr = inputSum / inputProduct / *productPtr;
                 }
             }
             if (rows == 1) { beta(0, columns); return; }
