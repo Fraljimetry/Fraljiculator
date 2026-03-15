@@ -1,8 +1,10 @@
+/// GitHub link: https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
+
 using Real = System.Double;
 using MathR = System.Math;
 
-using System.Runtime.CompilerServices; // MethodImpl (AggressiveInlining = 256, AggressiveOptimization = 512)
 using System.Runtime.InteropServices; // DllImport, StructLayout
+using System.Runtime.CompilerServices; // MethodImpl
 using System.Drawing.Imaging; // BitmapData
 using System.Text; // StringBuilder
 
@@ -1828,7 +1830,7 @@ public class MyString
 } /// String manipulations
 public class RealComplex : MyString
 {
-    protected static readonly Real GAMMA = (Real)0.5772156649015329;
+    protected static readonly Real GAMMA = (Real)0.5772156649015329, LOG2 = MathR.Log(2);
     protected static readonly int THRESHOLD = 10, BRKCHK = 5 * THRESHOLD, STEP = 1; // STEP: a tunable chunk size
     protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replacing "+-*/"
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
@@ -1848,9 +1850,9 @@ public class RealComplex : MyString
     }
     public unsafe static int[] GetArithProg(int length, int diff)
     {
-        if (length == 0) return []; int[] progression = new int[length];
-        fixed (int* ptr = progression) { int* _ptr = ptr; for (int i = 0, j = 0; i < length; i++, _ptr++, j += diff) *_ptr = j; }
-        return progression;
+        if (length == 0) return []; int[] arithProg = new int[length];
+        fixed (int* ptr = arithProg) { int* _ptr = ptr; for (int i = 0, j = 0; i < length; i++, _ptr++, j += diff) *_ptr = j; }
+        return arithProg;
     }
     protected static void Initialize<TEntry>(int rows, int columns, ref int rowChk, ref int[]? rowOffs, ref uint colBytes,
         ref int strd, ref int[]? strdInit, ref uint strdBytes, ref int res, ref int resInit, ref uint resBytes)
@@ -1862,11 +1864,20 @@ public class RealComplex : MyString
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
-    protected unsafe static Real[] GetLogSequence(int end)
+    protected unsafe static (Real[], Real[], Real[]) GetSeqsForZeta(int start, int end)
     {
-        Real[] logSequence = new Real[end + 1];
-        fixed (Real* ptr = logSequence) { Real* _ptr = ptr; for (int i = 0; i <= end; i++, _ptr++) *_ptr = MathR.Log(i + 1); }
-        return logSequence;
+        int length = end - start + 1;
+        Real[] coeffSeq = new Real[length], _coeffSeq = new Real[length * (length + 1) / 2], logSeq = new Real[length];
+        fixed (Real* coeffSeqPtr = coeffSeq, _coeffSeqPtr = _coeffSeq, logSeqPtr = logSeq)
+        {
+            Real* ptr = coeffSeqPtr, _ptr = _coeffSeqPtr, ptrL = logSeqPtr; Real coeff = 1, _coeff;
+            for (int i = start; i <= end; i++, ptr++, ptrL++)
+            {
+                coeff /= 2; *ptr = coeff; *ptrL = MathR.Log(i + 1); _coeff = 1;
+                for (int j = start; j <= i; j++, _ptr++) { *_ptr = _coeff; _coeff *= (Real)(j - i) / (Real)(j + 1); }
+            }
+        }
+        return (coeffSeq, _coeffSeq, logSeq);
     }
     public static void CheckFor(int start, int end, Action<int> action)
     { ThrowException(start > end); for (int i = start; i <= end; i++) action(i); }
@@ -2153,17 +2164,17 @@ public sealed class ComplexSub : RecoverMultiply
         {
             var (start, end) = ObtainStartEnd(split, 4, 0, 100);
             Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
-            Matrix<Complex> product = Const(Complex.ONE), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
+            Matrix<Complex> a = obtain(0), b = obtain(1), c = obtain(2), initial = obtain(3);
             void hypergeometric(int p, int col)
             {
-                Complex* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
-                    _aPtr = _a.RowPtr(p), _bPtr = _b.RowPtr(p), _cPtr = _c.RowPtr(p), initialPtr = initial.RowPtr(p);
-                for (int q = 0; q < col; q++, productPtr++, sumPtr++, _aPtr++, _bPtr++, _cPtr++, initialPtr++)
+                Complex* sumPtr = sum.RowPtr(p), aPtr = a.RowPtr(p), bPtr = b.RowPtr(p), cPtr = c.RowPtr(p), initialPtr = initial.RowPtr(p);
+                for (int q = 0; q < col; q++, sumPtr++, aPtr++, bPtr++, cPtr++, initialPtr++)
                 {
+                    Complex product = Complex.ONE; Real temp;
                     for (int i = start; i <= end; i++)
                     {
-                        if (i != start) *productPtr *= *initialPtr * (i - 1 + *_aPtr) * (i - 1 + *_bPtr) / (i - 1 + *_cPtr) / i;
-                        *sumPtr += *productPtr;
+                        if (i != start) { temp = i - 1; product *= *initialPtr * (temp + *aPtr) * (temp + *bPtr) / (temp + *cPtr) / i; }
+                        *sumPtr += product;
                     }
                 }
             }
@@ -2174,14 +2185,15 @@ public sealed class ComplexSub : RecoverMultiply
         => HandleMtx(UninitMtx(), output =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 1, 100);
-            Matrix<Complex> product = Const(Complex.ONE), initial = ObtainValue(split[0]);
+            Matrix<Complex> initial = ObtainValue(split[0]);
             void gamma(int p, int col)
             {
-                Complex* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
-                for (int q = 0; q < col; q++, productPtr++, initialPtr++, outputPtr++)
+                Complex* initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
+                for (int q = 0; q < col; q++, initialPtr++, outputPtr++)
                 {
-                    for (int i = start; i <= end; i++) { Complex temp = *initialPtr / i; *productPtr *= Complex.Exp(temp) / (1 + temp); }
-                    *outputPtr = *productPtr * Complex.Exp(-*initialPtr * GAMMA) / *initialPtr;
+                    Complex product = Complex.ONE, temp;
+                    for (int i = start; i <= end; i++) { temp = *initialPtr / i; product *= Complex.Exp(temp) / (1 + temp); }
+                    *outputPtr = product * Complex.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
             }
             if (rows == 1) { gamma(0, columns); return; }
@@ -2191,43 +2203,37 @@ public sealed class ComplexSub : RecoverMultiply
         => HandleMtx(UninitMtx(), output =>
         {
             var (start, end) = ObtainStartEnd(split, 2, 1, 100);
-            Matrix<Complex> product = Const(Complex.ONE), input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
+            Matrix<Complex> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
             void beta(int p, int col)
             {
-                Complex* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
-                    input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
-                for (int q = 0; q < col; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
+                Complex* initial1Ptr = initial1.RowPtr(p), initial2Ptr = initial2.RowPtr(p), outputPtr = output.RowPtr(p);
+                for (int q = 0; q < col; q++, initial1Ptr++, initial2Ptr++, outputPtr++)
                 {
-                    Complex inputSum = *input1Ptr + *input2Ptr, inputProduct = *input1Ptr * *input2Ptr;
-                    for (int i = start; i <= end; i++) *productPtr *= 1 + inputProduct / (i + inputSum) / i;
-                    *outputPtr = inputSum / inputProduct / *productPtr;
+                    Complex product = Complex.ONE, initSum = *initial1Ptr + *initial2Ptr, initProd = *initial1Ptr * *initial2Ptr;
+                    for (int i = start; i <= end; i++) product *= 1 + initProd / (i + initSum) / i;
+                    *outputPtr = initSum / initProd / product;
                 }
             }
             if (rows == 1) { beta(0, columns); return; }
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
         });
     private unsafe Matrix<Complex> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
-        => HandleMtx(Const(Complex.ZERO), _sum =>
+        => HandleMtx(Const(Complex.ZERO), sum =>
         {
-            var (start, end) = ObtainStartEnd(split, 1, 0, 50); Real[] logSequence = GetLogSequence(end); // Special for complex
-            Matrix<Complex> sum = UninitMtx(), coeff = Const(Complex.ONE), _coeff = UninitMtx(), initial = ObtainValue(split[0]);
+            var (start, end) = ObtainStartEnd(split, 1, 0, 50);
+            Matrix<Complex> initial = ObtainValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
             void zeta(int p, int col)
             {
-                Complex* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
-                    coeffPtr = coeff.RowPtr(p), _coeffPtr = _coeff.RowPtr(p), initialPtr = initial.RowPtr(p);
-                for (int q = 0; q < col; q++, sumPtr++, _sumPtr++, coeffPtr++, _coeffPtr++, initialPtr++)
+                Complex* sumPtr = sum.RowPtr(p), initialPtr = initial.RowPtr(p);
+                for (int q = 0; q < col; q++, sumPtr++, initialPtr++)
                 {
-                    for (int i = start; i <= end; i++)
+                    Complex _sum = Complex.ZERO, initNeg = -*initialPtr;
+                    for (int i = start, k = start; i <= end; i++)
                     {
-                        *coeffPtr /= 2; *_coeffPtr = Complex.ONE; *sumPtr = Complex.ZERO;
-                        for (int j = start; j <= i; j++)
-                        {
-                            *sumPtr += *_coeffPtr * Complex.Exp(-*initialPtr * logSequence[j]);
-                            *_coeffPtr *= (Real)(j - i) / (Real)(j + 1); // (Real) is not redundant
-                        }
-                        *sumPtr *= *coeffPtr; *_sumPtr += *sumPtr;
+                        for (int j = start; j <= i; j++, k++) _sum += Complex.Exp(initNeg * logSeq[j]) * _coeffSeq[k];
+                        *sumPtr += _sum * coeffSeq[i]; _sum = Complex.ZERO;
                     }
-                    *_sumPtr /= 1 - Complex.Exp((1 - *initialPtr) * Complex.LOG2);
+                    *sumPtr /= 1 - Complex.Exp((1 + initNeg) * LOG2);
                 }
             }
             if (rows == 1) { zeta(0, columns); return; }
@@ -2285,7 +2291,7 @@ public sealed class ComplexSub : RecoverMultiply
     #endregion
 
     #region Elements
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public unsafe static Matrix<Complex> InitilizeZ(Matrix<Real> xCoor, Matrix<Real> yCoor, int rows, int columns)
     {
         Matrix<Complex> zCoor = new(GetArithProg(rows, columns), columns);
@@ -2296,14 +2302,14 @@ public sealed class ComplexSub : RecoverMultiply
         });
         return zCoor;
     } // Cannot use HandleMtx in a static method
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe Matrix<Complex> Copy(Matrix<Complex> src) => HandleMtx(UninitMtx(), dest =>
     {
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
         if (rows == 1) { copy(0, colBytes); return; }
         Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     });
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe Matrix<Complex> Const(Complex _const) => HandleMtx(UninitMtx(), output =>
     {
         Complex* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
@@ -2311,7 +2317,7 @@ public sealed class ComplexSub : RecoverMultiply
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
         Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     }); // Sensitive
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Negate(Matrix<Complex> _value)
     {
         void negate(int p, int col)
@@ -2322,7 +2328,7 @@ public sealed class ComplexSub : RecoverMultiply
         if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Invert(Matrix<Complex> _value)
     {
         void invert(int p, int col)
@@ -2333,7 +2339,7 @@ public sealed class ComplexSub : RecoverMultiply
         if (rows == 1) { invert(0, columns); return; }
         Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Plus(Matrix<Complex> src, Matrix<Complex> dest)
     {
         void plus(int p, int col)
@@ -2344,7 +2350,7 @@ public sealed class ComplexSub : RecoverMultiply
         if (rows == 1) { plus(0, columns); return; }
         Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Subtract(Matrix<Complex> src, Matrix<Complex> dest)
     {
         void subtract(int p, int col)
@@ -2355,7 +2361,7 @@ public sealed class ComplexSub : RecoverMultiply
         if (rows == 1) { subtract(0, columns); return; }
         Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Multiply(Matrix<Complex> src, Matrix<Complex> dest)
     {
         void multiply(int p, int col)
@@ -2366,7 +2372,7 @@ public sealed class ComplexSub : RecoverMultiply
         if (rows == 1) { multiply(0, columns); return; }
         Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Divide(Matrix<Complex> src, Matrix<Complex> dest)
     {
         void divide(int p, int col)
@@ -2377,7 +2383,7 @@ public sealed class ComplexSub : RecoverMultiply
         if (rows == 1) { divide(0, columns); return; }
         Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Power(Matrix<Complex> src, Matrix<Complex> dest)
     {
         void power(int p, int col)
@@ -2388,7 +2394,7 @@ public sealed class ComplexSub : RecoverMultiply
         if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void FuncSub(Matrix<Complex> _value, Func<Complex, Complex> function)
     {
         void funcSub(int p, int col)
@@ -2652,17 +2658,17 @@ public sealed class RealSub : RecoverMultiply
         {
             var (start, end) = ObtainStartEnd(split, 4, 0, 100);
             Matrix<Real> obtain(int index) => ObtainValue(split[index]);
-            Matrix<Real> product = Const(1), _a = obtain(0), _b = obtain(1), _c = obtain(2), initial = obtain(3);
+            Matrix<Real> a = obtain(0), b = obtain(1), c = obtain(2), initial = obtain(3);
             void hypergeometric(int p, int col)
             {
-                Real* productPtr = product.RowPtr(p), sumPtr = sum.RowPtr(p),
-                    _aPtr = _a.RowPtr(p), _bPtr = _b.RowPtr(p), _cPtr = _c.RowPtr(p), initialPtr = initial.RowPtr(p);
-                for (int q = 0; q < col; q++, productPtr++, sumPtr++, _aPtr++, _bPtr++, _cPtr++, initialPtr++)
+                Real* sumPtr = sum.RowPtr(p), aPtr = a.RowPtr(p), bPtr = b.RowPtr(p), cPtr = c.RowPtr(p), initialPtr = initial.RowPtr(p);
+                for (int q = 0; q < col; q++, sumPtr++, aPtr++, bPtr++, cPtr++, initialPtr++)
                 {
+                    Real product = 1, temp;
                     for (int i = start; i <= end; i++)
                     {
-                        if (i != start) *productPtr *= *initialPtr * (i - 1 + *_aPtr) * (i - 1 + *_bPtr) / (i - 1 + *_cPtr) / i;
-                        *sumPtr += *productPtr;
+                        if (i != start) { temp = i - 1; product *= *initialPtr * (temp + *aPtr) * (temp + *bPtr) / (temp + *cPtr) / i; }
+                        *sumPtr += product;
                     }
                 }
             }
@@ -2673,14 +2679,15 @@ public sealed class RealSub : RecoverMultiply
         => HandleMtx(UninitMtx(), output =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 1, 100);
-            Matrix<Real> product = Const(1), initial = ObtainValue(split[0]);
+            Matrix<Real> initial = ObtainValue(split[0]);
             void gamma(int p, int col)
             {
-                Real* productPtr = product.RowPtr(p), initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
-                for (int q = 0; q < col; q++, productPtr++, initialPtr++, outputPtr++)
+                Real* initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
+                for (int q = 0; q < col; q++, initialPtr++, outputPtr++)
                 {
-                    for (int i = start; i <= end; i++) { Real temp = *initialPtr / i; *productPtr *= MathR.Exp(temp) / (1 + temp); }
-                    *outputPtr = *productPtr * MathR.Exp(-*initialPtr * GAMMA) / *initialPtr;
+                    Real product = 1, temp;
+                    for (int i = start; i <= end; i++) { temp = *initialPtr / i; product *= MathR.Exp(temp) / (1 + temp); }
+                    *outputPtr = product * MathR.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
             }
             if (rows == 1) { gamma(0, columns); return; }
@@ -2690,43 +2697,37 @@ public sealed class RealSub : RecoverMultiply
         => HandleMtx(UninitMtx(), output =>
         {
             var (start, end) = ObtainStartEnd(split, 2, 1, 100);
-            Matrix<Real> product = Const(1), input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
+            Matrix<Real> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
             void beta(int p, int col)
             {
-                Real* productPtr = product.RowPtr(p), input1Ptr = input1.RowPtr(p),
-                    input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
-                for (int q = 0; q < col; q++, productPtr++, input1Ptr++, input2Ptr++, outputPtr++)
+                Real* initial1Ptr = initial1.RowPtr(p), initial2Ptr = initial2.RowPtr(p), outputPtr = output.RowPtr(p);
+                for (int q = 0; q < col; q++, initial1Ptr++, initial2Ptr++, outputPtr++)
                 {
-                    Real inputSum = *input1Ptr + *input2Ptr, inputProduct = *input1Ptr * *input2Ptr;
-                    for (int i = start; i <= end; i++) *productPtr *= 1 + inputProduct / (i + inputSum) / i;
-                    *outputPtr = inputSum / inputProduct / *productPtr;
+                    Real product = 1, initSum = *initial1Ptr + *initial2Ptr, initProd = *initial1Ptr * *initial2Ptr;
+                    for (int i = start; i <= end; i++) product *= 1 + initProd / (i + initSum) / i;
+                    *outputPtr = initSum / initProd / product;
                 }
             }
             if (rows == 1) { beta(0, columns); return; }
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
         });
     private unsafe Matrix<Real> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
-        => HandleMtx(Const(0), _sum =>
+        => HandleMtx(Const(0), sum =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 0, 50);
-            Matrix<Real> sum = UninitMtx(), coeff = Const(1), _coeff = UninitMtx(), initial = ObtainValue(split[0]);
+            Matrix<Real> initial = ObtainValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
             void zeta(int p, int col)
             {
-                Real* sumPtr = sum.RowPtr(p), _sumPtr = _sum.RowPtr(p),
-                    coeffPtr = coeff.RowPtr(p), _coeffPtr = _coeff.RowPtr(p), initialPtr = initial.RowPtr(p);
-                for (int q = 0; q < col; q++, sumPtr++, _sumPtr++, coeffPtr++, _coeffPtr++, initialPtr++)
+                Real* sumPtr = sum.RowPtr(p), initialPtr = initial.RowPtr(p);
+                for (int q = 0; q < col; q++, sumPtr++, initialPtr++)
                 {
-                    for (int i = start; i <= end; i++)
+                    Real _sum = 0, initNeg = -*initialPtr;
+                    for (int i = start, k = start; i <= end; i++)
                     {
-                        *coeffPtr /= 2; *_coeffPtr = 1; *sumPtr = 0;
-                        for (int j = start; j <= i; j++)
-                        {
-                            *sumPtr += *_coeffPtr * MathR.Pow(j + 1, -*initialPtr);
-                            *_coeffPtr *= (Real)(j - i) / (Real)(j + 1); // (Real) is not redundant
-                        }
-                        *sumPtr *= *coeffPtr; *_sumPtr += *sumPtr;
+                        for (int j = start; j <= i; j++, k++) _sum += MathR.Exp(initNeg * logSeq[j]) * _coeffSeq[k];
+                        *sumPtr += _sum * coeffSeq[i]; _sum = 0;
                     }
-                    *_sumPtr /= 1 - MathR.Pow(2, 1 - *initialPtr);
+                    *sumPtr /= 1 - MathR.Exp((1 + initNeg) * LOG2);
                 }
             }
             if (rows == 1) { zeta(0, columns); return; }
@@ -2810,7 +2811,7 @@ public sealed class RealSub : RecoverMultiply
     #endregion
 
     #region Elements
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public unsafe static (Matrix<Real>, Matrix<Real>) InitializeXY(Matrix<Complex> zCoor, int rows, int columns)
     {
         Matrix<Real> xCoor = new(GetArithProg(rows, columns), columns), yCoor = new(GetArithProg(rows, columns), columns);
@@ -2821,14 +2822,14 @@ public sealed class RealSub : RecoverMultiply
         });
         return (xCoor, yCoor);
     } // Cannot use HandleMtx in a static method
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe Matrix<Real> Copy(Matrix<Real> src) => HandleMtx(UninitMtx(), dest =>
     {
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
         if (rows == 1) { copy(0, colBytes); return; }
         Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     });
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe Matrix<Real> Const(Real _const) => HandleMtx(UninitMtx(), output =>
     {
         Real* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
@@ -2836,7 +2837,7 @@ public sealed class RealSub : RecoverMultiply
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
         Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     }); // Sensitive
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Negate(Matrix<Real> _value)
     {
         void negate(int p, int col)
@@ -2847,7 +2848,7 @@ public sealed class RealSub : RecoverMultiply
         if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Invert(Matrix<Real> _value)
     {
         void invert(int p, int col)
@@ -2858,7 +2859,7 @@ public sealed class RealSub : RecoverMultiply
         if (rows == 1) { invert(0, columns); return; }
         Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Plus(Matrix<Real> src, Matrix<Real> dest)
     {
         void plus(int p, int col)
@@ -2869,7 +2870,7 @@ public sealed class RealSub : RecoverMultiply
         if (rows == 1) { plus(0, columns); return; }
         Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Subtract(Matrix<Real> src, Matrix<Real> dest)
     {
         void subtract(int p, int col)
@@ -2880,7 +2881,7 @@ public sealed class RealSub : RecoverMultiply
         if (rows == 1) { subtract(0, columns); return; }
         Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Multiply(Matrix<Real> src, Matrix<Real> dest)
     {
         void multiply(int p, int col)
@@ -2891,7 +2892,7 @@ public sealed class RealSub : RecoverMultiply
         if (rows == 1) { multiply(0, columns); return; }
         Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Divide(Matrix<Real> src, Matrix<Real> dest)
     {
         void divide(int p, int col)
@@ -2902,7 +2903,7 @@ public sealed class RealSub : RecoverMultiply
         if (rows == 1) { divide(0, columns); return; }
         Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void Power(Matrix<Real> src, Matrix<Real> dest)
     {
         void power(int p, int col)
@@ -2913,7 +2914,7 @@ public sealed class RealSub : RecoverMultiply
         if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
     }
-    [MethodImpl(512)] // AggressiveOptimization
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private unsafe void FuncSub(Matrix<Real> _value, Func<Real, Real> function)
     {
         void funcSub(int p, int col)
@@ -3100,38 +3101,38 @@ public sealed class RealSub : RecoverMultiply
 public readonly struct Complex // Manually inlined to reduce overhead
 {
     public readonly Real real, imaginary;
-    public static readonly Real QUARTER = (Real)0.25, PI_HALF = MathR.PI / 2, PI_THIRD = MathR.PI / 3, LOG2 = MathR.Log(2);
+    public static readonly Real QUARTER = (Real)0.25, PI_HALF = MathR.PI / 2, PI_THIRD = MathR.PI / 3;
     public static readonly Complex ZERO = new(0), ONE = new(1), I = new(0, 1);
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Complex(Real real, Real imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use primary constructor
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static (Real, Real) ReIm(Complex c) => (c.real, c.imaginary);
 
     #region Operators
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator +(Real r, Complex c) => new(r + c.real, c.imaginary);
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator +(Complex c1, Complex c2) => new(c1.real + c2.real, c1.imaginary + c2.imaginary);
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator -(Complex c) => new(-c.real, -c.imaginary);
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator -(Real r, Complex c) => new(r - c.real, -c.imaginary);
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator -(Complex c1, Complex c2) => new(c1.real - c2.real, c1.imaginary - c2.imaginary);
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator *(Complex c, Real r) => new(c.real * r, c.imaginary * r);
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator *(Complex c1, Complex c2)
     {
         Real re1 = c1.real, im1 = c1.imaginary, re2 = c2.real, im2 = c2.imaginary;
         return new(re1 * re2 - im1 * im2, re1 * im2 + im1 * re2);
     }
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator ~(Complex c)
     { Real re = c.real, im = c.imaginary, denom = re * re + im * im; return new(re / denom, -im / denom); }
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator /(Complex c, Real r) => new(c.real / r, c.imaginary / r);
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator /(Complex c1, Complex c2)
     {
         Real re1 = c1.real, im1 = c1.imaginary, re2 = c2.real, im2 = c2.imaginary, denom = re2 * re2 + im2 * im2;
@@ -3198,7 +3199,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * re / denom;
         return new(MathR.Atan2(_im, _re) / 2, -MathR.Log(_re * _re + _im * _im) / 4);
     }
-    //
     public static Complex Sinh(Complex c)
     {
         var (mod, unit) = (MathR.Exp(c.real) / 2, MathR.SinCos(c.imaginary));
@@ -3252,20 +3252,20 @@ public readonly struct Matrix<TEntry>
     private readonly TEntry[] matrix;
     private readonly int[] rowOffs; // For row extraction
 
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Matrix(int[] rowOffs, int col) { this.rowOffs = rowOffs; matrix = GC.AllocateUninitializedArray<TEntry>(rowOffs[^1] + col); }
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Matrix(TEntry x) { matrix = [x]; rowOffs = [0]; } // Special for real
     public TEntry this[int row, int column]
     {
-        [MethodImpl(256)] // AggressiveInlining
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => Access(matrix, Access(rowOffs, row) + column);
-        [MethodImpl(256)] // AggressiveInlining
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set => Access(matrix, Access(rowOffs, row) + column) = value;
     }
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly unsafe TEntry* RowPtr(int row = 0) { fixed (TEntry* ptr = &Access(matrix, Access(rowOffs, row))) { return ptr; } }
-    [MethodImpl(256)] // AggressiveInlining
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ref T Access<T>(T[] array, int index) => ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index);
 } /// Optimized real or complex matrices
 public readonly struct MatrixCopy<TEntry>(Matrix<TEntry> matrix, bool copy = false)
