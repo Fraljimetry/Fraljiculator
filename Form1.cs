@@ -1785,7 +1785,7 @@ public class MyString
     { foreach (string s in substrings) input = input.Replace(s, substitution); return input; }
     public static string ReplaceZetas(string input) => ReplaceSubstrings(input, ZETAS, "(");
     protected static string RemoveEnterBlank(string input) => ReplaceSubstrings(input, RecoverMultiply.ENTER_BLANK, String.Empty);
-    public static string BeautifyInput(string input) => RemoveEnterBlank(input).Replace(",", ", ");
+    public static string BeautifyInput(string input) => RemoveEnterBlank(input).Replace(",", ", ").Replace("|", " | ");
     #endregion
 
     #region Miscellaneous
