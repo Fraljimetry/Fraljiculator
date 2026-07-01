@@ -1,5 +1,3 @@
-/// GitHub link: https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
-
 using Real = System.Double;
 using MathR = System.Math;
 
@@ -1050,7 +1048,8 @@ public partial class Graph : Form
             $"\r\n{TAB}Beta(f(x,y) & f(z), g(x,y) & g(z), int n)" +
             $"\r\n\r\n{TAB}Zeta(f(x,y) & f(z)) & " +
             $"\r\n{TAB}Zeta(f(x,y) & f(z), int n){GetComment("This is a mess for n too large.")}") +
-            $"\r\n\r\n{TAB}Stereographic & Stereo(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))";
+            $"\r\n\r\n{TAB}Stereographic & Stereo(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))" +
+            $"\r\n\r\n{TAB}Homothety & Homoth(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))";
         content += subTitleContent("REPETITIONS",
             $"\r\n\r\n{GetComment("Capitalizations represent substitutions of variables.")}" +
             $"\r\n\r\n{TAB}Sum(f(x,y,k) & f(z,k), k, int a, int b)" +
@@ -1834,7 +1833,7 @@ public class RealComplex : MyString
     protected static readonly int THRESHOLD = 10, BRKCHK = 5 * THRESHOLD, STEP = 1; // STEP: a tunable chunk size
     protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replacing "+-*/"
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
-        _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
+        _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', H_ = 'H', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
         M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r', R_ = 'R',
         _S = 's', S_ = 'S', SP = '#', _T = 't', TILDE = '~', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
 
@@ -1935,7 +1934,7 @@ public class ReplaceTags : RealComplex
             "max", "min", "log", "exp", "sqrt", "abs", "factorial", "arsinh", "arcosh", "artanh",
             "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "conjugate", "e" ];
     public static readonly string[] SPECIALS =
-        [ "stereo", "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2", "cocoon",
+        [ "stereo", "homoth", "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2", "cocoon",
             "iterateLoop", "loop", "func", "polar", "param" ];
     public static readonly string[] EX_COMPLEX =
         [
@@ -1977,7 +1976,7 @@ public class ReplaceTags : RealComplex
         AS = String.Concat(_A, SIN), AC = String.Concat(_A, COS), AT = String.Concat(_A, TAN),
         SH = String.Concat(SIN, _H), CH = String.Concat(COS, _H), TH = String.Concat(TAN, _H),
         ASH = String.Concat(AS, _H), ACH = String.Concat(AC, _H), ATH = String.Concat(AT, _H),
-        PROD = P_.ToString(), SUM = S_.ToString(), COC = K_.ToString(),
+        PROD = P_.ToString(), SUM = S_.ToString(), COC = K_.ToString(), HOMOTH = H_.ToString(),
         F = F_.ToString(), GA = G_.ToString(), BETA = B_.ToString(), ZETA = _Z_.ToString(), STEREO = R_.ToString(),
         FLOOR = _F.ToString(), CEIL = _C.ToString(), ROUND = _R.ToString(), SIGN = _S.ToString(),
         MOD = M_.ToString(), NCR = C_.ToString(), NPR = A_.ToString(), _MAX = MAX.ToString(), _MIN = MIN.ToString(),
@@ -2016,6 +2015,7 @@ public class ReplaceTags : RealComplex
             { "beta", BETA }, { "Beta", BETA },
             { "zeta", ZETA }, { "Zeta", ZETA },
             { "stereographic", STEREO }, { "Stereographic", STEREO}, { "stereo", STEREO}, { "Stereo", STEREO},
+            { "homothety", HOMOTH }, { "Homothety", HOMOTH }, { "homoth", HOMOTH }, { "Homoth", HOMOTH },
             { "iterate2", IT2 }, { "Iterate2", IT2 },
             { "composite2", COMP2 }, { "Composite2", COMP2 }, { "comp2", COMP2 }, { "Comp2", COMP2 },
             { "cocoon", COC}, { "Cocoon", COC}, { "coc", COC}, { "Coc", COC}
@@ -2239,26 +2239,26 @@ public sealed class ComplexSub : RecoverMultiply
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
-    private unsafe Matrix<Complex> Stereographic(string[] split)
+    private unsafe Matrix<Complex> ProcessSH(string[] split, Func<Complex, Real, Complex, Complex> function)
     {
-        ThrowInvalidLengths(split, [4]);
-        Matrix<Complex> _z = UninitMtx();
-        Real obtain(int i) => RealSub.Obtain(split[i]); Real r = obtain(0), ctrX = obtain(1), ctrY = obtain(2);
-        void stereographic(int p, int col)
+        ThrowInvalidLengths(split, [4]); Matrix<Complex> _z = UninitMtx();
+        Real obtain(int i) => RealSub.Obtain(split[i]); Real r = obtain(0); Complex ctr = new(obtain(1), obtain(2));
+        void processSH(int p, int col)
         {
             Complex* zPtr = z.RowPtr(p), _zPtr = _z.RowPtr(p);
-            for (int q = 0; q < col; q++, zPtr++, _zPtr++) *_zPtr = RealSub.Stereographic(Complex.ReIm(*zPtr), r, ctrX, ctrY);
+            for (int q = 0; q < col; q++, zPtr++, _zPtr++) *_zPtr = function(*zPtr, r, ctr);
         }
-        if (rows == 1) stereographic(0, columns);
-        else { Parallel.For(0, rowChk, p => { stereographic(strdInit[p], strd); }); if (res != 0) stereographic(resInit, res); }
+        if (rows == 1) processSH(0, columns);
+        else { Parallel.For(0, rowChk, p => { processSH(strdInit[p], strd); }); if (res != 0) processSH(resInit, res); }
         return new ComplexSub(split[3], _z, Z, buffCocs, rows, columns).Obtain();
     }
+    private Matrix<Complex> Stereographic(string[] split) => ProcessSH(split, RealSub.Stereographic);
+    private Matrix<Complex> Homothety(string[] split) => ProcessSH(split, RealSub.Homothety);
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
         int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
         ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, buffCocs, true);
-
         CheckFor(RealSub.ToInt(split[subIdx + 1]), RealSub.ToInt(split[subIdx + 2]), i =>
         {
             buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
@@ -2537,6 +2537,7 @@ public sealed class ComplexSub : RecoverMultiply
             B_ => handleSub(Beta, 2),
             _Z_ => handleSub(Zeta, 2),
             R_ => handleSub(Stereographic, 2),
+            H_ => handleSub(Homothety, 2),
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
             I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
@@ -2613,8 +2614,9 @@ public sealed class RealSub : RecoverMultiply
         Combination(n + 1, r) - Combination(n, r - 1) :
         Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
     private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
-    public static Complex Stereographic((Real x, Real y) pt, Real r, Real ctrX, Real ctrY)
-    { Real x = pt.x, y = pt.y, scal = r / (1 + MathR.Sqrt(1 - x * x - y * y)); return new(scal * x + ctrX, scal * y + ctrY); }
+    public static Complex Stereographic(Complex pt, Real r, Complex ctr)
+    { var (x, y) = Complex.ReIm(pt); return pt * (r / (1 + MathR.Sqrt(1 - x * x - y * y))) + ctr; }
+    public static Complex Homothety(Complex pt, Real r, Complex ctr) => (pt - ctr) / r + ctr;
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => HandleMtx(UninitMtx(), output =>
         {
@@ -2733,27 +2735,27 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
         });
-    private unsafe Matrix<Real> Stereographic(string[] split)
+    private unsafe Matrix<Real> ProcessSH(string[] split, Func<Complex, Real, Complex, Complex> function)
     {
-        ThrowInvalidLengths(split, [4]);
-        Matrix<Real> _x = UninitMtx(), _y = UninitMtx();
-        Real obtain(int i) => Obtain(split[i]); Real r = obtain(0), ctrX = obtain(1), ctrY = obtain(2);
-        void stereographic(int p, int col)
+        ThrowInvalidLengths(split, [4]); Matrix<Real> _x = UninitMtx(), _y = UninitMtx();
+        Real obtain(int i) => Obtain(split[i]); Real r = obtain(0); Complex ctr = new(obtain(1), obtain(2));
+        void processSH(int p, int col)
         {
             Real* xPtr = x.RowPtr(p), yPtr = y.RowPtr(p), _xPtr = _x.RowPtr(p), _yPtr = _y.RowPtr(p);
             for (int q = 0; q < col; q++, xPtr++, yPtr++, _xPtr++, _yPtr++)
-                (*_xPtr, *_yPtr) = Complex.ReIm(Stereographic((*xPtr, *yPtr), r, ctrX, ctrY));
+                (*_xPtr, *_yPtr) = Complex.ReIm(function(new(*xPtr, *yPtr), r, ctr));
         }
-        if (rows == 1) stereographic(0, columns);
-        else { Parallel.For(0, rowChk, p => { stereographic(strdInit[p], strd); }); if (res != 0) stereographic(resInit, res); }
+        if (rows == 1) processSH(0, columns);
+        else { Parallel.For(0, rowChk, p => { processSH(strdInit[p], strd); }); if (res != 0) processSH(resInit, res); }
         return new RealSub(split[3], _x, _y, X, Y, buffCocs, rows, columns).Obtain();
     }
+    private Matrix<Real> Stereographic(string[] split) => ProcessSH(split, Stereographic);
+    private Matrix<Real> Homothety(string[] split) => ProcessSH(split, Homothety);
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
         int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
         RealSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, null, buffCocs, true);
-
         CheckFor(ToInt(split[subIdx + 1]), ToInt(split[subIdx + 2]), i =>
         {
             buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
@@ -2771,7 +2773,6 @@ public sealed class RealSub : RecoverMultiply
         RealSub obtain(int i) => ObtainSub(ReplaceLoop(split, i, 4, "0"), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
         split[0] = replaceLoop(0); split[1] = replaceLoop(1); RealSub buffer1 = obtain(0), buffer2 = obtain(1);
         Matrix<Real> temp1, temp2;
-
         CheckFor(ToInt(split[5]), ToInt(split[6]), i =>
         {
             buffer1.input = ReplaceLoop(split, 0, 4, i.ToString()); buffer2.input = ReplaceLoop(split, 1, 4, i.ToString());
@@ -3068,6 +3069,7 @@ public sealed class RealSub : RecoverMultiply
             B_ => handleSub(Beta, 2),
             _Z_ => handleSub(Zeta, 2),
             R_ => handleSub(Stereographic, 2),
+            H_ => handleSub(Homothety, 2),
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
             I_ => input[idx - 2] switch { MODE_1 => handleSub(Iterate1, 3), MODE_2 => handleSub(Iterate2, 3) },
@@ -3163,7 +3165,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
         var (mod, unit) = (MathR.Exp(-MathR.Tau * c.imaginary), MathR.SinCos(MathR.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
     } // Often used in analytic number theory, represented by 'q'
-    //
     public static Complex Sin(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
@@ -3235,7 +3236,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * im / denom;
         return new(MathR.Log(_re * _re + _im * _im) / 4, MathR.Atan2(_im, _re) / 2);
     }
-    //
     public static Complex Sqrt(Complex c)
     {
         Real re = c.real, im = c.imaginary;
