@@ -1933,7 +1933,7 @@ public class ReplaceTags : RealComplex
             "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "conjugate", "e" ];
     public static readonly string[] SPECIALS =
         [ "stereo", "homoth", "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2", "cocoon",
-            "iterateLoop", "loop", "func", "polar", "param" ];
+            "subs", "iterateLoop", "loop", "func", "polar", "param" ];
     public static readonly string[] EX_COMPLEX =
         [
             "stereo(3,1,1,z)",
@@ -1968,7 +1968,7 @@ public class ReplaceTags : RealComplex
             "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,10)"
         ];
     public static readonly char FUNC_HEAD = TILDE, UNDERLINE = '_', DOLLAR = _D_;
-    public static readonly string SUBS = "σ", LOOP = "λ", ITLOOP = "ι", FUNC = "φ", POLAR = "ψ", PARAM = "ρ",
+    public static readonly string SUBS = "σ", ITLOOP = "ι", LOOP = "λ", FUNC = "φ", POLAR = "ψ", PARAM = "ρ",
         LOG = _L.ToString(), EXP = E_.ToString(), SQRT = _Q.ToString(), ABS = _A.ToString(), FACT = _F_.ToString(),
         SIN = _S.ToString(), COS = _C.ToString(), TAN = _T.ToString(), // This should come first
         AS = String.Concat(_A, SIN), AC = String.Concat(_A, COS), AT = String.Concat(_A, TAN),
