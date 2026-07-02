@@ -1073,6 +1073,7 @@ public partial class Graph : Form
             $"\r\n{TAB}Param(f(u), g(u), u, Real a, Real b, Real increment)");
         content += subTitleContent("RECURSIONS",
             $"\r\n\r\n{GetComment("Ennumerated in decreasing hierarchy.")}" +
+            $"\r\n\r\n{TAB}... | ... | ...{GetComment("Displaying one by one.")}") +
             $"\r\n\r\n{TAB}Subs(Input(a,b,c,...), a, a_new, b, b_new, c, c_new, ...)" +
             $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
             $"\r\n\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b) & " +
@@ -1080,8 +1081,7 @@ public partial class Graph : Form
             $"\r\n{TAB}IterateLoop(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(...), k, int a, int b, F(z,k))" +
             $"\r\n\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b, F(z,Z,k))" +
-            $"\r\n\r\n{GetComment("Displaying each loop of iteration.")}" +
-            $"\r\n\r\n{TAB}... | ... | ...{GetComment("Displaying one by one.")}");
+            $"\r\n\r\n{GetComment("Displaying each loop of iteration.")}";
         content += subTitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i");
         content += subTitleContent("SHORTCUTS", "\r\n");
 
