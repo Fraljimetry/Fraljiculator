@@ -90,7 +90,6 @@ public partial class Graph : Form
     {
         static System.Windows.Forms.Timer setT(int interval) => new() { Interval = interval };
         GraphTimer = setT(1000); WaitTimer = setT(500); DisplayTimer = setT(1000 / UPDATE);
-
         WaitTimer.Tick += (sender, e) =>
         {
             ReverseBool(ref is_flashing); // Cannot pass properties as reference
@@ -107,14 +106,12 @@ public partial class Graph : Form
         graphics = CreateGraphics();
         bmp_mac = bmp_mic = new(Width, Height, PixelFormat.Format32bppArgb);
         bmp_screen = new(Width - WIDTH_IND, Height - HEIGHT_IND);
-
         rectangle = new(0, 0, Width, Height);
         int indent = (int)(CURVE_WIDTH_LIMIT / 2), _indent = indent * 2,
             widthMac = X_RIGHT_MAC - X_LEFT_MAC, heightMac = Y_DOWN_MAC - Y_UP_MAC,
             widthMic = X_RIGHT_MIC - X_LEFT_MIC, heightMic = Y_DOWN_MIC - Y_UP_MIC;
         rect_mac = new(X_LEFT_MAC - indent, Y_UP_MAC - indent, widthMac + _indent, heightMac + _indent);
         rect_mic = new(X_LEFT_MIC - indent, Y_UP_MIC - indent, widthMic + _indent, heightMic + _indent);
-
         DoubleBuffered = KeyPreview = true; // Essential for shortcuts
     }
     private void InitializeCombo()
@@ -122,12 +119,10 @@ public partial class Graph : Form
         static void coloringContour_AddItem(ComboBox cbx, int index, string[] options)
         { cbx.Items.AddRange(options); cbx.SelectedIndex = index; }
         coloringContour_AddItem(ComboColoring, 4, COLOR_MODES); coloringContour_AddItem(ComboContour, 1, CONTOUR_MODES);
-
         void addExamples(string[] items) { foreach (string item in items) ComboExamples.Items.Add(item); }
         addExamples(ReplaceTags.EX_COMPLEX); ComboExamples.Items.Add(String.Empty);
         addExamples(ReplaceTags.EX_REAL); ComboExamples.Items.Add(String.Empty);
         addExamples(ReplaceTags.EX_CURVES);
-
         void functionsSpecial_AddItem(string[] options, bool isFunc)
         {
             string[] modifiedOptions = new string[options.Length]; int index = 0;
@@ -149,14 +144,12 @@ public partial class Graph : Form
         FillEmpty(GeneralInput, GENERAL_DEFAULT); FillEmpty(ThickInput, THICK_DEFAULT); FillEmpty(DenseInput, DENSE_DEFAULT);
         TextBox[] tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]; // Crucial ordering
         if (autoFill) foreach (var tbx in tbxDetails) FillEmpty(tbx, ZERO);
-
         Real _dense = Obtain(DenseInput), _thick = Obtain(ThickInput);
         stride_real = STRIDE_REAL / _dense; stride = STRIDE / _dense;
         mod_stride = MOD / _dense; arg_stride = ARG / _dense;
         epsilon = (is_complex ? EPS_COMPLEX : EPS_REAL) * _thick; // For lines and complex extremities
         size_real = SIZE_REAL * _thick / (1 + _thick); // For real extremities
         decay = DECAY * _thick;
-
         if (!GeneralInput_Undo())
         {
             Real _scope = Obtain(GeneralInput);
@@ -227,6 +220,8 @@ public partial class Graph : Form
     private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
+    private static bool ContainsTag(string input, string tag)
+        => input.Contains(String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.UNDERLINE, '('));
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
     private bool GeneralInput_Undo() => GeneralInput.Text == ZERO;
@@ -246,7 +241,6 @@ public partial class Graph : Form
         var (xGrid, yGrid) = (calculateGrid(RowScopes()), calculateGrid(ColumnScopes()));
         var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
         var (xInit, yInit, xEnd, yEnd) = (AddOne(borders[0]), AddOne(borders[2]), borders[1], borders[3]);
-
         void drawGrids(Real xGrid, Real yGrid, Real penWidth)
         {
             Pen gridPen = new(GRID_GRAY, (float)penWidth);
@@ -262,7 +256,6 @@ public partial class Graph : Form
             });
         }
         drawGrids(xGrid, yGrid, GRID_WIDTH_1); drawGrids(xGrid / GRID, yGrid / GRID, GRID_WIDTH_2);
-
         var (x, y) = (LinearTransformX(0, borders, ratioRow), LinearTransformY(0, borders, ratioColumn));
         if (y >= yInit && y < yEnd) graphics.DrawLine(AXES_PEN, xInit, y, xEnd, y);
         if (x >= xInit && x < xEnd) graphics.DrawLine(AXES_PEN, x, yEnd, x, yInit);
@@ -498,12 +491,10 @@ public partial class Graph : Form
         string tag1 = ReplaceTags.FUNC_HEAD + ReplaceTags.COS, tag2 = ReplaceTags.FUNC_HEAD + ReplaceTags.SIN,
             input1 = isParam ? replace(split[0], 2) : isPolar ? replace($"({split[0]})*{tag1}({split[1]})", 1) : "x",
             input2 = isParam ? replace(split[1], 2) : isPolar ? replace($"({split[0]})*{tag2}({split[1]})", 1) : split[0];
-
         int length = (int)((end - start) / increment), _length = length + 2; // For safety
         Matrix<Real> partition = GetMatrix(1, _length); Real steps = start;
         Real obtainCheck(string input) => RealSub.Obtain(input, steps); // Already simplified
         if (is_checking) { obtainCheck(input1); obtainCheck(input2); return (partition, partition, length, true); }
-
         Real* partPtr = partition.RowPtr();
         for (int i = 0; i < _length; i++, partPtr++, steps += increment) *partPtr = steps;
         Matrix<Real> obtain(string input) => new RealSub(input, partition, null, null, null, null, 1, _length).Obtain();
@@ -517,11 +508,9 @@ public partial class Graph : Form
             blackPen = dichoPen(Color.White, Color.Black), whitePen = dichoPen(Color.Black, Color.White),
             bluePen = dichoPen(LOWER_BLUE, UPPER_GOLD), yellowPen = dichoPen(UPPER_GOLD, LOWER_BLUE),
             selectedPen = color_mode == 1 ? defaultPen : vividPen;
-
         Point pos = new(), posBuffer = new(); bool inRange, inRangeBuffer = false; int _ratio, _ratioBuffer = 0;
         Real relativeSpeed = Obtain(DenseInput) / length, ratio; Real* v1Ptr = value1.RowPtr(), v2Ptr = value2.RowPtr();
         var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
-
         for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++, segment_number++)
         {
             (pos.X, pos.Y) = (LinearTransformX(*v1Ptr, borders, ratioRow), LinearTransformY(*v2Ptr, borders, ratioColumn));
@@ -543,22 +532,20 @@ public partial class Graph : Form
                 if (_ratioBuffer != _ratio) DrawReferenceRectangles(selectedPen.Color);
                 _ratioBuffer = _ratio;
             }
-            inRangeBuffer = inRange;
-            posBuffer = pos;
+            inRangeBuffer = inRange; posBuffer = pos;
         }
     }
-    private void DisplayFPPBase(string input, bool isPolar = false, bool isParam = false)
+    private void DisplayFPPBase(string[] split, bool isPolar = false, bool isParam = false)
     {
-        string[] split = MyString.SplitString(input);
         var (start, end, increment) = SetStartEndIncrement(split, isPolar, isParam);
         MyString.ThrowException(start >= end);
         var (value1, value2, length, isChecking) = SetCurveValues(split, isPolar, isParam, start, end, increment);
         if (isChecking) return;
         DisplayBase(() => { DrawCurve(value1, value2, length); pixel_number += segment_number; segment_number = 0; });
     }
-    private void DisplayFunction(string input) => DisplayFPPBase(input); // Necessary
-    private void DisplayPolar(string input) => DisplayFPPBase(input, isPolar: true);
-    private void DisplayParam(string input) => DisplayFPPBase(input, isParam: true);
+    private void DisplayFunction(string[] split) => DisplayFPPBase(split); // Necessary
+    private void DisplayPolar(string[] split) => DisplayFPPBase(split, isPolar: true);
+    private void DisplayParametric(string[] split) => DisplayFPPBase(split, isParam: true);
     #endregion
 
     #region Graph Display
@@ -629,17 +616,35 @@ public partial class Graph : Form
             });
         }
     } // Deliberate buffer-free zone, rendering self-contained delay [See: ComplexSub.ProcessSPI, RealSub.ProcessSPI]
-    private void DisplayLoop(string input)
+    private void DisplayLoop(string[] split)
     {
-        input = ReplaceTags.ReplaceCurves(input); string[] split = MyString.SplitString(input); // Do not merge into one
-        bool containsTag(string s) => input.Contains(String.Concat(ReplaceTags.FUNC_HEAD, s, ReplaceTags.UNDERLINE, '('));
-        if (containsTag(ReplaceTags.ITLOOP)) { DisplayIterateLoop(split); return; }
-        Action<string> displayMethod =
-            containsTag(ReplaceTags.FUNC) ? DisplayFunction :
-            containsTag(ReplaceTags.POLAR) ? DisplayPolar :
-            containsTag(ReplaceTags.PARAM) ? DisplayParam : DisplayRendering;
         RealComplex.CheckFor(RealSub.ToInt(split[2]), RealSub.ToInt(split[3]), loops =>
-        { displayMethod(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
+        { DisplayLevel3(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
+    }
+    private void DisplaySubs(string[] split)
+    {
+        MyString.ThrowException(Int32.IsEvenInteger(split.Length));
+        for (int i = 0, j = 1; i < split.Length / 2; i++) split[0] = MyString.ReplaceLoop(split, 0, j++, split[j++]);
+        DisplayLevel2(split[0]);
+    }
+    private void DisplayLevel3(string input)
+    {
+        Action<string[]>? displayMethod = ContainsTag(input, ReplaceTags.ITLOOP) ? DisplayIterateLoop :
+            ContainsTag(input, ReplaceTags.FUNC) ? DisplayFunction :
+            ContainsTag(input, ReplaceTags.POLAR) ? DisplayPolar :
+            ContainsTag(input, ReplaceTags.PARAM) ? DisplayParametric : null;
+        if (displayMethod != null) displayMethod(MyString.SplitString(input));
+        else DisplayRendering(input);
+    }
+    private void DisplayLevel2(string input)
+    {
+        if (ContainsTag(input, ReplaceTags.LOOP)) DisplayLoop(MyString.SplitString(input));
+        else DisplayLevel3(input);
+    }
+    private void DisplayLevel1(string input)
+    {
+        if (ContainsTag(input, ReplaceTags.SUBS)) DisplaySubs(MyString.SplitString(input));
+        else DisplayLevel2(input);
     }
     private void DisplayOnScreen()
     {
@@ -648,14 +653,7 @@ public partial class Graph : Form
         for (int loops = 0; loops < split.Length; loops++)
         {
             CheckComplex.Checked = MyString.ReplaceZetas(split[loops]).AsSpan().ContainsAny(RecoverMultiply._ZZ_);
-            string component = RecoverMultiply.Simplify(split[loops], is_complex);
-            bool containsTags(string[] str) => MyString.ContainsAny(component, str);
-            Action<string> displayMethod =    // Should not pull outside of the loop
-                containsTags(MyString.LOOP_NAMES) ? DisplayLoop :
-                containsTags(MyString.FUNC_NAMES) ? DisplayFunction :
-                containsTags(MyString.POLAR_NAMES) ? DisplayPolar :
-                containsTags(MyString.PARAM_NAMES) ? DisplayParam : DisplayRendering;
-            displayMethod(component);
+            DisplayLevel1(RecoverMultiply.Simplify(split[loops], is_complex));
         }
     }
     #endregion
@@ -728,7 +726,6 @@ public partial class Graph : Form
         SetText(X_CoorDisplay, trimForMove(xCoor)); SetText(Y_CoorDisplay, trimForMove(yCoor));
         SetText(ModulusDisplay, trimForMove(Real.Hypot(xCoor, yCoor)));
         SetText(AngleDisplay, MyString.GetAngle(xCoor, yCoor));
-
         if (!MyString.ContainsAny(MyString.BeautifyInput(InputString.Text), MyString.FPP_NAMES))
         {
             if (is_complex)
@@ -745,7 +742,6 @@ public partial class Graph : Form
         static string trimForDown(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
         string _xCoor = trimForDown(xCoor), _yCoor = trimForDown(yCoor),
             Modulus = trimForDown(Real.Hypot(xCoor, yCoor)), Angle = MyString.GetAngle(xCoor, yCoor);
-
         string message = String.Empty;
         if (!MyString.ContainsAny(MyString.BeautifyInput(InputString.Text), MyString.FPP_NAMES))
         {
@@ -1076,7 +1072,8 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Param(f(u), g(u), u, Real a, Real b) & " +
             $"\r\n{TAB}Param(f(u), g(u), u, Real a, Real b, Real increment)");
         content += subTitleContent("RECURSIONS",
-            $"\r\n\r\n{GetComment("These methods should be combined with all above.")}" +
+            $"\r\n\r\n{GetComment("Ennumerated in decreasing hierarchy.")}" +
+            $"\r\n\r\n{TAB}Subs(Input(a,b,c,...), a, a_new, b, b_new, c, c_new, ...)" +
             $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
             $"\r\n\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b, F(x,y,X,k))" +
@@ -1715,9 +1712,10 @@ public class MyMessageBox : Form
 public class MyString
 {
     private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; }
-    public static readonly string[] LOOP_NAMES = AddSuffix(["loop", "Loop"]), FUNC_NAMES = AddSuffix(["func", "Func"]),
-        POLAR_NAMES = AddSuffix(["polar", "Polar"]), PARAM_NAMES = AddSuffix(["param", "Param"]), ZETAS = AddSuffix(["zeta", "Zeta"]);
-    public static readonly string[] FPP_NAMES = [.. FUNC_NAMES, .. POLAR_NAMES, .. PARAM_NAMES];
+    public static readonly string[] SUBS_TAG = AddSuffix(["subs", "Subs"]), LOOP_TAG = AddSuffix(["loop", "Loop"]),
+        FUNC_TAG = AddSuffix(["func", "Func"]), POLAR_TAG = AddSuffix(["polar", "Polar"]), PARAM_TAG = AddSuffix(["param", "Param"]),
+        ZETAS = AddSuffix(["zeta", "Zeta"]);
+    public static readonly string[] FPP_NAMES = [.. FUNC_TAG, .. POLAR_TAG, .. PARAM_TAG];
     protected static readonly char SUB_CHAR = ';'; // Replacing ",^"
 
     #region Parentheses
@@ -1970,7 +1968,7 @@ public class ReplaceTags : RealComplex
             "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,10)"
         ];
     public static readonly char FUNC_HEAD = TILDE, UNDERLINE = '_', DOLLAR = _D_;
-    public static readonly string FUNC = "φ", POLAR = "ψ", PARAM = "ρ", ITLOOP = "ι",
+    public static readonly string SUBS = "σ", LOOP = "λ", ITLOOP = "ι", FUNC = "φ", POLAR = "ψ", PARAM = "ρ",
         LOG = _L.ToString(), EXP = E_.ToString(), SQRT = _Q.ToString(), ABS = _A.ToString(), FACT = _F_.ToString(),
         SIN = _S.ToString(), COS = _C.ToString(), TAN = _T.ToString(), // This should come first
         AS = String.Concat(_A, SIN), AC = String.Concat(_A, COS), AT = String.Concat(_A, TAN),
@@ -2049,10 +2047,12 @@ public class ReplaceTags : RealComplex
         { { "pi", PI }, { "Pi", PI }, { "gamma", _GA }, { "Gamma", _GA }, { "ga", _GA }, { "Ga", _GA } };
     private static readonly Dictionary<string, string> TAGS = AddSuffix(new()
         {
+            { "subs", SUBS}, { "Subs", SUBS},
+            { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }, // Must precede "loop" to avoid confusion
+            { "loop", LOOP }, { "Loop", LOOP },
             { "func", FUNC }, { "Func", FUNC },
             { "polar", POLAR }, { "Polar", POLAR },
-            { "param", PARAM }, { "Param", PARAM },
-            { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }
+            { "param", PARAM }, { "Param", PARAM }
         }, UNDERLINE);
     private static readonly Dictionary<string, string> REAL_COMPLEX = Concat(REAL, COMPLEX);
     private static Dictionary<string, string> AddPrefixSuffix(Dictionary<string, string> dictionary)
@@ -2086,7 +2086,7 @@ public class RecoverMultiply : ReplaceTags
     public static string Simplify(string input, bool isComplex = false)
     {
         ThrowException(!CheckParenthesis(input) || input.Contains(LR_BRA) || input.AsSpan().ContainsAny(BARRED_CHARS));
-        return ReplaceRealComplex(RemoveEnterBlank(input));
+        return ReplaceCurves(ReplaceRealComplex(RemoveEnterBlank(input)));
     } // Used only once at the beginning
     protected static string Recover(ReadOnlySpan<char> input, bool isComplex)
     {
