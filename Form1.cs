@@ -1959,7 +1959,7 @@ public class ReplaceTags : RealComplex
     public static readonly string[] EX_CURVES =
         [
             "func(zeta(x,50))",
-            "func(sum(sin(x2^k)/2^k,k,0,100),-pi,pi,0.001)",
+            "subs(func(sum(sin(xj)/j,k,0,100),-pi,pi,0.001),j,2^k)",
             "func(beta(sinh(x),cosh(x)),-2,2,0.0001)",
             "polar(sqrt(cos(2theta)),theta,0,2pi,0.0001)",
             "polar(cos(5k)cos(7k),k,0,2pi,0.001)",
