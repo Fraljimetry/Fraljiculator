@@ -1072,7 +1072,7 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Param(f(u), g(u), u, Real a, Real b) & " +
             $"\r\n{TAB}Param(f(u), g(u), u, Real a, Real b, Real increment)");
         content += subTitleContent("RECURSIONS",
-            $"\r\n\r\n{GetComment("Ennumerated in decreasing hierarchy.")}" +
+            $"\r\n\r\n{GetComment("Enumerated in decreasing hierarchy.")}" +
             $"\r\n\r\n{TAB}... | ... | ...{GetComment("Displaying one by one.")}") +
             $"\r\n\r\n{TAB}Subs(Input(a,b,c,...), a, a_new, b, b_new, c, c_new, ...)" +
             $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
