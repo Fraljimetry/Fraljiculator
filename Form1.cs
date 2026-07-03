@@ -54,7 +54,7 @@ public partial class Graph : Form
         MISTAKES_HEAD = "\r\nCommon mistakes include:", WRONG_FORMAT = "THE INPUT IS IN A WRONG FORMAT.",
         WRONG_ADDRESS = "THE ADDRESS DOES NOT EXIST.", DISPLAY_ERROR = "UNAVAILABLE.",
         DRAFT_DEFAULT = $"\r\nPrecision of real numbers: \r\n{typeof(Real)}.", TIP = "ReadOnly",
-        SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 5), _SEP = new('-', 72), TAB = new(' ', 4);
+        SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 6), _SEP = new('-', 80), TAB = new(' ', 4);
     private static readonly string[] CONTOUR_MODES = ["Cartesian (x,y)", "Polar (r,θ)"], COLOR_MODES =
         ["Commonplace", "Monochromatic", "Bichromatic", "Kaleidoscopic", "Miscellaneous"];
     #endregion
@@ -992,7 +992,7 @@ public partial class Graph : Form
     {
         string content = heading, feeder = String.Concat(Enumerable.Repeat("\r\n", feed));
         for (int i = 0; i < contents.Length; i++) content += $"{feeder}{i + 1}. {contents[i]}";
-        showMessage(content + "\r\n", 450, 300);
+        showMessage(content + "\r\n", 450, 285);
     }
     private static void ShowErrorBox(string message, string[] contents)
         => ShowBoxBase(MyMessageBox.ShowException, message + MISTAKES_HEAD + "\r\n", contents, 1);
@@ -1086,20 +1086,20 @@ public partial class Graph : Form
         content += subTitleContent("SHORTCUTS", "\r\n");
 
         static string getShortcuts(string key, int blank, string meaning) => $"\r\n{TAB}[{key}]" + new string('\t', blank) + meaning + ";";
-        content += getShortcuts("Control + P", 2, "Graph in MicroBox");
-        content += getShortcuts("Control + G", 2, "Graph in MacroBox");
-        content += getShortcuts("Control + B", 2, "Graph in both regions");
-        content += getShortcuts("Control + S", 2, "Save as a snapshot");
-        content += getShortcuts("Control + K", 2, "Save the history as a .txt");
-        content += getShortcuts("Control + Shift + C", 1, "Check all inputs");
-        content += getShortcuts("Control + R", 2, "Erase all check results");
-        content += getShortcuts("Control + D", 2, "Restore to default");
-        content += getShortcuts("Shift + Back", 2, "Clear InputBox");
-        content += getShortcuts("Control + D2", 2, "View Fralji's profile");
-        content += getShortcuts("Control + D3", 2, "Clear all ReadOnly controls");
-        content += getShortcuts("Control + OemQuestion", 1, "See manual");
-        content += getShortcuts("Delete", 2, "Clear both regions");
-        content += getShortcuts("Escape", 2, "Close Fraljiculator");
+        content += getShortcuts("Control + P", 3, "Graph in MicroBox");
+        content += getShortcuts("Control + G", 3, "Graph in MacroBox");
+        content += getShortcuts("Control + B", 3, "Graph in both regions");
+        content += getShortcuts("Control + S", 3, "Save as a snapshot");
+        content += getShortcuts("Control + K", 3, "Save the history as a .txt");
+        content += getShortcuts("Control + Shift + C", 2, "Check all inputs");
+        content += getShortcuts("Control + R", 3, "Erase all check results");
+        content += getShortcuts("Control + D", 3, "Restore to default");
+        content += getShortcuts("Shift + Back", 3, "Clear InputBox");
+        content += getShortcuts("Control + D2", 3, "View Fralji's profile");
+        content += getShortcuts("Control + D3", 3, "Clear all ReadOnly controls");
+        content += getShortcuts("Control + OemQuestion", 2, "See manual");
+        content += getShortcuts("Delete", 3, "Clear both regions");
+        content += getShortcuts("Escape", 3, "Close Fraljiculator");
         return content + $"\r\n\r\n{TAB}Click [Tab] to witness the process of control design.";
     }
     private static string AddContact(string platform, int blank, string account, string note)
@@ -1116,16 +1116,16 @@ public partial class Graph : Form
         content += AddContact("QQ", 2, "472955101", String.Empty);
         content += AddContact("Facebook", 1, "Fraljimetry", String.Empty);
         content += AddContact("Instagram", 1, "shaodaji", "NOT recommended");
-        return content + "\r\n\r\n" + new string(' ', 75) + $"{DATE}";
+        return content + "\r\n\r\n" + new string(' ', 85) + $"{DATE}";
     }
     private void TitleLabel_DoubleClick(object sender, EventArgs e) => MyMessageBox.ShowFormal(GetManual(), 720, 540);
     private void PictureLogo_DoubleClick(object sender, EventArgs e) => MyMessageBox.ShowFormal(GetProfile(), 600, 450);
     private static void ShowCustomBox(string title, string[] contents)
-        => ShowBoxBase(MyMessageBox.ShowCustom, $"[{title}]" + new string(' ', 12) + $"{DATE}", contents, 2);
+        => ShowBoxBase(MyMessageBox.ShowCustom, $"[{title}]" + new string(' ', 20) + $"{DATE}", contents, 2);
     private void InputLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("FORMULA INPUT",
     [
         "Space and Enter keys are both acceptable. Unsupported keys are blocked, and removed if pasted from the clipboard.",
-        "Excessive omission of multiplication may cause misinterpretation. For example, \"gammax\" will be parsed as \"max\"."
+        "Excessive omission of multiplication may cause misinterpretation. For example, \"gammax\" could be parsed as \"max\"."
     ]);
     private void AtLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("SAVING ADDRESS",
     [
@@ -1632,7 +1632,7 @@ public class MyMessageBox : Form
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
     private static bool is_resized;
-    private static readonly string MSG_FONT = "Microsoft YaHei UI", BTN_FONT = "Microsoft YaHei UI", BTN_TXT = "OK";
+    private static readonly string MSG_FONT = "Segoe UI", BTN_FONT = "Microsoft YaHei UI", BTN_TXT = "OK";
     #endregion
 
     #region Methods
