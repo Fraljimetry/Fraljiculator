@@ -2049,7 +2049,7 @@ public class ReplaceTags : RealComplex
         { { "pi", PI }, { "Pi", PI }, { "gamma", _GA }, { "Gamma", _GA }, { "ga", _GA }, { "Ga", _GA } };
     private static readonly Dictionary<string, string> TAGS = AddSuffix(new()
         {
-            { "substitute", SUBS}, { "Substitute", SUBS},{ "subs", SUBS}, { "Subs", SUBS},
+            { "substitute", SUBS}, { "Substitute", SUBS}, { "subs", SUBS}, { "Subs", SUBS},
             { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }, // Must precede "loop" to avoid confusion
             { "loop", LOOP }, { "Loop", LOOP },
             { "function", FUNC }, { "Function", FUNC },{ "func", FUNC }, { "Func", FUNC },
@@ -2088,7 +2088,7 @@ public class RecoverMultiply : ReplaceTags
     public static string Simplify(string input, bool isComplex = false)
     {
         ThrowException(!CheckParenthesis(input) || input.Contains(LR_BRA) || input.AsSpan().ContainsAny(BARRED_CHARS));
-        return ReplaceCurves(ReplaceRealComplex(RemoveEnterBlank(input)));
+        return ReplaceRealComplex(ReplaceCurves(RemoveEnterBlank(input)));
     } // Used only once at the beginning
     protected static string Recover(ReadOnlySpan<char> input, bool isComplex)
     {
