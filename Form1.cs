@@ -988,8 +988,6 @@ public partial class Graph : Form
     #endregion
 
     #region Dialogs
-    private static void GetMusicClickErrorBox(string message)
-        => MessageBox.Show($"Error: Could not find embedded resource for {message}.");
     private static void ShowBoxBase(Action<string, int, int> showMessage, string heading, string[] contents, int feed)
     {
         string content = heading, feeder = String.Concat(Enumerable.Repeat("\r\n", feed));
@@ -2136,6 +2134,7 @@ public sealed class ComplexSub : RecoverMultiply
     private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Complex>> cstMtcs = []; // To store reusable constant matrices
+
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
@@ -2156,7 +2155,7 @@ public sealed class ComplexSub : RecoverMultiply
     private ComplexSub ObtainSub(ReadOnlySpan<char> input, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs, bool useList = false)
         => new(input, z, Z, buffCocs, rows, columns, useList);
     private Matrix<Complex> ObtainValue(ReadOnlySpan<char> input) => new ComplexSub(input, z, Z, buffCocs, rows, columns).Obtain();
-    private Complex Obtain(ReadOnlySpan<char> input) => new ComplexSub(input, null, null, null, 1, 1).Obtain(false)[0, 0];
+    private static Complex Obtain(ReadOnlySpan<char> input) => new ComplexSub(input, null, null, null, 1, 1).Obtain(false)[0, 0];
     #endregion
 
     #region Calculations
@@ -2575,6 +2574,7 @@ public sealed class RealSub : RecoverMultiply
     private readonly Matrix<Real>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Real>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Real>> cstMtcs = []; // To store reusable constant matrices
+
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
