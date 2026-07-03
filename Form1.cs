@@ -107,11 +107,13 @@ public partial class Graph : Form
         bmp_mac = bmp_mic = new(Width, Height, PixelFormat.Format32bppArgb);
         bmp_screen = new(Width - WIDTH_IND, Height - HEIGHT_IND);
         rectangle = new(0, 0, Width, Height);
+
         int indent = (int)(CURVE_WIDTH_LIMIT / 2), _indent = indent * 2,
             widthMac = X_RIGHT_MAC - X_LEFT_MAC, heightMac = Y_DOWN_MAC - Y_UP_MAC,
             widthMic = X_RIGHT_MIC - X_LEFT_MIC, heightMic = Y_DOWN_MIC - Y_UP_MIC;
         rect_mac = new(X_LEFT_MAC - indent, Y_UP_MAC - indent, widthMac + _indent, heightMac + _indent);
         rect_mic = new(X_LEFT_MIC - indent, Y_UP_MIC - indent, widthMic + _indent, heightMic + _indent);
+
         DoubleBuffered = KeyPreview = true; // Essential for shortcuts
     }
     private void InitializeCombo()
@@ -119,10 +121,12 @@ public partial class Graph : Form
         static void coloringContour_AddItem(ComboBox cbx, int index, string[] options)
         { cbx.Items.AddRange(options); cbx.SelectedIndex = index; }
         coloringContour_AddItem(ComboColoring, 4, COLOR_MODES); coloringContour_AddItem(ComboContour, 1, CONTOUR_MODES);
+
         void addExamples(string[] items) { foreach (string item in items) ComboExamples.Items.Add(item); }
         addExamples(ReplaceTags.EX_COMPLEX); ComboExamples.Items.Add(String.Empty);
         addExamples(ReplaceTags.EX_REAL); ComboExamples.Items.Add(String.Empty);
         addExamples(ReplaceTags.EX_CURVES);
+
         void functionsSpecial_AddItem(string[] options, bool isFunc)
         {
             string[] modifiedOptions = new string[options.Length]; int index = 0;
@@ -144,12 +148,11 @@ public partial class Graph : Form
         FillEmpty(GeneralInput, GENERAL_DEFAULT); FillEmpty(ThickInput, THICK_DEFAULT); FillEmpty(DenseInput, DENSE_DEFAULT);
         TextBox[] tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]; // Crucial ordering
         if (autoFill) foreach (var tbx in tbxDetails) FillEmpty(tbx, ZERO);
+
         Real _dense = Obtain(DenseInput), _thick = Obtain(ThickInput);
-        stride_real = STRIDE_REAL / _dense; stride = STRIDE / _dense;
-        mod_stride = MOD / _dense; arg_stride = ARG / _dense;
-        epsilon = (is_complex ? EPS_COMPLEX : EPS_REAL) * _thick; // For lines and complex extremities
-        size_real = SIZE_REAL * _thick / (1 + _thick); // For real extremities
-        decay = DECAY * _thick;
+        stride_real = STRIDE_REAL / _dense; stride = STRIDE / _dense; mod_stride = MOD / _dense; arg_stride = ARG / _dense;
+        epsilon = (is_complex ? EPS_COMPLEX : EPS_REAL) * _thick; size_real = SIZE_REAL * _thick / (1 + _thick); decay = DECAY * _thick;
+
         if (!GeneralInput_Undo())
         {
             Real _scope = Obtain(GeneralInput);
@@ -241,6 +244,7 @@ public partial class Graph : Form
         var (xGrid, yGrid) = (calculateGrid(RowScopes()), calculateGrid(ColumnScopes()));
         var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
         var (xInit, yInit, xEnd, yEnd) = (AddOne(borders[0]), AddOne(borders[2]), borders[1], borders[3]);
+
         void drawGrids(Real xGrid, Real yGrid, Real penWidth)
         {
             Pen gridPen = new(GRID_GRAY, (float)penWidth);
@@ -256,6 +260,7 @@ public partial class Graph : Form
             });
         }
         drawGrids(xGrid, yGrid, GRID_WIDTH_1); drawGrids(xGrid / GRID, yGrid / GRID, GRID_WIDTH_2);
+
         var (x, y) = (LinearTransformX(0, borders, ratioRow), LinearTransformY(0, borders, ratioColumn));
         if (y >= yInit && y < yEnd) graphics.DrawLine(AXES_PEN, xInit, y, xEnd, y);
         if (x >= xInit && x < xEnd) graphics.DrawLine(AXES_PEN, x, yEnd, x, yInit);
@@ -491,12 +496,13 @@ public partial class Graph : Form
         string tag1 = ReplaceTags.FUNC_HEAD + ReplaceTags.COS, tag2 = ReplaceTags.FUNC_HEAD + ReplaceTags.SIN,
             input1 = isParam ? replace(split[0], 2) : isPolar ? replace($"({split[0]})*{tag1}({split[1]})", 1) : "x",
             input2 = isParam ? replace(split[1], 2) : isPolar ? replace($"({split[0]})*{tag2}({split[1]})", 1) : split[0];
+
         int length = (int)((end - start) / increment), _length = length + 2; // For safety
         Matrix<Real> partition = GetMatrix(1, _length); Real steps = start;
         Real obtainCheck(string input) => RealSub.Obtain(input, steps); // Already simplified
         if (is_checking) { obtainCheck(input1); obtainCheck(input2); return (partition, partition, length, true); }
-        Real* partPtr = partition.RowPtr();
-        for (int i = 0; i < _length; i++, partPtr++, steps += increment) *partPtr = steps;
+
+        Real* partPtr = partition.RowPtr(); for (int i = 0; i < _length; i++, partPtr++, steps += increment) *partPtr = steps;
         Matrix<Real> obtain(string input) => new RealSub(input, partition, null, null, null, null, 1, _length).Obtain();
         return (obtain(input1), obtain(input2), length, false);
     }
@@ -508,9 +514,11 @@ public partial class Graph : Form
             blackPen = dichoPen(Color.White, Color.Black), whitePen = dichoPen(Color.Black, Color.White),
             bluePen = dichoPen(LOWER_BLUE, UPPER_GOLD), yellowPen = dichoPen(UPPER_GOLD, LOWER_BLUE),
             selectedPen = color_mode == 1 ? defaultPen : vividPen;
+
         Point pos = new(), posBuffer = new(); bool inRange, inRangeBuffer = false; int _ratio, _ratioBuffer = 0;
         Real relativeSpeed = Obtain(DenseInput) / length, ratio; Real* v1Ptr = value1.RowPtr(), v2Ptr = value2.RowPtr();
         var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
+
         for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++, segment_number++)
         {
             (pos.X, pos.Y) = (LinearTransformX(*v1Ptr, borders, ratioRow), LinearTransformY(*v2Ptr, borders, ratioColumn));
@@ -720,42 +728,36 @@ public partial class Graph : Form
     private static void CheckMoveDown(Action<int[]> checkMouse) => checkMouse(GetBorders(is_main ? 1 : 2));
     private static void HandleMouseAction(MouseEventArgs e, int[] borders, Action<(Real, Real)> actionHandler)
         => actionHandler(LinearTransform(e.X, e.Y, GetRatioRow(borders), GetRatioColumn(borders), borders));
-    private void DisplayMouseMove(MouseEventArgs e, Real xCoor, Real yCoor)
+    private void DisplayMouseMoveCore(int x = 0, int y = 0)
     {
-        static string trimForMove(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
-        SetText(X_CoorDisplay, trimForMove(xCoor)); SetText(Y_CoorDisplay, trimForMove(yCoor));
-        SetText(ModulusDisplay, trimForMove(Real.Hypot(xCoor, yCoor)));
-        SetText(AngleDisplay, MyString.GetAngle(xCoor, yCoor));
         if (!MyString.ContainsAny(MyString.BeautifyInput(InputString.Text), MyString.FPP_NAMES))
         {
-            if (is_complex)
-            {
-                Complex c = output_complex[e.X - AddOne(borders[0]), e.Y - AddOne(borders[2])];
-                SetText(FunctionDisplay, $"[Re] {c.real}\r\n[Im] {c.imaginary}");
-            }
-            else SetText(FunctionDisplay, output_real[e.X - AddOne(borders[0]), e.Y - AddOne(borders[2])].ToString());
+            if (is_complex) SetText(FunctionDisplay, $"[Re] {output_complex[x, y].real}\r\n[Im] {output_complex[x, y].imaginary}");
+            else SetText(FunctionDisplay, output_real[x, y].ToString());
         }
         else SetText(FunctionDisplay, DISPLAY_ERROR);
     }
+    private void DisplayMouseMove(MouseEventArgs e, Real xCoor, Real yCoor)
+    {
+        static string trimMove(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
+        SetText(X_CoorDisplay, trimMove(xCoor)); SetText(Y_CoorDisplay, trimMove(yCoor));
+        SetText(ModulusDisplay, trimMove(Real.Hypot(xCoor, yCoor))); SetText(AngleDisplay, MyString.GetAngle(xCoor, yCoor));
+        DisplayMouseMoveCore(e.X - AddOne(borders[0]), e.Y - AddOne(borders[2]));
+    }
     private void DisplayMouseDown(MouseEventArgs e, Real xCoor, Real yCoor)
     {
-        static string trimForDown(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
-        string _xCoor = trimForDown(xCoor), _yCoor = trimForDown(yCoor),
-            Modulus = trimForDown(Real.Hypot(xCoor, yCoor)), Angle = MyString.GetAngle(xCoor, yCoor);
-        string message = String.Empty;
+        static string trimDown(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
+        string _xCoor = trimDown(xCoor), _yCoor = trimDown(yCoor), modulus = trimDown(Real.Hypot(xCoor, yCoor)),
+            angle = MyString.GetAngle(xCoor, yCoor), message = String.Empty;
         if (!MyString.ContainsAny(MyString.BeautifyInput(InputString.Text), MyString.FPP_NAMES))
         {
             message += "\r\n\r\n";
             var (x, y) = (e.X - AddOne(borders[0]), e.Y - AddOne(borders[2]));
-            if (is_complex)
-            {
-                Complex c = output_complex[x, y];
-                message += $"Re = {trimForDown(c.real)}\r\nIm = {trimForDown(c.imaginary)}";
-            }
-            else message += $"f(x, y) = {trimForDown(output_real[x, y])}";
+            if (is_complex) message += $"Re = {trimDown(output_complex[x, y].real)}\r\nIm = {trimDown(output_complex[x, y].imaginary)}";
+            else message += $"f(x, y) = {trimDown(output_real[x, y])}";
         }
         AddDraft($"\r\n{SEP_1} Point {chosen_number} of No.{loop_number} {SEP_2}\r\n" +
-            $"\r\nx = {_xCoor}\r\ny = {_yCoor}\r\n" + $"\r\nmod = {Modulus}\r\narg = {Angle}{message}\r\n");
+            $"\r\nx = {_xCoor}\r\ny = {_yCoor}\r\n" + $"\r\nmod = {modulus}\r\narg = {angle}{message}\r\n");
     }
     #endregion
 
@@ -1030,7 +1032,7 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Log & Ln, Exp, Sqrt, Abs(f(x,y) & f(z))" +
             $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), e(f(z)){GetComment("e(z) := Exp(2πiz).")}");
         content += subTitleContent("COMBINATORICS",
-            $"\r\n\r\n{TAB}Floor, Ceil, Round, Sign & Sgn(Real a)" +
+            $"\r\n\r\n{TAB}Floor, Ceiling & Ceil, Round, Sign & Sgn(Real a)" +
             $"\r\n\r\n{TAB}Mod(Real a, Real n), nCr, nPr(int n, int r)" +
             $"\r\n\r\n{TAB}Max, Min(Real a, Real b, ...), Factorial & Fact(int n)");
         content += subTitleContent("SPECIALTIES",
@@ -1063,18 +1065,18 @@ public partial class Graph : Form
             $"\r\n{TAB}{TAB}" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
             $"\r\n{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}");
         content += subTitleContent("PLANAR CURVES",
-            $"\r\n\r\n{TAB}Func(f(x)) & " +
-            $"\r\n{TAB}Func(f(x), Real increment) & " +
-            $"\r\n{TAB}Func(f(x), Real a, Real b) & " +
-            $"\r\n{TAB}Func(f(x), Real a, Real b, Real increment)" +
+            $"\r\n\r\n{TAB}Function & Func(f(x)) & " +
+            $"\r\n{TAB}Function & Func(f(x), Real increment) & " +
+            $"\r\n{TAB}Function & Func(f(x), Real a, Real b) & " +
+            $"\r\n{TAB}Function & Func(f(x), Real a, Real b, Real increment)" +
             $"\r\n\r\n{TAB}Polar(f(θ), θ, Real a, Real b) & " +
             $"\r\n{TAB}Polar(f(θ), θ, Real a, Real b, Real increment)" +
-            $"\r\n\r\n{TAB}Param(f(u), g(u), u, Real a, Real b) & " +
-            $"\r\n{TAB}Param(f(u), g(u), u, Real a, Real b, Real increment)");
+            $"\r\n\r\n{TAB}Parametric & Param(f(u), g(u), u, Real a, Real b) & " +
+            $"\r\n{TAB}Parametric & Param(f(u), g(u), u, Real a, Real b, Real increment)");
         content += subTitleContent("RECURSIONS",
             $"\r\n\r\n{GetComment("Enumerated in decreasing hierarchy.")}" +
             $"\r\n\r\n{TAB}... | ... | ...{GetComment("Displaying one by one.")}") +
-            $"\r\n\r\n{TAB}Subs(Input(a,b,c,...), a, a_new, b, b_new, c, c_new, ...)" +
+            $"\r\n\r\n{TAB}Substitute & Subs(Input(a,b,c,...), a, a_new, b, b_new, c, c_new, ...)" +
             $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
             $"\r\n\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b, F(x,y,X,k))" +
@@ -1399,6 +1401,7 @@ public partial class Graph : Form
             PictureIncorrect.Visible = true; PictureCorrect.Visible = false;
         });
         InputString.SelectionStart = pos;
+        if (PictureCorrect.Visible) DisplayMouseMoveCore(); // Displaying the value at the lower-right corner
     }
     private void AddressInput_TextChanged(object sender, EventArgs e)
     {
@@ -1712,10 +1715,9 @@ public class MyMessageBox : Form
 public class MyString
 {
     private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; }
-    public static readonly string[] SUBS_TAG = AddSuffix(["subs", "Subs"]), LOOP_TAG = AddSuffix(["loop", "Loop"]),
-        FUNC_TAG = AddSuffix(["func", "Func"]), POLAR_TAG = AddSuffix(["polar", "Polar"]), PARAM_TAG = AddSuffix(["param", "Param"]),
-        ZETAS = AddSuffix(["zeta", "Zeta"]);
-    public static readonly string[] FPP_NAMES = [.. FUNC_TAG, .. POLAR_TAG, .. PARAM_TAG];
+    public static readonly string[] FUNC = AddSuffix(["function", "Function", "func", "Func"]), POLAR = AddSuffix(["polar", "Polar"]),
+        PARAM = AddSuffix(["parametric", "Parametric", "param", "Param"]), ZETAS = AddSuffix(["zeta", "Zeta"]);
+    public static readonly string[] FPP_NAMES = [.. FUNC, .. POLAR, .. PARAM];
     protected static readonly char SUB_CHAR = ';'; // Replacing ",^"
 
     #region Parentheses
@@ -1928,12 +1930,12 @@ public class RealComplex : MyString
 public class ReplaceTags : RealComplex
 {
     public static readonly string[] FUNCTIONS =
-        [ "floor", "ceil", "round", "sgn", "F", "gamma", "beta", "zeta", "mod", "nCr", "nPr",
+        [ "floor", "ceiling", "round", "sign", "F", "gamma", "beta", "zeta", "mod", "nCr", "nPr",
             "max", "min", "log", "exp", "sqrt", "abs", "factorial", "arsinh", "arcosh", "artanh",
             "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "conjugate", "e" ];
     public static readonly string[] SPECIALS =
-        [ "stereo", "homoth", "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2", "cocoon",
-            "subs", "iterateLoop", "loop", "func", "polar", "param" ];
+        [ "stereographic", "homothety", "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2",
+            "cocoon", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
     public static readonly string[] EX_COMPLEX =
         [
             "stereo(3,1,1,z)",
@@ -2022,7 +2024,7 @@ public class ReplaceTags : RealComplex
     private static readonly Dictionary<string, string> REAL_STANDARD = AddSuffix(new()
         {
             { "floor", FLOOR }, { "Floor", FLOOR },
-            { "ceil", CEIL }, { "Ceil", CEIL },
+            { "ceiling", CEIL }, { "Ceiling", CEIL },{ "ceil", CEIL }, { "Ceil", CEIL },
             { "round", ROUND }, { "Round", ROUND },
             { "sign", SIGN }, { "Sign", SIGN }, { "sgn", SIGN }, { "Sgn", SIGN }
         }, DOLLAR);
@@ -2047,12 +2049,12 @@ public class ReplaceTags : RealComplex
         { { "pi", PI }, { "Pi", PI }, { "gamma", _GA }, { "Gamma", _GA }, { "ga", _GA }, { "Ga", _GA } };
     private static readonly Dictionary<string, string> TAGS = AddSuffix(new()
         {
-            { "subs", SUBS}, { "Subs", SUBS},
+            { "substitute", SUBS}, { "Substitute", SUBS},{ "subs", SUBS}, { "Subs", SUBS},
             { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }, // Must precede "loop" to avoid confusion
             { "loop", LOOP }, { "Loop", LOOP },
-            { "func", FUNC }, { "Func", FUNC },
+            { "function", FUNC }, { "Function", FUNC },{ "func", FUNC }, { "Func", FUNC },
             { "polar", POLAR }, { "Polar", POLAR },
-            { "param", PARAM }, { "Param", PARAM }
+            { "parametric", PARAM }, { "Parametric", PARAM }, { "param", PARAM }, { "Param", PARAM }
         }, UNDERLINE);
     private static readonly Dictionary<string, string> REAL_COMPLEX = Concat(REAL, COMPLEX);
     private static Dictionary<string, string> AddPrefixSuffix(Dictionary<string, string> dictionary)
@@ -2072,13 +2074,13 @@ public class ReplaceTags : RealComplex
     private static string ReplaceConstant(string input) => ReplaceBase(input, CONSTANTS);
     private static string ReplaceCommon(string input) => ReplaceConstant(ReplaceBase(input, AddPrefixSuffix(COMMON)));
     protected static string ReplaceRealComplex(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(REAL_COMPLEX)));
-    public static string ReplaceCurves(string input) => ReplaceBase(input, AddPrefixSuffix(TAGS));
+    protected static string ReplaceCurves(string input) => ReplaceBase(input, AddPrefixSuffix(TAGS));
 } /// Function name interpretors
 public class RecoverMultiply : ReplaceTags
 {
     public static readonly string LR_BRA = "()", LR_CBRA = "{}", _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_),
         _ZZ_BRA = String.Concat(_ZZ_, LR_CBRA), _XX__YY_BRA = String.Concat(_XX__YY_, LR_CBRA),
-        BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", FUNC, POLAR, PARAM, ITLOOP);
+        BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", SUBS, ITLOOP, LOOP, FUNC, POLAR, PARAM);
     private static readonly string VAR_REAL = _XX__YY_, VAR_COMPLEX = String.Concat(_ZZ_, I), CONST = String.Concat(E, P, G),
         ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
     public static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
@@ -2134,7 +2136,6 @@ public sealed class ComplexSub : RecoverMultiply
     private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Complex>> cstMtcs = []; // To store reusable constant matrices
-
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
@@ -2574,7 +2575,6 @@ public sealed class RealSub : RecoverMultiply
     private readonly Matrix<Real>[] buffCocs; // To precompute repetitively used blocks
     private readonly MatrixCopy<Real>[] braValues; // To store values between parenthesis pairs
     private readonly List<ConstMatrix<Real>> cstMtcs = []; // To store reusable constant matrices
-
     private int countBra, countCst; // countBra: parentheses, countCst: constants
     private bool readList; // Reading or writing cstMtcs
     private string input;
