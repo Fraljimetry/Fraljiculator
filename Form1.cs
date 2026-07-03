@@ -130,7 +130,7 @@ public partial class Graph : Form
         void functionsSpecial_AddItem(string[] options, bool isFunc)
         {
             string[] modifiedOptions = new string[options.Length]; int index = 0;
-            foreach (string option in options) modifiedOptions[index++] = String.Concat(option, RecoverMultiply.LR_BRA);
+            foreach (string option in options) modifiedOptions[index++] = option;
             Action<string[]> addOptions = isFunc ? ComboFunctions.Items.AddRange : ComboSpecial.Items.AddRange;
             addOptions(modifiedOptions);
         }
@@ -1081,9 +1081,9 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b, F(x,y,X,k))" +
             $"\r\n{TAB}IterateLoop(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(...), k, int a, int b, F(z,k))" +
-            $"\r\n\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b) & " +
+            $"\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b, F(z,Z,k))" +
-            $"\r\n\r\n{GetComment("Displaying each loop of iteration.")}";
+            $"\r\n{GetComment("Displaying each loop of iteration.")}";
         content += subTitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i");
         content += subTitleContent("SHORTCUTS", "\r\n");
 
@@ -1256,8 +1256,8 @@ public partial class Graph : Form
     private void Combo_SelectionChanged(string selectedItem)
     {
         if (ProcessingGraphics()) return;
-        SetText(InputString, MyString.Replace(InputString.Text, selectedItem, InputString.SelectionStart,
-            InputString.SelectionStart + InputString.SelectionLength - 1));
+        SetText(InputString, MyString.Replace(InputString.Text, String.Concat(selectedItem, RecoverMultiply.LR_BRA),
+            InputString.SelectionStart, InputString.SelectionStart + InputString.SelectionLength - 1));
         InputString.Focus(); InputString.SelectionStart--; // Should not place before .Focus()
     }
     private void ComboExamples_SelectedIndexChanged(object sender, EventArgs e)
@@ -2024,7 +2024,7 @@ public class ReplaceTags : RealComplex
     private static readonly Dictionary<string, string> REAL_STANDARD = AddSuffix(new()
         {
             { "floor", FLOOR }, { "Floor", FLOOR },
-            { "ceiling", CEIL }, { "Ceiling", CEIL },{ "ceil", CEIL }, { "Ceil", CEIL },
+            { "ceiling", CEIL }, { "Ceiling", CEIL }, { "ceil", CEIL }, { "Ceil", CEIL },
             { "round", ROUND }, { "Round", ROUND },
             { "sign", SIGN }, { "Sign", SIGN }, { "sgn", SIGN }, { "Sgn", SIGN }
         }, DOLLAR);
@@ -2052,7 +2052,7 @@ public class ReplaceTags : RealComplex
             { "substitute", SUBS}, { "Substitute", SUBS}, { "subs", SUBS}, { "Subs", SUBS},
             { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }, // Must precede "loop" to avoid confusion
             { "loop", LOOP }, { "Loop", LOOP },
-            { "function", FUNC }, { "Function", FUNC },{ "func", FUNC }, { "Func", FUNC },
+            { "function", FUNC }, { "Function", FUNC }, { "func", FUNC }, { "Func", FUNC },
             { "polar", POLAR }, { "Polar", POLAR },
             { "parametric", PARAM }, { "Parametric", PARAM }, { "param", PARAM }, { "Param", PARAM }
         }, UNDERLINE);
