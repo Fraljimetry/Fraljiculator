@@ -1255,10 +1255,10 @@ public partial class Graph : Form
     }
     private void Combo_SelectionChanged(string selectedItem)
     {
-        if (ProcessingGraphics()) return;
+        if (ProcessingGraphics()) return; int pos = InputString.SelectionStart;
         SetText(InputString, MyString.Replace(InputString.Text, String.Concat(selectedItem, RecoverMultiply.LR_BRA),
-            InputString.SelectionStart, InputString.SelectionStart + InputString.SelectionLength - 1));
-        InputString.Focus(); InputString.SelectionStart--; // Should not place before .Focus()
+            pos, pos + InputString.SelectionLength - 1));
+        InputString.Focus(); InputString.SelectionStart = pos + selectedItem.Length + 1; // Should not place before .Focus()
     }
     private void ComboExamples_SelectedIndexChanged(object sender, EventArgs e)
     {
