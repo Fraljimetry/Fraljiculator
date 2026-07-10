@@ -661,7 +661,7 @@ public partial class Graph : Form
         for (int loops = 0; loops < split.Length; loops++)
         {
             CheckComplex.Checked = MyString.ReplaceZetas(split[loops]).AsSpan().ContainsAny(RecoverMultiply._ZZ_);
-            DisplayLevel1(RecoverMultiply.Simplify(split[loops], is_complex));
+            DisplayLevel1(RecoverMultiply.Simplify(split[loops]));
         }
     }
     #endregion
@@ -2083,10 +2083,10 @@ public class RecoverMultiply : ReplaceTags
         ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
     public static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
 
-    public static string Simplify(string input, bool isComplex = false)
+    public static string Simplify(string input)
     {
         ThrowException(!CheckParenthesis(input) || input.Contains(LR_BRA) || input.AsSpan().ContainsAny(BARRED_CHARS));
-        return ReplaceRealComplex(ReplaceCurves(RemoveEnterBlank(input)));
+        return ReplaceRealComplex(ReplaceCurves(RemoveEnterBlank(input))); // Sensitive
     } // Used only once at the beginning
     protected static string Recover(ReadOnlySpan<char> input, bool isComplex)
     {
@@ -2252,8 +2252,6 @@ public sealed class ComplexSub : RecoverMultiply
         else { Parallel.For(0, rowChk, p => { processSH(strdInit[p], strd); }); if (res != 0) processSH(resInit, res); }
         return new ComplexSub(split[3], _z, Z, buffCocs, rows, columns).Obtain();
     }
-    private Matrix<Complex> Stereographic(string[] split) => ProcessSH(split, RealSub.Stereographic);
-    private Matrix<Complex> Homothety(string[] split) => ProcessSH(split, RealSub.Homothety);
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2271,17 +2269,19 @@ public sealed class ComplexSub : RecoverMultiply
         var (input, xCoor, yCoor) = function(split);
         return new ComplexSub(input, xCoor, yCoor, rows, columns).Obtain();
     }
+    private Matrix<Complex> Stereographic(string[] split) => ProcessSH(split, RealSub.Stereographic);
+    private Matrix<Complex> Homothety(string[] split) => ProcessSH(split, RealSub.Homothety);
     private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
     private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
     private Matrix<Complex> Iterate2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessIterate2);
+    private Matrix<Complex> Composite2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessComposite2);
     private Matrix<Complex> Composite(string[] split)
     {
         Matrix<Complex> _value = ObtainValue(split[0]);
         for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, buffCocs).Obtain();
         return _value;
     } // Do not use HandleMtx
-    private Matrix<Complex> Composite2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessComposite2);
     private Matrix<Complex> Cocoon(string[] split)
     {
         ComplexSub body = ObtainSub(split[0], Z, new Matrix<Complex>[split.Length - 1]);
@@ -2749,8 +2749,6 @@ public sealed class RealSub : RecoverMultiply
         else { Parallel.For(0, rowChk, p => { processSH(strdInit[p], strd); }); if (res != 0) processSH(resInit, res); }
         return new RealSub(split[3], _x, _y, X, Y, buffCocs, rows, columns).Obtain();
     }
-    private Matrix<Real> Stereographic(string[] split) => ProcessSH(split, Stereographic);
-    private Matrix<Real> Homothety(string[] split) => ProcessSH(split, Homothety);
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength]);
@@ -2763,9 +2761,6 @@ public sealed class RealSub : RecoverMultiply
         });
         return buffer.X;
     } // Meticulously optimized
-    private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
-    private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
-    private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
     public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split)
     {
         ThrowInvalidLengths(split, [8]);
@@ -2783,13 +2778,6 @@ public sealed class RealSub : RecoverMultiply
         });
         return (split[^1], buffer1.X, buffer1.Y); // Or, alternatively, buffer2
     }
-    private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
-    private Matrix<Real> Composite1(string[] split)
-    {
-        Matrix<Real> _value = ObtainValue(split[0]);
-        for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, null, buffCocs).Obtain();
-        return _value;
-    } // Do not use HandleMtx
     public (string, Matrix<Real>, Matrix<Real>) ProcessComposite2(string[] split)
     {
         ThrowException(Int32.IsEvenInteger(split.Length));
@@ -2802,7 +2790,19 @@ public sealed class RealSub : RecoverMultiply
         }
         return (split[^1], value1, value2);
     }
+    private Matrix<Real> Stereographic(string[] split) => ProcessSH(split, Stereographic);
+    private Matrix<Real> Homothety(string[] split) => ProcessSH(split, Homothety);
+    private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
+    private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
+    private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
+    private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
     private Matrix<Real> Composite2(string[] split) => ChooseMode(ProcessComposite2(split));
+    private Matrix<Real> Composite1(string[] split)
+    {
+        Matrix<Real> _value = ObtainValue(split[0]);
+        for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, null, buffCocs).Obtain();
+        return _value;
+    } // Do not use HandleMtx
     private Matrix<Real> Cocoon(string[] split)
     {
         RealSub body = ObtainSub(split[0], X, Y, new Matrix<Real>[split.Length - 1]);
