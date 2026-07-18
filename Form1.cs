@@ -779,11 +779,9 @@ public partial class Graph : Form
         {
             Graph_DoubleClick(sender, e);
             SetTextboxButtonReadOnly(true);
-
             pixel_number = segment_number = export_number = 0;
             error_input = error_address = is_checking = false;
             clicked = true; loop_number++;
-
             PrepareSetDisplay(borders, isMain);
             endAction();
         }
@@ -810,7 +808,6 @@ public partial class Graph : Form
         display_elapsed = 0;
         SetText(TimeDisplay, "0s");
         is_flashing = false; // Ensuring deferred emergence of the hourglass
-
         DisplayTimer.Start(); WaitTimer.Start(); GraphTimer.Start();
         TimeNow = DateTime.Now;
     }
@@ -894,7 +891,6 @@ public partial class Graph : Form
         {
             is_checking = true;
             PrepareSetDisplay(GetBorders(3), false);
-
             bool noInput = NoInput(); // Should not return immediately if NoInput()
             InputLabel.ForeColor = noInput ? Color.White : CORRECT_GREEN;
             InputString.BackColor = noInput ? FOCUS_GRAY : CORRECT_GREEN;
@@ -955,7 +951,6 @@ public partial class Graph : Form
         void restoreDefault(object sender, KeyEventArgs e)
         {
             RecoverInput(); ComboColoring.SelectedIndex = 4; ComboContour.SelectedIndex = 1;
-
             CheckBox[] checkFalse = [CheckAuto, CheckSwap, CheckPoints, CheckShade, CheckRetain];
             foreach (var cbx in checkFalse) cbx.Checked = false;
             CheckBox[] checkTrue = [CheckEdit, CheckComplex, CheckCoor];
@@ -1061,7 +1056,9 @@ public partial class Graph : Form
             $"\r\n{GetComment("f: initial values; g: compositions.")}" +
             $"\r\n\r\n{TAB}Cocoon & Coc" +
             $"\r\n{TAB}{TAB}" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
-            $"\r\n{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}");
+            $"\r\n{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}") +
+            $"\r\n\r\n{TAB}Real(...)" +
+            $"{TAB}{GetComment("To compute a real block in a complex expression.")}";
         content += subTitleContent("PLANAR CURVES",
             $"\r\n\r\n{TAB}Function & Func(f(x)) & " +
             $"\r\n{TAB}Function & Func(f(x), Real increment) & " +
@@ -1933,14 +1930,14 @@ public class ReplaceTags : RealComplex
             "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "conjugate", "e" ];
     public static readonly string[] SPECIALS =
         [ "stereographic", "homothety", "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2",
-            "cocoon", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
+            "cocoon", "real", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
     public static readonly string[] EX_COMPLEX =
         [
             "stereo(3,1,1,z)",
-            "z^(1+10i)cos((z-1)/(z^13+z+1))",
-            "sum(1/(1-z^n),n,1,100)-100",
-            "prod(exp(2/(e(-k/5)z-1)+1),k,1,5)",
-            "coc(iterate((/Z+Z){0},z,k,1,1000),e(0.02))",
+            "z^coc(1+10i)cos((z-1)/(z^13+z+1))",
+            "sum(/(1-z^n),n,1,100)-100",
+            "prod(exp(2/(coc(e(-k/5))z-1)+1),k,1,5)",
+            "coc(iterate((/Z+Z){0},z,k,1,1000),e(.02))",
             "iterate(exp(zZ),z,k,1,100)",
             "iterateLoop(ZZ+z,0,k,1,30)",
             "comp(zz,sin(zZ),cos(z/Z))"
@@ -1952,19 +1949,19 @@ public class ReplaceTags : RealComplex
             "ceil(x)round(y)-floor(y)round(x)",
             "iterateLoop(x^X,1,k,1,30,y-X)",
             "iterate1(x/X+X/y,xy,k,1,5)",
-            "iterate2(1/X+1/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
+            "iterate2(/X+/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
             "comp1(xy,tan(Xx),artanh(X-y))",
             "comp2(xy,xx+yy,sin(X+Y),cos(X-Y),z)"
         ];
     public static readonly string[] EX_CURVES =
         [
             "func(zeta(x,50))",
-            "subs(func(sum(sin(xj)/j,k,0,100),-pi,pi,0.001),j,2^k)",
-            "func(beta(sinh(x),cosh(x)),-2,2,0.0001)",
-            "polar(sqrt(cos(2theta)),theta,0,2pi,0.0001)",
-            "polar(cos(5k)cos(7k),k,0,2pi,0.001)",
-            "loop(polar(0.1jcos(5k+0.7jpi),k,0,pi),j,1,10)",
-            "param(sin(7k),cos(9k),k,0,2pi,0.001)",
+            "subs(func(sum(sin(xj)/j,k,0,100),-pi,pi,.001),j,2^k)",
+            "func(beta(sinh(x),cosh(x)),-2,2,.0001)",
+            "polar(sqrt(cos(2theta)),theta,0,2pi,.0001)",
+            "polar(cos(5k)cos(7k),k,0,2pi,.001)",
+            "loop(polar(.1jcos(5k+.7jpi),k,0,pi),j,1,10)",
+            "param(sin(7k),cos(9k),k,0,2pi,.001)",
             "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,10)"
         ];
     public static readonly char FUNC_HEAD = TILDE, UNDERLINE = '_', DOLLAR = _D_;
@@ -1980,7 +1977,7 @@ public class ReplaceTags : RealComplex
         MOD = M_.ToString(), NCR = C_.ToString(), NPR = A_.ToString(), _MAX = MAX.ToString(), _MIN = MIN.ToString(),
         IT = I_.ToString(), IT1 = String.Concat(MODE_1, IT), IT2 = String.Concat(MODE_2, IT),
         COMP = J_.ToString(), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP),
-        CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP),
+        CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP), _REAL = _R.ToString(),
         PI = P.ToString(), _GA = G.ToString();
     private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
         => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
@@ -2040,7 +2037,8 @@ public class ReplaceTags : RealComplex
     private static readonly Dictionary<string, string> COMPLEX_SERIES = AddSuffix(new()
         {
             { "iterate", IT }, { "Iterate", IT },
-            { "composite", COMP }, { "Composite", COMP }, { "comp", COMP }, { "Comp", COMP }
+            { "composite", COMP }, { "Composite", COMP }, { "comp", COMP }, { "Comp", COMP },
+            { "real", _REAL }, { "Real", _REAL }
         }, UNDERLINE);
     private static readonly Dictionary<string, string> COMPLEX = Concat(COMPLEX_SERIES, COMPLEX_STANDARD);
     private static readonly Dictionary<string, string> CONSTANTS = new()
@@ -2288,6 +2286,7 @@ public sealed class ComplexSub : RecoverMultiply
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
         return body.Obtain();
     } // For shallow and complicated composites
+    private Matrix<Complex> RealBlock(string[] split) { ThrowInvalidLengths(split, [1]); return Const(new(RealSub.Obtain(split[0]))); }
     #endregion
 
     #region Elements
@@ -2542,7 +2541,8 @@ public sealed class ComplexSub : RecoverMultiply
             P_ => handleSub(Product, 2),
             I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
             J_ => input[idx - 2] switch { TILDE => handleSub(Composite, 2), MODE_2 => handleSub(Composite2, 3) },
-            K_ => handleSub(Cocoon, 2)
+            K_ => handleSub(Cocoon, 2),
+            _R => handleSub(RealBlock, 2) // Special for complex
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
