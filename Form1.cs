@@ -1,3 +1,4 @@
+/// https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
 using Real = System.Double;
 using MathR = System.Math;
 
@@ -125,7 +126,7 @@ public partial class Graph : Form
         void addExamples(string[] items) { foreach (string item in items) ComboExamples.Items.Add(item); }
         addExamples(ReplaceTags.EX_COMPLEX); ComboExamples.Items.Add(String.Empty);
         addExamples(ReplaceTags.EX_REAL); ComboExamples.Items.Add(String.Empty);
-        addExamples(ReplaceTags.EX_CURVES);
+        addExamples(ReplaceTags.EX_CURVES); ComboExamples.Items.Add(String.Empty);
 
         void functionsSpecial_AddItem(string[] options, bool isFunc)
         {
@@ -1014,7 +1015,7 @@ public partial class Graph : Form
             "to visualize real/complex functions and equations with no more than two variables." +
             $"\r\n\r\n{TAB}To bolster artistry and practicality, numerous parameters are tunable, " +
             "making it possible to generate images tailored for users of various ends." +
-            $"\r\n\r\n{TAB}Note: I wish the definitions of these operations are self-evident if you try yourself or refer to the examples.";
+            $"\r\n\r\n{TAB}Note: Default variables are case-sensitive while function names are not, unless otherwise stated.";
 
         static string subTitleContent(string subtitle, string content) => $"\r\n\r\n{_SEP}\r\n{TAB}{subtitle}\r\n{_SEP}" + content;
         content += subTitleContent("ELEMENTS",
@@ -1022,8 +1023,8 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Sin, Cos, Tan, Sinh, Cosh, Tanh," +
             $"\r\n{TAB}Arcsin & Asin, Arccos & Acos, Arctan & Atan," +
             $"\r\n{TAB}Arsinh & Asinh, Arcosh & Acosh, Artanh & Atanh," +
-            $"\r\n\r\n{TAB}Log & Ln, Exp, Sqrt, Abs(f(x,y) & f(z))" +
-            $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), e(f(z)){GetComment("e(z) := Exp(2πiz).")}");
+            $"\r\n\r\n{TAB}Log & Ln, Exp, Sqrt, Abs{TAB}(f(x,y) & f(z))" +
+            $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), e(f(z)){GetComment("e(z) := Exp(2πiz), case-sensitive.")}");
         content += subTitleContent("COMBINATORICS",
             $"\r\n\r\n{TAB}Floor, Ceiling & Ceil, Round, Sign & Sgn(Real a)" +
             $"\r\n\r\n{TAB}Mod(Real a, Real n), nCr, nPr(int n, int r)" +
@@ -1038,27 +1039,26 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Beta(f(x,y) & f(z), g(x,y) & g(z)) & " +
             $"\r\n{TAB}Beta(f(x,y) & f(z), g(x,y) & g(z), int n)" +
             $"\r\n\r\n{TAB}Zeta(f(x,y) & f(z)) & " +
-            $"\r\n{TAB}Zeta(f(x,y) & f(z), int n){GetComment("This is a mess for n too large.")}") +
+            $"\r\n{TAB}Zeta(f(x,y) & f(z), int n){GetComment("Reduced accuracy if n is too large.")}") +
             $"\r\n\r\n{TAB}Stereographic & Stereo(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))" +
-            $"\r\n\r\n{TAB}Homothety & Homoth(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))";
+            $"\r\n\r\n{TAB}Homothety & Homoth(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))" +
+            $"\r\n\r\n{TAB}Real(...)" +
+            $"{TAB}{GetComment("Variable-free real blocks in complex expressions.")}";
         content += subTitleContent("REPETITIONS",
             $"\r\n\r\n{GetComment("Capitalizations represent substitutions of variables.")}" +
             $"\r\n\r\n{TAB}Sum(f(x,y,k) & f(z,k), k, int a, int b)" +
             $"\r\n{TAB}Product & Prod(f(x,y,k) & f(z,k), k, int a, int b)" +
             $"\r\n\r\n{TAB}Iterate1(f(x,y,X,k), g(x,y), k, int a, int b)" +
-            $"\r\n{TAB}Iterate2(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(...), k, int a, int b, 1&2&F(z))" +
+            $"\r\n{TAB}Iterate2(f1(x,y,X,Y,k), f2(x,y,X,Y,k), g1(x,y), g2(x,y), k, int a, int b, 1&2&F(z))" +
             $"\r\n{TAB}Iterate(f(z,Z,k), g(z), k, int a, int b)" +
             $"\r\n{GetComment("g: initial values; f: iterations.")}" +
             $"\r\n\r\n{TAB}Composite1 & Comp1(f(x,y), g1(x,y,X), ... , gn(x,y,X))" +
             $"\r\n{TAB}Composite2 & Comp2" +
-            $"\r\n{TAB}{TAB}(f1(x,y), f2(...), g1(x,y,X,Y), h1(...), ... , gn(...), hn(...), 1&2&F(z))" +
+            $"\r\n{TAB}{TAB}(f1(x,y), f2(x,y), g1(x,y,X,Y), h1(x,y,X,Y), ... , gn(...), hn(...), 1&2&F(z))" +
             $"\r\n{TAB}Composite & Comp(f(z), g1(z,Z), ... , gn(z,Z))" +
             $"\r\n{GetComment("f: initial values; g: compositions.")}" +
-            $"\r\n\r\n{TAB}Cocoon & Coc" +
-            $"\r\n{TAB}{TAB}" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
-            $"\r\n{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}") +
-            $"\r\n\r\n{TAB}Real(...)" +
-            $"{TAB}{GetComment("To compute a real block in a complex expression.")}";
+            $"\r\n\r\n{TAB}Cocoon & Coc" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
+            $"\r\n{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}");
         content += subTitleContent("PLANAR CURVES",
             $"\r\n\r\n{TAB}Function & Func(f(x)) & " +
             $"\r\n{TAB}Function & Func(f(x), Real increment) & " +
@@ -1070,34 +1070,35 @@ public partial class Graph : Form
             $"\r\n{TAB}Parametric & Param(f(u), g(u), u, Real a, Real b, Real increment)");
         content += subTitleContent("RECURSIONS",
             $"\r\n\r\n{GetComment("Enumerated in decreasing hierarchy.")}" +
-            $"\r\n\r\n{TAB}... | ... | ...{GetComment("Displaying one by one.")}") +
-            $"\r\n\r\n{TAB}Substitute & Subs(Input(a,b,c,...), a, a_new, b, b_new, c, c_new, ...)" +
+            $"\r\n\r\n{TAB}... | ... | ...{GetComment("Consecutive displays, R&C hybrid.")}") +
+            $"\r\n\r\n{TAB}Substitute & Subs(Input(a,b,c,...), a, aNew, b, bNew, c, cNew, ...)" +
+            $"\r\n{GetComment("Verbatim substitutions without precomputation.")}" +
             $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
             $"\r\n\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b) & " +
-            $"\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b, F(x,y,X,k))" +
-            $"\r\n{TAB}IterateLoop(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(...), k, int a, int b, F(z,k))" +
-            $"\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b) & " +
+            $"\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b, F(x,y,X,k)) & " +
+            $"\r\n{TAB}IterateLoop(f1(x,y,X,Y,k), f2(x,y,X,Y,k), g1(x,y), g2(x,y), k, int a, int b, F(z,k))" +
+            $"\r\n\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b, F(z,Z,k))" +
-            $"\r\n{GetComment("Displaying each loop of iteration.")}";
-        content += subTitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i");
+            $"\r\n{GetComment("Displaying iterations loopwise.")}";
+        content += subTitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i{GetComment("e and i are case-sensitive.")}");
         content += subTitleContent("SHORTCUTS", "\r\n");
 
-        static string getShortcuts(string key, int blank, string meaning) => $"\r\n{TAB}[{key}]" + new string('\t', blank) + meaning + ";";
+        static string getShortcuts(string key, int blank, string meaning) => $"\r\n{TAB}[{key}]" + new string('\t', blank) + meaning;
         content += getShortcuts("Control + P", 3, "Graph in MicroBox");
         content += getShortcuts("Control + G", 3, "Graph in MacroBox");
-        content += getShortcuts("Control + B", 3, "Graph in both regions");
-        content += getShortcuts("Control + S", 3, "Save as a snapshot");
-        content += getShortcuts("Control + K", 3, "Save the history as a .txt");
+        content += getShortcuts("Control + B", 3, "Graph in Microbox & Macrobox");
+        content += getShortcuts("Control + S", 3, "Save screen as .png");
+        content += getShortcuts("Control + K", 3, "Save history as .txt");
         content += getShortcuts("Control + Shift + C", 2, "Check all inputs");
-        content += getShortcuts("Control + R", 3, "Erase all check results");
+        content += getShortcuts("Control + R", 3, "Clear all check results");
         content += getShortcuts("Control + D", 3, "Restore to default");
         content += getShortcuts("Shift + Back", 3, "Clear InputBox");
-        content += getShortcuts("Control + D2", 3, "View Fralji's profile");
-        content += getShortcuts("Control + D3", 3, "Clear all ReadOnly controls");
-        content += getShortcuts("Control + OemQuestion", 2, "See manual");
-        content += getShortcuts("Delete", 3, "Clear both regions");
+        content += getShortcuts("Control + D2", 3, "View Fraljimetry's profile");
+        content += getShortcuts("Control + D3", 3, "Clear all ReadOnly displays");
+        content += getShortcuts("Control + OemQuestion", 2, "View user manual");
+        content += getShortcuts("Delete", 3, "Clear Microbox & Macrobox");
         content += getShortcuts("Escape", 3, "Close Fraljiculator");
-        return content + $"\r\n\r\n{TAB}Click [Tab] to witness the process of control design.";
+        return content + $"\r\n\r\n{GetComment("Double click the subtitle to repaint backdrop.")}";
     }
     private static string AddContact(string platform, int blank, string account, string note)
         => $"\r\n\r\n{TAB}{platform}:" + new string('\t', blank) + account + (note != String.Empty ? (TAB + GetComment(note)) : note);
@@ -1105,8 +1106,8 @@ public partial class Graph : Form
     {
         string content = "Dear math lovers & mathematicians:" +
             $"\r\n\r\n{TAB}Hi! I'm Fralji, a content creator on Bilibili since July of 2021, when I was a freshman before entering college." +
-            $"\r\n\r\n{TAB}I aim to deliver unique lectures on many branches of mathematics. " +
-            "If you have any problem on the usage of this application, or anything concerning math, please reach to me via:";
+            $"\r\n\r\n{TAB}I aim to deliver unique lectures on many branches of mathematics. To know more about my work, visit shaodaji.cc " +
+            $"\r\n\r\n{TAB}If you have any problem on the usage of this application, or anything concerning math, please reach to me via:";
         content += AddContact("Bilibili", 2, "355884223", String.Empty);
         content += AddContact("Email", 2, "frankjiiiiiiii@gmail.com", String.Empty);
         content += AddContact("Wechat", 1, "F1r4a2n8k5y7", "recommended");
@@ -1119,41 +1120,41 @@ public partial class Graph : Form
     private void PictureLogo_DoubleClick(object sender, EventArgs e) => MyMessageBox.ShowFormal(GetProfile(), 600, 450);
     private static void ShowCustomBox(string title, string[] contents)
         => ShowBoxBase(MyMessageBox.ShowCustom, $"[{title}]" + new string(' ', 20) + $"{DATE}", contents, 2);
-    private void InputLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("FORMULA INPUT",
+    private void InputLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("INPUTBOX",
     [
         "Space and Enter keys are both acceptable. Unsupported keys are blocked, and removed if pasted from the clipboard.",
-        "Excessive omission of multiplication may cause misinterpretation. For example, \"gammax\" could be parsed as \"max\"."
+        "It may lead to misinterpretation if excessive multiplication signs are omitted. For example, \"gammax\" could be parsed as \"max\"."
     ]);
-    private void AtLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("SAVING ADDRESS",
+    private void AtLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("ADDRESS",
     [
-        "Create a file for snapshot storage and paste its address here. It will be validated.",
-        "PNG snapshots and history lists will be named in the following formats: " +
+        "Create a file for snapshot storage and paste its address here. It will be instantly validated.",
+        "PNG snapshots and history lists will be named in the following formats respectively: " +
         "\"yyyy_ddd_hh_mm_ss_No.#\" and \"yyyy_ddd_hh_mm_ss_stockpile\"."
     ]);
     private void GeneralLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("GENERAL SCOPE",
     [
-        "The detailed scope takes effect only when the general scope is set to \"0\".",
-        "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the input box."
+        "Detailed scope takes effect only when general scope is set to \"0\".",
+        "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the InputBox."
     ]);
     private void DetailLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DETAILED SCOPE",
     [
-        "Creating a mirror effect by reversing endpoints is NOT supported.",
-        "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the input box."
+        "It is not supported to create a mirror effect by reversing endpoints.",
+        "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the InputBox."
     ]);
     private void ThickLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("MAGNITUDE",
     [
-        "Represents: (i) Width of planar curves, (ii) Size of special points, (iii) Decay rates of translucence.",
+        "Represents: (i) Widths of planar curves, (ii) Sizes of special points, (iii) Decay rates of translucence.",
         "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
     ]);
     private void DenseLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DENSITY",
     [
-        "Represents:\r\n(i) Density of contours (real and complex),\r\n(ii) Relative speed of planar curves.",
+        "Represents:\r\n(i) Densities of contours (real and complex),\r\n(ii) Coloring periods of planar curves.",
         "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
     ]);
     private void DraftLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("HISTORY LIST",
     [
         "The input will be saved both in this box and to the clipboard.",
-        "Clicked points, along with the timestamps of snapshots and history entries, will also be recorded in detail."
+        "Clicked points, along with the timestamps of snapshots and other information, will also be recorded in detail."
     ]);
     private void ExampleLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("EXAMPLES",
     [
@@ -1162,28 +1163,28 @@ public partial class Graph : Form
     ]);
     private void FunctionLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("FUNCTIONS",
     [
-        "The two combo boxes contain regular and special operations respectively, the latter having more complex grammar.",
+        "The two combo boxes contain regular and special operations respectively, the latter having more involved grammar.",
         "Select something in the input box and choose an item here to substitute your selection."
     ]);
     private void ModeLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("COLORING MODES",
     [
-        "The color spectrum represents:\r\n(i) Arguments of meromorphic functions," +
+        "Represents:\r\n(i) Arguments of meromorphic functions," +
         "\r\n(ii) Values of two-variable functions,\r\n(iii) Parameterizations of planar curves.",
         "The first three modes support swappable color schemes, while the last two do not."
     ]);
     private void ContourLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("CONTOUR MODES",
     [
-        "Both options apply ONLY to the complex version, for contouring meromorphic functions.",
-        "Only the Polar option supports translucent display, representing the decay rate of the modulus."
+        "Applied to the complex mode only, for contouring meromorphic functions.",
+        "Only the Polar option supports translucent display, representing the decaying behavior of the modulus."
     ]);
     private void PointNumLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("PIXELS",
     [
-        "Logs the number of points or line segments in the previous loop, roughly proportional to time and iteration count.",
-        "A value of zero often results from constancy, divergence, or undefined behavior."
+        "Logs the number of points or line segments rendered in the previous loop, roughly proportional to time and iteration count.",
+        "A value of zero often results from overflowed values or inappropriate settings."
     ]);
     private void TimeLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DURATION",
     [
-        "The auto-snapshot cannot capture updates here in real time, but the value will be saved in the history list.",
+        "Auto-snapshot may not capture updates here in real time, but the timespan will be saved in the history list.",
         "This value is a valuable indicator of optimization, referenced for choosing appropriate iterations and other settings."
     ]);
     private void PreviewLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("MICROCOSM",
@@ -1198,8 +1199,7 @@ public partial class Graph : Form
     {
         int _color = 3; string _general = "1.1", _thick = THICK_DEFAULT, _dense = DENSE_DEFAULT;
         bool _points = false, _retain = false, _shade = false, _axes = true;
-        int complexL = ReplaceTags.EX_COMPLEX.Length, realL = ReplaceTags.EX_REAL.Length,
-            curveL = ReplaceTags.EX_CURVES.Length;
+        int complexL = ReplaceTags.EX_COMPLEX.Length, realL = ReplaceTags.EX_REAL.Length, curveL = ReplaceTags.EX_CURVES.Length;
 
         InputString.ReadOnly = true; // Necessary
         void setDetails(string xLeft, string xRight, string yLeft, string yRight)
@@ -1211,10 +1211,10 @@ public partial class Graph : Form
                 case 1: _general = "1.2"; break;
                 case 2: _color = 2; _points = true; break;
                 case 3: _general = "pi/2"; _color = 4; break;
-                case 4: _general = "4"; _thick = "0.1"; _shade = true; break;
-                case 5: _general = "3"; break;
-                case 6: _general = "0"; setDetails("-1.6", "0.6", "-1.1", "1.1"); _axes = false; break;
-                case 7: _general = "2"; _color = 0; _shade = true; break;
+                case 4: _general = "2"; break;
+                case 5: _general = "pi"; break;
+                case 6: _general = "0"; setDetails("-1.6", "0.6", "-1.1", "1.1"); _thick = "100"; _retain = _shade = true; _axes = false; break;
+                case 7: _general = "2"; _color = 0; break;
             }
         else if (index > complexL && index < complexL + realL + 1)
             switch (index - complexL - 1)
@@ -1223,10 +1223,10 @@ public partial class Graph : Form
                 case 1: _general = "2pi"; _color = 4; break;
                 case 2: _general = "4"; _color = 0; break;
                 case 3: _general = "0"; setDetails("0", "1", "0", "1"); _thick = "0.2"; _color = 0; _retain = true; break;
-                case 4: _general = "0"; setDetails("-10", "0", "0", "10"); _thick = "0.1"; _color = 1; _points = true; break;
-                case 5: _general = "5"; _color = 1; break;
-                case 6: _general = "3"; break;
-                case 7: _general = "3"; break;
+                case 4: _general = "10"; _thick = "0.1"; _color = 1; _points = true; break;
+                case 5: _general = "pi"; _color = 1; break;
+                case 6: _general = "5"; _thick = "0.5"; _color = 0; _retain = true; break;
+                case 7: _general = "2"; _thick = "5"; _color = 4; _shade = true; _axes = false; break;
             }
         else if (index > complexL + realL + 1 && index < complexL + realL + curveL + 2)
             switch (index - complexL - realL - 2)
@@ -1933,36 +1933,36 @@ public class ReplaceTags : RealComplex
             "cocoon", "real", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
     public static readonly string[] EX_COMPLEX =
         [
-            "stereo(3,1,1,z)",
+            "stereo(3, 1, 1, z)",
             "z^coc(1+10i)cos((z-1)/(z^13+z+1))",
-            "sum(/(1-z^n),n,1,100)-100",
-            "prod(exp(2/(coc(e(-k/5))z-1)+1),k,1,5)",
-            "coc(iterate((/Z+Z){0},z,k,1,1000),e(.02))",
-            "iterate(exp(zZ),z,k,1,100)",
-            "iterateLoop(ZZ+z,0,k,1,30)",
-            "comp(zz,sin(zZ),cos(z/Z))"
+            "subs(coc(sum(/(1-exp(k{0})), k, 1, j), log(z))-j, j, 100)",
+            "prod(exp(2/(coc(e(-k/5))z-1)+1), k, 1, 5)",
+            "conj(coc(iterate((/(ZZZZ)+Z){0}, z, k, 1, 1000), .9e(/60)))",
+            "iterate(/sin(Z), z, k, 1, 100)",
+            "subs(iterateLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(e(-k/j/3))), j, 100)",
+            "comp(z, sin(ZZZ), cos(z/Z))"
         ];
     public static readonly string[] EX_REAL =
         [
-            "nCr(x,y)",
-            "min(sin(xy),tan(x),tan(y))",
+            "nCr(x, y)",
+            "min(sin(xy), tan(x), tan(y))",
             "ceil(x)round(y)-floor(y)round(x)",
-            "iterateLoop(x^X,1,k,1,30,y-X)",
-            "iterate1(x/X+X/y,xy,k,1,5)",
-            "iterate2(/X+/Y,XY,sin(x+y),cos(x-y),k,1,15,2)",
-            "comp1(xy,tan(Xx),artanh(X-y))",
-            "comp2(xy,xx+yy,sin(X+Y),cos(X-Y),z)"
+            "iterateLoop(x^X, 1, k, 1, 30, y-X)",
+            "comp1(iterate1(abs(/X-1), abs(x)+abs(y), k, 1, 10), X-1)",
+            "iterate2(X+/sin(Y), Y-/sin(X), x, y, k, 1, 4, 2)",
+            "loop(sqrt(xx+yy)-sqrt((x+1)(x+1)+(y-.2k)(y-.2k))-1, k, -50, 50)",
+            "comp2(xx-yy, 2xy, sin(3X)+cos(2Y), cos(3Y)-sin(2X), z)"
         ];
     public static readonly string[] EX_CURVES =
         [
-            "func(zeta(x,50))",
-            "subs(func(sum(sin(xj)/j,k,0,100),-pi,pi,.001),j,2^k)",
-            "func(beta(sinh(x),cosh(x)),-2,2,.0001)",
-            "polar(sqrt(cos(2theta)),theta,0,2pi,.0001)",
-            "polar(cos(5k)cos(7k),k,0,2pi,.001)",
-            "loop(polar(.1jcos(5k+.7jpi),k,0,pi),j,1,10)",
-            "param(sin(7k),cos(9k),k,0,2pi,.001)",
-            "loop(param(cos(m)^k,sin(m)^k,m,0,pi/2),k,1,10)"
+            "func(zeta(x, 50))",
+            "subs(func(sum(sin(xj)/j, k, 0, 100), -pi, pi, .001), j, 2^k)",
+            "func(beta(sinh(x), cosh(x)), -2, 2, .0001)",
+            "polar(sqrt(cos(2u)), u, 0, 2pi, .0001)",
+            "polar(cos(5u)cos(7u), u, 0, 2pi, .001)",
+            "loop(polar(.1kcos(5u+.7kpi), u, 0, pi), k, 1, 10)",
+            "param(sin(7u), cos(9u), u, 0, 2pi, .001)",
+            "loop(param(cos(u)^k, sin(u)^k, u, 0, pi/2), k, 1, 10)"
         ];
     public static readonly char FUNC_HEAD = TILDE, UNDERLINE = '_', DOLLAR = _D_;
     public static readonly string SUBS = "σ", ITLOOP = "ι", LOOP = "λ", FUNC = "φ", POLAR = "ψ", PARAM = "ρ",
