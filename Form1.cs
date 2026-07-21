@@ -1,7 +1,7 @@
 /// https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
+
 using Real = System.Double;
 using MathR = System.Math;
-
 using System.Runtime.InteropServices; // DllImport, StructLayout
 using System.Runtime.CompilerServices; // MethodImpl
 using System.Drawing.Imaging; // BitmapData
@@ -1202,7 +1202,7 @@ public partial class Graph : Form
         int complexL = ReplaceTags.EX_COMPLEX.Length, realL = ReplaceTags.EX_REAL.Length, curveL = ReplaceTags.EX_CURVES.Length;
 
         InputString.ReadOnly = true; // Necessary
-        void setDetails(string xLeft, string xRight, string yLeft, string yRight)
+        void setD(string xLeft, string xRight, string yLeft, string yRight)
         { SetText(X_Left, xLeft); SetText(X_Right, xRight); SetText(Y_Left, yLeft); SetText(Y_Right, yRight); }
         if (index < complexL)
             switch (index)
@@ -1213,7 +1213,7 @@ public partial class Graph : Form
                 case 3: _general = "pi/2"; _color = 4; break;
                 case 4: _general = "2"; break;
                 case 5: _general = "pi"; break;
-                case 6: _general = "0"; setDetails("-1.6", "0.6", "-1.1", "1.1"); _thick = "100"; _retain = _shade = true; _axes = false; break;
+                case 6: _general = "0"; setD("-1.6", "0.6", "-1.1", "1.1"); _thick = "100"; _retain = _shade = true; _axes = false; break;
                 case 7: _general = "2"; _color = 0; break;
             }
         else if (index > complexL && index < complexL + realL + 1)
@@ -1222,7 +1222,7 @@ public partial class Graph : Form
                 case 0: _general = "10"; _color = 2; break;
                 case 1: _general = "2pi"; _color = 4; break;
                 case 2: _general = "4"; _color = 0; break;
-                case 3: _general = "0"; setDetails("0", "1", "0", "1"); _thick = "0.2"; _color = 0; _retain = true; break;
+                case 3: _general = "0"; setD("0", "1", "0", "1"); _thick = "0.2"; _color = 0; _retain = true; break;
                 case 4: _general = "10"; _thick = "0.1"; _color = 1; _points = true; break;
                 case 5: _general = "pi"; _color = 1; break;
                 case 6: _general = "5"; _thick = "0.5"; _color = 0; _retain = true; break;
@@ -1238,7 +1238,7 @@ public partial class Graph : Form
                 case 4: _thick = "0.5"; break;
                 case 5: _thick = "0.5"; _dense = "10"; _retain = true; break;
                 case 6: _thick = "0.5"; break;
-                case 7: _general = "0"; setDetails("-0.2", "1.2", "-0.2", "1.2"); _thick = "0.5"; _color = 0; _retain = true; break;
+                case 7: _general = "0"; setD("-0.2", "1.2", "-0.2", "1.2"); _thick = "0.5"; _color = 0; _retain = true; break;
             }
         else ComboExamples_Undo();
         InputString.ReadOnly = false; // Necessary
