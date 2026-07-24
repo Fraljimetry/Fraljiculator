@@ -1211,8 +1211,8 @@ public partial class Graph : Form
                 case 1: _general = "1.2"; break;
                 case 2: _color = 2; _points = true; break;
                 case 3: _general = "pi/2"; _color = 4; break;
-                case 4: _general = "2"; break;
-                case 5: _general = "pi"; break;
+                case 4: _general = "pi"; break;
+                case 5: _general = "1.5"; break;
                 case 6: _general = "0"; setD("-1.6", "0.6", "-1.1", "1.1"); _thick = "100"; _retain = _shade = true; _axes = false; break;
                 case 7: _general = "2"; _color = 0; break;
             }
@@ -1222,18 +1222,18 @@ public partial class Graph : Form
                 case 0: _general = "10"; _color = 2; break;
                 case 1: _general = "2pi"; _color = 4; break;
                 case 2: _general = "4"; _color = 0; break;
-                case 3: _general = "0"; setD("0", "1", "0", "1"); _thick = "0.2"; _color = 0; _retain = true; break;
+                case 3: _general = "5"; _thick = "0.5"; _color = 0; _retain = true; break;
                 case 4: _general = "10"; _thick = "0.1"; _color = 1; _points = true; break;
                 case 5: _general = "pi"; _color = 1; break;
-                case 6: _general = "5"; _thick = "0.5"; _color = 0; _retain = true; break;
+                case 6: _general = "0"; setD("0", "1", "0", "1"); _thick = "0.2"; _color = 0; _retain = true; break;
                 case 7: _general = "2"; _thick = "5"; _color = 4; _shade = true; _axes = false; break;
             }
         else if (index > complexL + realL + 1 && index < complexL + realL + curveL + 2)
             switch (index - complexL - realL - 2)
             {
                 case 0: _general = "5"; break;
-                case 1: _general = "pi"; _thick = "0.5"; _dense = "2"; _color = 2; break;
-                case 2: _general = "3"; _color = 0; break;
+                case 1: _general = "3"; _color = 0; break;
+                case 2: _general = "pi"; _thick = "0.5"; _dense = "2"; _color = 2; break;
                 case 3: _dense = "100"; _color = 1; break;
                 case 4: _thick = "0.5"; break;
                 case 5: _thick = "0.5"; _dense = "10"; _retain = true; break;
@@ -1937,8 +1937,8 @@ public class ReplaceTags : RealComplex
             "z^coc(1+10i)cos((z-1)/(z^13+z+1))",
             "subs(coc(sum(/(1-exp(k{0})), k, 1, j), log(z))-j, j, 100)",
             "prod(exp(2/(coc(e(-k/5))z-1)+1), k, 1, 5)",
-            "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9e(/60)))",
             "iterate(/sin(Z), z, 100)",
+            "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9e(/60)))",
             "subs(iterateLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(e(-k/j/3))), j, 100)",
             "comp(z, sin(ZZZ), cos(z/Z))"
         ];
@@ -1947,17 +1947,17 @@ public class ReplaceTags : RealComplex
             "nCr(x, y)",
             "min(sin(xy), tan(x), tan(y))",
             "ceil(x)round(y)-floor(y)round(x)",
-            "iterateLoop(x^X, 1, k, 1, 30, y-X)",
+            "loop(sqrt(xx+yy)-sqrt((x+1)(x+1)+(y-.2k)(y-.2k))-1, k, -50, 50)",
             "comp1(iterate1(abs(/X-1), abs(x)+abs(y), 10), X-1)",
             "iterate2(X+/sin(Y), Y-/sin(X), x, y, 4, 2)",
-            "loop(sqrt(xx+yy)-sqrt((x+1)(x+1)+(y-.2k)(y-.2k))-1, k, -50, 50)",
+            "iterateLoop(x^X, 1, k, 1, 100)",
             "comp2(xx-yy, 2xy, sin(3X)+cos(2Y), cos(3Y)-sin(2X), z)"
         ];
     public static readonly string[] EX_CURVES =
         [
-            "func(zeta(x, 50))",
-            "subs(func(sum(sin(xj)/j, k, 0, 100), -pi, pi, .001), j, 2^k)",
+            "func(zeta(x))",
             "func(beta(sinh(x), cosh(x)), -2, 2, .0001)",
+            "subs(func(sum(sin(xj)/j, k, 0, 100), -pi, pi, .001), j, 2^k)",
             "polar(sqrt(cos(2u)), u, 0, 2pi, .0001)",
             "polar(cos(5u)cos(7u), u, 0, 2pi, .001)",
             "loop(polar(.1kcos(5u+.7kpi), u, 0, pi), k, 1, 10)",
