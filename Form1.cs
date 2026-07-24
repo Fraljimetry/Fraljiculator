@@ -1,5 +1,3 @@
-/// https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
-
 using Real = System.Double;
 using MathR = System.Math;
 using System.Runtime.InteropServices; // DllImport, StructLayout
@@ -639,9 +637,9 @@ public partial class Graph : Form
     private void DisplayLevel3(string input)
     {
         Action<string[]>? displayMethod = ContainsTag(input, ReplaceTags.ITLOOP) ? DisplayIterateLoop :
-            ContainsTag(input, ReplaceTags.FUNC) ? DisplayFunction :
-            ContainsTag(input, ReplaceTags.POLAR) ? DisplayPolar :
-            ContainsTag(input, ReplaceTags.PARAM) ? DisplayParametric : null;
+            ContainsTag(input, ReplaceTags._FUNC) ? DisplayFunction :
+            ContainsTag(input, ReplaceTags._POLAR) ? DisplayPolar :
+            ContainsTag(input, ReplaceTags._PARAM) ? DisplayParametric : null;
         if (displayMethod != null) displayMethod(MyString.SplitString(input));
         else DisplayRendering(input);
     }
@@ -1028,7 +1026,7 @@ public partial class Graph : Form
         content += subTitleContent("COMBINATORICS",
             $"\r\n\r\n{TAB}Floor, Ceiling & Ceil, Round, Sign & Sgn(Real a)" +
             $"\r\n\r\n{TAB}Mod(Real a, Real n), nCr, nPr(int n, int r)" +
-            $"\r\n\r\n{TAB}Max, Min(Real a, Real b, ...), Factorial & Fact(int n)");
+            $"\r\n\r\n{TAB}Max, Min, Dist(Real a, Real b, ...), Factorial & Fact(int n)");
         content += subTitleContent("SPECIALTIES",
             $"\r\n\r\n{GetComment("R&C := Real & Complex.")}" +
             $"\r\n\r\n{TAB}F(R&C a, R&C b, R&C c, f(x,y) & f(z)) & " +
@@ -1827,7 +1825,7 @@ public class RealComplex : MyString
     protected static readonly Real GAMMA = (Real)0.5772156649015329, LOG2 = MathR.Log(2);
     protected static readonly int THRESHOLD = 10, BRKCHK = 5 * THRESHOLD, STEP = 1; // STEP: a tunable chunk size
     protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replacing "+-*/"
-    protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', _D_ = '$', E = 'e', E_ = 'E',
+    protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', D_ = 'D', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', H_ = 'H', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
         M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r', R_ = 'R',
         _S = 's', S_ = 'S', SP = '#', _T = 't', TILDE = '~', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
@@ -1926,7 +1924,7 @@ public class ReplaceTags : RealComplex
 {
     public static readonly string[] FUNCTIONS =
         [ "floor", "ceiling", "round", "sign", "F", "gamma", "beta", "zeta", "mod", "nCr", "nPr",
-            "max", "min", "log", "exp", "sqrt", "abs", "factorial", "arsinh", "arcosh", "artanh",
+            "max", "min", "distance", "log", "exp", "sqrt", "abs", "factorial", "arsinh", "arcosh", "artanh",
             "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "conjugate", "e" ];
     public static readonly string[] SPECIALS =
         [ "stereographic", "homothety", "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2",
@@ -1947,7 +1945,7 @@ public class ReplaceTags : RealComplex
             "nCr(x, y)",
             "min(sin(xy), tan(x), tan(y))",
             "ceil(x)round(y)-floor(y)round(x)",
-            "loop(sqrt(xx+yy)-sqrt((x+1)(x+1)+(y-.2k)(y-.2k))-1, k, -50, 50)",
+            "loop(dist(x, y)-dist(x+1, y-coc(.2k))-1, k, -50, 50)",
             "comp1(iterate1(abs(/X-1), abs(x)+abs(y), 10), X-1)",
             "iterate2(X+/sin(Y), Y-/sin(X), x, y, 4, 2)",
             "iterateLoop(x^X, 1, k, 1, 100)",
@@ -1965,20 +1963,19 @@ public class ReplaceTags : RealComplex
             "loop(param(cos(u)^k, sin(u)^k, u, 0, pi/2), k, 1, 10)"
         ];
     public static readonly char FUNC_HEAD = TILDE, UNDERLINE = '_', DOLLAR = _D_;
-    public static readonly string SUBS = "σ", ITLOOP = "ι", LOOP = "λ", FUNC = "φ", POLAR = "ψ", PARAM = "ρ",
+    public static readonly string SUBS = "σ", ITLOOP = "ι", LOOP = "λ", _FUNC = "φ", _POLAR = "ψ", _PARAM = "ρ",
         LOG = _L.ToString(), EXP = E_.ToString(), SQRT = _Q.ToString(), ABS = _A.ToString(), FACT = _F_.ToString(),
         SIN = _S.ToString(), COS = _C.ToString(), TAN = _T.ToString(), // This should come first
         AS = String.Concat(_A, SIN), AC = String.Concat(_A, COS), AT = String.Concat(_A, TAN),
         SH = String.Concat(SIN, _H), CH = String.Concat(COS, _H), TH = String.Concat(TAN, _H),
         ASH = String.Concat(AS, _H), ACH = String.Concat(AC, _H), ATH = String.Concat(AT, _H),
-        PROD = P_.ToString(), SUM = S_.ToString(), COC = K_.ToString(), HOMOTH = H_.ToString(),
-        F = F_.ToString(), GA = G_.ToString(), BETA = B_.ToString(), ZETA = _Z_.ToString(), STEREO = R_.ToString(),
+        PROD = P_.ToString(), SUM = S_.ToString(), COC = K_.ToString(), _REAL = _R.ToString(),
+        F = F_.ToString(), GA = G_.ToString(), BETA = B_.ToString(), ZETA = _Z_.ToString(), STEREO = R_.ToString(), HOMOTH = H_.ToString(),
         FLOOR = _F.ToString(), CEIL = _C.ToString(), ROUND = _R.ToString(), SIGN = _S.ToString(),
-        MOD = M_.ToString(), NCR = C_.ToString(), NPR = A_.ToString(), _MAX = MAX.ToString(), _MIN = MIN.ToString(),
+        MOD = M_.ToString(), NCR = C_.ToString(), NPR = A_.ToString(), _MAX = MAX.ToString(), _MIN = MIN.ToString(), DIST = D_.ToString(),
         IT = I_.ToString(), IT1 = String.Concat(MODE_1, IT), IT2 = String.Concat(MODE_2, IT),
         COMP = J_.ToString(), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP),
-        CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP), _REAL = _R.ToString(),
-        PI = P.ToString(), _GA = G.ToString();
+        CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP), PI = P.ToString(), _GA = G.ToString();
     private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
         => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
     private static readonly Dictionary<string, string> COMMON_STANDARD = new()
@@ -2025,9 +2022,9 @@ public class ReplaceTags : RealComplex
         }, DOLLAR);
     private static readonly Dictionary<string, string> REAL_SERIES = AddSuffix(new()
         {
-            { "mod", MOD }, { "Mod", MOD },
-            { "nCr", NCR }, { "nPr", NPR },
+            { "mod", MOD }, { "Mod", MOD }, { "nCr", NCR }, { "nPr", NPR },
             { "max", _MAX }, { "Max", _MAX }, { "min", _MIN }, { "Min", _MIN },
+            { "distance", DIST}, { "Distance", DIST}, { "dist", DIST}, { "Dist", DIST},
             { "iterate1", IT1 }, { "Iterate1", IT1 },
             { "composite1", COMP1 }, { "Composite1", COMP1 }, { "comp1", COMP1 }, { "Comp1", COMP1 },
         }, UNDERLINE);
@@ -2048,9 +2045,9 @@ public class ReplaceTags : RealComplex
             { "substitute", SUBS}, { "Substitute", SUBS}, { "subs", SUBS}, { "Subs", SUBS},
             { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }, // Must precede "loop" to avoid confusion
             { "loop", LOOP }, { "Loop", LOOP },
-            { "function", FUNC }, { "Function", FUNC }, { "func", FUNC }, { "Func", FUNC },
-            { "polar", POLAR }, { "Polar", POLAR },
-            { "parametric", PARAM }, { "Parametric", PARAM }, { "param", PARAM }, { "Param", PARAM }
+            { "function", _FUNC }, { "Function", _FUNC }, { "func", _FUNC }, { "Func", _FUNC },
+            { "polar", _POLAR }, { "Polar", _POLAR },
+            { "parametric", _PARAM }, { "Parametric", _PARAM }, { "param", _PARAM }, { "Param", _PARAM }
         }, UNDERLINE);
     private static readonly Dictionary<string, string> REAL_COMPLEX = Concat(REAL, COMPLEX);
     private static Dictionary<string, string> AddPrefixSuffix(Dictionary<string, string> dictionary)
@@ -2076,7 +2073,7 @@ public class RecoverMultiply : ReplaceTags
 {
     public static readonly string LR_BRA = "()", LR_CBRA = "{}", _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_),
         _ZZ_BRA = String.Concat(_ZZ_, LR_CBRA), _XX__YY_BRA = String.Concat(_XX__YY_, LR_CBRA),
-        BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", SUBS, ITLOOP, LOOP, FUNC, POLAR, PARAM);
+        BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", SUBS, ITLOOP, LOOP, _FUNC, _POLAR, _PARAM);
     private static readonly string VAR_REAL = _XX__YY_, VAR_COMPLEX = String.Concat(_ZZ_, I), CONST = String.Concat(E, P, G),
         ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
     public static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
@@ -2614,6 +2611,7 @@ public sealed class RealSub : RecoverMultiply
         Combination(n + 1, r) - Combination(n, r - 1) :
         Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
     private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
+    private static Real Distance(Real[] array) { Real sum = 0; foreach (Real a in array) sum += a * a; return Real.Sqrt(sum); }
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => HandleMtx(UninitMtx(), output =>
         {
@@ -2627,28 +2625,29 @@ public sealed class RealSub : RecoverMultiply
             if (rows == 1) { processMCP(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
         });
-    private unsafe Matrix<Real> ProcessMinMax(string[] split, Func<Real[], Real> function)
+    private unsafe Matrix<Real> ProcessMMD(string[] split, Func<Real[], Real> function)
         => HandleMtx(UninitMtx(), output =>
         {
             Matrix<Real>[] _value = new Matrix<Real>[split.Length];
             for (int i = 0; i < split.Length; i++) _value[i] = ObtainValue(split[i]);
-            void processMinMax(int p, int col)
+            void processMMD(int p, int col)
             {
-                Span<Real> minMax = stackalloc Real[split.Length]; Real* outputPtr = output.RowPtr(p);
+                Span<Real> array = stackalloc Real[split.Length]; Real* outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, outputPtr++)
                 {
-                    for (int i = 0; i < split.Length; i++) minMax[i] = _value[i][p, q];
-                    *outputPtr = function(minMax.ToArray());
+                    for (int i = 0; i < split.Length; i++) array[i] = _value[i][p, q];
+                    *outputPtr = function(array.ToArray());
                 }
             }
-            if (rows == 1) { processMinMax(0, columns); return; }
-            Parallel.For(0, rowChk, p => { processMinMax(strdInit[p], strd); }); if (res != 0) processMinMax(resInit, res);
+            if (rows == 1) { processMMD(0, columns); return; }
+            Parallel.For(0, rowChk, p => { processMMD(strdInit[p], strd); }); if (res != 0) processMMD(resInit, res);
         });
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathR.Floor(n), MathR.Floor(r)));
     private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathR.Floor(n), MathR.Floor(r)));
-    private Matrix<Real> Max(string[] split) => ProcessMinMax(split, _value => _value.Max());
-    private Matrix<Real> Min(string[] split) => ProcessMinMax(split, _value => _value.Min());
+    private Matrix<Real> Max(string[] split) => ProcessMMD(split, _value => _value.Max());
+    private Matrix<Real> Min(string[] split) => ProcessMMD(split, _value => _value.Min());
+    private Matrix<Real> Distance(string[] split) => ProcessMMD(split, Distance);
     #endregion // Special for real
 
     #region Additional Calculations
@@ -3061,6 +3060,7 @@ public sealed class RealSub : RecoverMultiply
             A_ => handleSub(Permutation, 2),
             MAX => handleSub(Max, 2),
             MIN => handleSub(Min, 2),
+            D_ => handleSub(Distance, 2), // By far, special for real
             F_ => handleSub(Hypergeometric, 2),
             G_ => handleSub(Gamma, 2),
             B_ => handleSub(Beta, 2),
