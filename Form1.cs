@@ -1937,8 +1937,8 @@ public class ReplaceTags : RealComplex
             "z^coc(1+10i)cos((z-1)/(z^13+z+1))",
             "subs(coc(sum(/(1-exp(k{0})), k, 1, j), log(z))-j, j, 100)",
             "prod(exp(2/(coc(e(-k/5))z-1)+1), k, 1, 5)",
-            "conj(coc(iterate((/(ZZZZ)+Z){0}, z, k, 1, 1000), .9e(/60)))",
-            "iterate(/sin(Z), z, k, 1, 100)",
+            "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9e(/60)))",
+            "iterate(/sin(Z), z, 100)",
             "subs(iterateLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(e(-k/j/3))), j, 100)",
             "comp(z, sin(ZZZ), cos(z/Z))"
         ];
@@ -1948,8 +1948,8 @@ public class ReplaceTags : RealComplex
             "min(sin(xy), tan(x), tan(y))",
             "ceil(x)round(y)-floor(y)round(x)",
             "iterateLoop(x^X, 1, k, 1, 30, y-X)",
-            "comp1(iterate1(abs(/X-1), abs(x)+abs(y), k, 1, 10), X-1)",
-            "iterate2(X+/sin(Y), Y-/sin(X), x, y, k, 1, 4, 2)",
+            "comp1(iterate1(abs(/X-1), abs(x)+abs(y), 10), X-1)",
+            "iterate2(X+/sin(Y), Y-/sin(X), x, y, 4, 2)",
             "loop(sqrt(xx+yy)-sqrt((x+1)(x+1)+(y-.2k)(y-.2k))-1, k, -50, 50)",
             "comp2(xx-yy, 2xy, sin(3X)+cos(2Y), cos(3Y)-sin(2X), z)"
         ];
@@ -2252,12 +2252,12 @@ public sealed class ComplexSub : RecoverMultiply
     }
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
-        ThrowInvalidLengths(split, [validLength]);
-        int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
-        ComplexSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, buffCocs, true);
-        CheckFor(RealSub.ToInt(split[subIdx + 1]), RealSub.ToInt(split[subIdx + 2]), i =>
+        ThrowInvalidLengths(split, [validLength, validLength - 2]); bool sub = split.Length == validLength;
+        int subIdx = validLength - 3; if (sub) split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
+        ComplexSub buffer = ObtainSub(sub ? ReplaceLoop(split, 0, subIdx, "0") : split[0], initMtx, buffCocs, true);
+        CheckFor(sub ? RealSub.ToInt(split[subIdx + 1]) : 1, RealSub.ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
-            buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
+            if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
             action(buffer); if (!buffer.readList) buffer.readList = true; // To precompute cstMtcs
         });
         return buffer.Z;
@@ -2751,26 +2751,26 @@ public sealed class RealSub : RecoverMultiply
     }
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
-        ThrowInvalidLengths(split, [validLength]);
-        int subIdx = validLength - 3; split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
-        RealSub buffer = ObtainSub(ReplaceLoop(split, 0, subIdx, "0"), initMtx, null, buffCocs, true);
-        CheckFor(ToInt(split[subIdx + 1]), ToInt(split[subIdx + 2]), i =>
+        ThrowInvalidLengths(split, [validLength, validLength - 2]); bool sub = split.Length == validLength;
+        int subIdx = validLength - 3; if (sub) split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
+        RealSub buffer = ObtainSub(sub ? ReplaceLoop(split, 0, subIdx, "0") : split[0], initMtx, null, buffCocs, true);
+        CheckFor(sub ? ToInt(split[subIdx + 1]) : 1, ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
-            buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
+            if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
             action(buffer); if (!buffer.readList) buffer.readList = true; // To precompute cstMtcs
         });
         return buffer.X;
     } // Meticulously optimized
     public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split)
     {
-        ThrowInvalidLengths(split, [8]);
-        string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
-        RealSub obtain(int i) => ObtainSub(ReplaceLoop(split, i, 4, "0"), ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
-        split[0] = replaceLoop(0); split[1] = replaceLoop(1); RealSub buffer1 = obtain(0), buffer2 = obtain(1);
-        Matrix<Real> temp1, temp2;
-        CheckFor(ToInt(split[5]), ToInt(split[6]), i =>
+        ThrowInvalidLengths(split, [8, 6]); bool sub = split.Length == 8;
+        string repLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false); Matrix<Real> obtainVal(int i) => ObtainValue(split[i]);
+        RealSub obtain(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i], obtainVal(2), obtainVal(3), buffCocs, true);
+        if (sub) { split[0] = repLoop(0); split[1] = repLoop(1); }
+        RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<Real> temp1, temp2;
+        CheckFor(sub ? ToInt(split[5]) : 1, ToInt(split[sub ? 6 : 4]), i =>
         {
-            buffer1.input = ReplaceLoop(split, 0, 4, i.ToString()); buffer2.input = ReplaceLoop(split, 1, 4, i.ToString());
+            if (sub) { buffer1.input = ReplaceLoop(split, 0, 4, i.ToString()); buffer2.input = ReplaceLoop(split, 1, 4, i.ToString()); }
             buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
             temp1 = buffer1.Obtain(); temp2 = buffer2.Obtain(); // Necessary
             buffer1.X = buffer2.X = temp1; buffer1.Y = buffer2.Y = temp2;
