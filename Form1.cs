@@ -498,7 +498,7 @@ public partial class Graph : Form
             input1 = isParam ? replace(split[0], 2) : isPolar ? replace($"({split[0]})*{tag1}({split[1]})", 1) : "x",
             input2 = isParam ? replace(split[1], 2) : isPolar ? replace($"({split[0]})*{tag2}({split[1]})", 1) : split[0];
 
-        int length = (int)((end - start) / increment), _length = length + 2; // For safety
+        int length = (int)((end - start) / increment), _length = length + 1; // For safety
         Matrix<Real> partition = GetMatrix(1, _length); Real steps = start;
         Real obtainCheck(string input) => RealSub.Obtain(input, steps); // Already simplified
         if (is_checking) { obtainCheck(input1); obtainCheck(input2); return (partition, partition, length, true); }
@@ -2267,8 +2267,8 @@ public sealed class ComplexSub : RecoverMultiply
         var (input, xCoor, yCoor) = function(split);
         return new ComplexSub(input, xCoor, yCoor, rows, columns).Obtain();
     }
-    private Matrix<Complex> Stereographic(string[] split) => ProcessSH(split, RealSub.Stereographic);
-    private Matrix<Complex> Homothety(string[] split) => ProcessSH(split, RealSub.Homothety);
+    private Matrix<Complex> Stereographic(string[] split) => ProcessSH(split, Complex.Stereographic);
+    private Matrix<Complex> Homothety(string[] split) => ProcessSH(split, Complex.Homothety);
     private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
     private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
@@ -2614,9 +2614,6 @@ public sealed class RealSub : RecoverMultiply
         Combination(n + 1, r) - Combination(n, r - 1) :
         Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
     private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
-    public static Complex Stereographic(Complex pt, Real r, Complex ctr)
-    { var (x, y) = Complex.ReIm(pt); return pt * (r / (1 + MathR.Sqrt(1 - x * x - y * y))) + ctr; }
-    public static Complex Homothety(Complex pt, Real r, Complex ctr) => (pt - ctr) / r + ctr;
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => HandleMtx(UninitMtx(), output =>
         {
@@ -2790,8 +2787,8 @@ public sealed class RealSub : RecoverMultiply
         }
         return (split[^1], value1, value2);
     }
-    private Matrix<Real> Stereographic(string[] split) => ProcessSH(split, Stereographic);
-    private Matrix<Real> Homothety(string[] split) => ProcessSH(split, Homothety);
+    private Matrix<Real> Stereographic(string[] split) => ProcessSH(split, Complex.Stereographic);
+    private Matrix<Real> Homothety(string[] split) => ProcessSH(split, Complex.Homothety);
     private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
     private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
     private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
@@ -3245,6 +3242,9 @@ public readonly struct Complex // Manually inlined to reduce overhead
     public static Real Modulus(Complex c) => Real.Hypot(c.real, c.imaginary);
     public static Complex Conjugate(Complex c) => new(c.real, -c.imaginary);
     public static Complex Factorial(Complex c) => new(RealSub.Factorial(c.real));
+    public static Complex Stereographic(Complex pt, Real r, Complex ctr)
+    { var (x, y) = ReIm(pt); return pt * (r / (1 + MathR.Sqrt(1 - x * x - y * y))) + ctr; }
+    public static Complex Homothety(Complex pt, Real r, Complex ctr) => (pt - ctr) / r + ctr;
     #endregion
 } /// Optimized Real-entried complex numbers
 public readonly struct Matrix<TEntry>
