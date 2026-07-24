@@ -2764,15 +2764,15 @@ public sealed class RealSub : RecoverMultiply
     public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split)
     {
         ThrowInvalidLengths(split, [8, 6]); bool sub = split.Length == 8;
-        string repLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false); Matrix<Real> obtainVal(int i) => ObtainValue(split[i]);
-        RealSub obtain(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i], obtainVal(2), obtainVal(3), buffCocs, true);
-        if (sub) { split[0] = repLoop(0); split[1] = repLoop(1); }
-        RealSub buffer1 = obtain(0), buffer2 = obtain(1); Matrix<Real> temp1, temp2;
+        string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
+        RealSub obtain(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i],
+            ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
+        if (sub) (split[0], split[1]) = (replaceLoop(0), replaceLoop(1)); var (buffer1, buffer2) = (obtain(0), obtain(1));
         CheckFor(sub ? ToInt(split[5]) : 1, ToInt(split[sub ? 6 : 4]), i =>
         {
-            if (sub) { buffer1.input = ReplaceLoop(split, 0, 4, i.ToString()); buffer2.input = ReplaceLoop(split, 1, 4, i.ToString()); }
+            if (sub) (buffer1.input, buffer2.input) = (ReplaceLoop(split, 1, 4, i.ToString()), ReplaceLoop(split, 0, 4, i.ToString()));
             buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
-            temp1 = buffer1.Obtain(); temp2 = buffer2.Obtain(); // Necessary
+            var (temp1, temp2) = (buffer1.Obtain(), buffer2.Obtain()); // Necessary
             buffer1.X = buffer2.X = temp1; buffer1.Y = buffer2.Y = temp2;
             if (!buffer1.readList) buffer1.readList = buffer2.readList = true; // To precompute cstMtcs
         });
@@ -2781,10 +2781,10 @@ public sealed class RealSub : RecoverMultiply
     public (string, Matrix<Real>, Matrix<Real>) ProcessComposite2(string[] split)
     {
         ThrowException(Int32.IsEvenInteger(split.Length));
-        Matrix<Real> value1 = ObtainValue(split[0]), value2 = ObtainValue(split[1]), temp1, temp2;
+        var (value1, value2) = (ObtainValue(split[0]), ObtainValue(split[1]));
         for (int i = 0, j = 2; i < split.Length / 2 - 1; i++)
         {
-            temp1 = value1; temp2 = value2; // Necessary
+            var (temp1, temp2) = (value1, value2); // Necessary
             Matrix<Real> obtainValue() => ObtainSub(split[j++], temp1, temp2, buffCocs).Obtain();
             value1 = obtainValue(); value2 = obtainValue(); // Even and odd terms respectively
         }
