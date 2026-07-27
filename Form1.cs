@@ -2032,7 +2032,7 @@ public class ReplaceTags : RealComplex
     private static readonly Dictionary<string, string> TAGS = AddSuffix(new()
         {
             { "substitute", SUBS}, { "Substitute", SUBS}, { "subs", SUBS}, { "Subs", SUBS},
-            { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP },{ "itLoop", ITLOOP }, { "ItLoop", ITLOOP }, // Must precede "loop"
+            { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }, { "itLoop", ITLOOP }, { "ItLoop", ITLOOP }, // Must precede "loop"
             { "loop", LOOP }, { "Loop", LOOP },
             { "function", _FUNC }, { "Function", _FUNC }, { "func", _FUNC }, { "Func", _FUNC },
             { "polar", _POLAR }, { "Polar", _POLAR },
