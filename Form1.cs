@@ -1,5 +1,6 @@
 using Real = System.Double;
 using MathR = System.Math;
+
 using System.Runtime.InteropServices; // DllImport, StructLayout
 using System.Runtime.CompilerServices; // MethodImpl
 using System.Drawing.Imaging; // BitmapData
@@ -61,12 +62,8 @@ public partial class Graph : Form
     #region Initilizations
     public Graph()
     {
-        InitializeComponent();
-        SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor);
-        InitializeTimers(); InitializeGraphics();
-        InitializeCombo(); InitializeData();
-        SetThicknessDensenessScopesBorders();
-        BanMouseWheel();
+        InitializeComponent(); SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor); BanMouseWheel();
+        InitializeTimers(); InitializeGraphics(); InitializeCombo(); InitializeData(); SetThicknessDensenessScopesBorders();
     }
     private void Graph_Load(object sender, EventArgs e) => TextBoxFocus(sender, e);
     private void Graph_Paint(object sender, PaintEventArgs e) { if (!bdp_painted && !clicked) SubtitleBox_DoubleClick(sender, e); }
@@ -85,6 +82,11 @@ public partial class Graph : Form
             if (ctrl.Controls.Count > 0) ReduceFontSizeByScale(ctrl, ref scalingFactor);
         }
     } // Also used for Message Boxes, so scalingFactor should not be passed as a field
+    private void BanMouseWheel()
+    {
+        ComboBox[] comboBoxes = [ComboExamples, ComboFunctions, ComboSpecial, ComboColoring, ComboContour];
+        foreach (var cbx in comboBoxes) cbx.MouseWheel += (sender, e) => ((HandledMouseEventArgs)e).Handled = true;
+    } // The default wheeling clashes with the personalized combo boxes
     private void InitializeTimers()
     {
         static System.Windows.Forms.Timer setT(int interval) => new() { Interval = interval };
@@ -162,11 +164,6 @@ public partial class Graph : Form
         MyString.ThrowException(InvalidScopesX() || InvalidScopesY()); // The detailed exception is determined later
         borders = [x_left, x_right, y_up, y_down];
     }
-    private void BanMouseWheel()
-    {
-        ComboBox[] comboBoxes = [ComboExamples, ComboFunctions, ComboSpecial, ComboColoring, ComboContour];
-        foreach (var cbx in comboBoxes) cbx.MouseWheel += (sender, e) => ((HandledMouseEventArgs)e).Handled = true;
-    } // The default wheeling clashes with the personalized combo boxes
     private void TextBoxFocus(object sender, EventArgs e)
     {
         foreach (var ctrl in Controls.OfType<TextBox>())
@@ -223,7 +220,7 @@ public partial class Graph : Form
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
     private static bool ContainsTag(string input, string tag)
-        => input.Contains(String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.UNDERLINE, '('));
+        => input.Contains(String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.SERIES_TAIL, '('));
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
     private bool GeneralInput_Undo() => GeneralInput.Text == ZERO;
@@ -347,10 +344,7 @@ public partial class Graph : Form
         if (_value > Real.Lerp(mM.max, mM.min, size_real)) SetPixel(_ptr, _pole, ref pixNum);
     }
     private unsafe void ComplexSpecial(byte* _ptr, Color _zero, Color _pole, Real _value, ref int pixNum)
-    {
-        if (_value < epsilon) SetPixel(_ptr, _zero, ref pixNum);
-        if (_value > 1 / epsilon) SetPixel(_ptr, _pole, ref pixNum);
-    }
+    { if (_value < epsilon) SetPixel(_ptr, _zero, ref pixNum); if (_value > 1 / epsilon) SetPixel(_ptr, _pole, ref pixNum); }
     private delegate void PixelLoop(int x, int y, IntPtr pixelPtr, ref int pixNum); // Instead of Action<int, int, IntPtr, ref int>
     private unsafe static void LoopBase(PixelLoop pixelLoop)
     {
@@ -717,10 +711,7 @@ public partial class Graph : Form
         HandleMouseAction(e, borders, v => { DrawScrollBar(v); DisplayMouseMove(e, v.Item1, v.Item2); });
     }
     private void RunMouseDown(MouseEventArgs e, int[] borders)
-    {
-        chosen_number++;
-        HandleMouseAction(e, borders, v => { DisplayMouseDown(e, v.Item1, v.Item2); });
-    }
+    { chosen_number++; HandleMouseAction(e, borders, v => { DisplayMouseDown(e, v.Item1, v.Item2); }); }
     private bool ActivateMoveDown() => activate_mouse && !error_input && !is_checking && !NoInput();
     private static void RunMouse(MouseEventArgs e, int[] b, Action<MouseEventArgs, int[]> action, Action? _action)
     { if (e.X > b[0] && e.X < b[1] && e.Y > b[2] && e.Y < b[3]) action(e, b); else _action?.Invoke(); }
@@ -833,11 +824,9 @@ public partial class Graph : Form
     {
         StopTimers();
         if (is_main) SetText(CaptionBox, $"{MyString.BeautifyInput(InputString.Text)}\r\n" + CaptionBox.Text);
-
         SetText(TimeDisplay, $"{TimeCount:hh\\:mm\\:ss\\.fff}");
         AddDraft($"\r\n{SEP} No.{loop_number} [{mode}] {SEP}\r\n" + $"\r\n{MyString.BeautifyInput(InputString.Text)}\r\n" +
             $"\r\nPixels: {PointNumDisplay.Text}\r\nDuration: {TimeDisplay.Text}\r\n");
-
         if (is_auto && !error_address) RunStore();
         InputString_Focus();
     }
@@ -1021,17 +1010,18 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Sin, Cos, Tan, Sinh, Cosh, Tanh," +
             $"\r\n{TAB}Arcsin & Asin, Arccos & Acos, Arctan & Atan," +
             $"\r\n{TAB}Arsinh & Asinh, Arcosh & Acosh, Artanh & Atanh," +
-            $"\r\n\r\n{TAB}Log & Ln, Exp, Sqrt, Abs{TAB}(f(x,y) & f(z))" +
-            $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), e(f(z)){GetComment("e(z) := Exp(2πiz), case-sensitive.")}");
+            $"\r\n\r\n{TAB}Abs, Log & Ln, Exp, Sqrt{TAB}(f(x,y) & f(z))" +
+            $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), e(f(z)){GetComment("e(z) := Exp(2πiz), case-sensitive.")}") +
+            $"\r\n\r\n{TAB}Real(...)" +
+            $"{TAB}{GetComment("Variable-free real blocks in complex expressions.")}";
         content += subTitleContent("COMBINATORICS",
-            $"\r\n\r\n{TAB}Floor, Ceiling & Ceil, Round, Sign & Sgn(Real a)" +
+            $"\r\n\r\n{TAB}Floor, Ceiling & Ceil, Round, Sign & Sgn, Factorial & Fact(Real a)" +
             $"\r\n\r\n{TAB}Mod(Real a, Real n), nCr, nPr(int n, int r)" +
-            $"\r\n\r\n{TAB}Max, Min, Dist(Real a, Real b, ...), Factorial & Fact(int n)");
+            $"\r\n\r\n{TAB}Max, Min, Dist(Real a, Real b, ...)");
         content += subTitleContent("SPECIALTIES",
             $"\r\n\r\n{GetComment("R&C := Real & Complex.")}" +
-            $"\r\n\r\n{TAB}F(R&C a, R&C b, R&C c, f(x,y) & f(z)) & " +
-            $"\r\n{TAB}F(R&C a, R&C b, R&C c, f(x,y) & f(z), int n)" +
-            $"\r\n{GetComment("HyperGeometric Series (case-sensitive).")}" +
+            $"\r\n\r\n{TAB}Hypergeometric & Hypgeo(R&C a, R&C b, R&C c, f(x,y) & f(z)) & " +
+            $"\r\n{TAB}Hypergeometric & Hypgeo(R&C a, R&C b, R&C c, f(x,y) & f(z), int n)" +
             $"\r\n\r\n{TAB}Gamma & Ga(f(x,y) & f(z)) & " +
             $"\r\n{TAB}Gamma & Ga(f(x,y) & f(z), int n)" +
             $"\r\n\r\n{TAB}Beta(f(x,y) & f(z), g(x,y) & g(z)) & " +
@@ -1039,9 +1029,7 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Zeta(f(x,y) & f(z)) & " +
             $"\r\n{TAB}Zeta(f(x,y) & f(z), int n){GetComment("Reduced accuracy if n is too large.")}") +
             $"\r\n\r\n{TAB}Stereographic & Stereo(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))" +
-            $"\r\n\r\n{TAB}Homothety & Homoth(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))" +
-            $"\r\n\r\n{TAB}Real(...)" +
-            $"{TAB}{GetComment("Variable-free real blocks in complex expressions.")}";
+            $"\r\n\r\n{TAB}Homothety & Homoth(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))";
         content += subTitleContent("REPETITIONS",
             $"\r\n\r\n{GetComment("Capitalizations represent substitutions of variables.")}" +
             $"\r\n\r\n{TAB}Sum(f(x,y,k) & f(z,k), k, int a, int b)" +
@@ -1049,14 +1037,14 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Iterate1(f(x,y,X,k), g(x,y), k, int a, int b)" +
             $"\r\n{TAB}Iterate2(f1(x,y,X,Y,k), f2(x,y,X,Y,k), g1(x,y), g2(x,y), k, int a, int b, 1&2&F(z))" +
             $"\r\n{TAB}Iterate(f(z,Z,k), g(z), k, int a, int b)" +
-            $"\r\n{GetComment("g: initial values; f: iterations.")}" +
+            $"\r\n{TAB}{GetComment("g: initial values; f: iterations.")}" +
             $"\r\n\r\n{TAB}Composite1 & Comp1(f(x,y), g1(x,y,X), ... , gn(x,y,X))" +
             $"\r\n{TAB}Composite2 & Comp2" +
             $"\r\n{TAB}{TAB}(f1(x,y), f2(x,y), g1(x,y,X,Y), h1(x,y,X,Y), ... , gn(...), hn(...), 1&2&F(z))" +
             $"\r\n{TAB}Composite & Comp(f(z), g1(z,Z), ... , gn(z,Z))" +
-            $"\r\n{GetComment("f: initial values; g: compositions.")}" +
+            $"\r\n{TAB}{GetComment("f: initial values; g: compositions.")}" +
             $"\r\n\r\n{TAB}Cocoon & Coc" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
-            $"\r\n{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}");
+            $"\r\n{TAB}{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}");
         content += subTitleContent("PLANAR CURVES",
             $"\r\n\r\n{TAB}Function & Func(f(x)) & " +
             $"\r\n{TAB}Function & Func(f(x), Real increment) & " +
@@ -1070,14 +1058,14 @@ public partial class Graph : Form
             $"\r\n\r\n{GetComment("Enumerated in decreasing hierarchy.")}" +
             $"\r\n\r\n{TAB}... | ... | ...{GetComment("Consecutive displays, R&C hybrid.")}") +
             $"\r\n\r\n{TAB}Substitute & Subs(Input(a,b,c,...), a, aNew, b, bNew, c, cNew, ...)" +
-            $"\r\n{GetComment("Verbatim substitutions without precomputation.")}" +
+            $"\r\n{TAB}{GetComment("Verbatim substitutions without precomputation.")}" +
             $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
-            $"\r\n\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b) & " +
-            $"\r\n{TAB}IterateLoop(f(x,y,X,k), g(x,y), k, int a, int b, F(x,y,X,k)) & " +
-            $"\r\n{TAB}IterateLoop(f1(x,y,X,Y,k), f2(x,y,X,Y,k), g1(x,y), g2(x,y), k, int a, int b, F(z,k))" +
-            $"\r\n\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b) & " +
-            $"\r\n{TAB}IterateLoop(f(z,Z,k), g(z), k, int a, int b, F(z,Z,k))" +
-            $"\r\n{GetComment("Displaying iterations loopwise.")}";
+            $"\r\n\r\n{TAB}IterateLoop & ItLoop(f(x,y,X,k), g(x,y), k, int a, int b) & " +
+            $"\r\n{TAB}IterateLoop & ItLoop(f(x,y,X,k), g(x,y), k, int a, int b, F(x,y,X,k)) & " +
+            $"\r\n{TAB}IterateLoop & ItLoop(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(x,y), k, int a, int b, F(z,k))" +
+            $"\r\n\r\n{TAB}IterateLoop & ItLoop(f(z,Z,k), g(z), k, int a, int b) & " +
+            $"\r\n{TAB}IterateLoop & ItLoop(f(z,Z,k), g(z), k, int a, int b, F(z,Z,k))" +
+            $"\r\n{TAB}{GetComment("Displaying iterations loopwise.")}";
         content += subTitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i{GetComment("e and i are case-sensitive.")}");
         content += subTitleContent("SHORTCUTS", "\r\n");
 
@@ -1721,7 +1709,7 @@ public class MyString
     }
     protected static (int, int, string[]) PrepareSeriesSub(ReadOnlySpan<char> input)
     {
-        int i = input.IndexOf(ReplaceTags.UNDERLINE), end = PairedParenthesis(input, i + 1);
+        int i = input.IndexOf(ReplaceTags.SERIES_TAIL), end = PairedParenthesis(input, i + 1);
         return (i, end, ReplaceRecover(BraFreePart(input, i + 1, end)));
     }
     protected static void ResetStartEnd(ReadOnlySpan<char> input, ref int start, ref int end)
@@ -1760,11 +1748,11 @@ public class MyString
     { start -= tagL; tagL = 0; return ReplaceInput(input, countBra, start--, end); }
     private static string ReplaceInterior(ReadOnlySpan<char> input, char origChar, char subChar)
     {
-        if (!input.Contains(ReplaceTags.UNDERLINE)) return input.ToString();
+        if (!input.Contains(ReplaceTags.SERIES_TAIL)) return input.ToString();
         StringBuilder buffer = new(input.ToString());
         for (int i = 0; i < buffer.Length; i++)
         {
-            if (buffer[i] != ReplaceTags.UNDERLINE) continue;
+            if (buffer[i] != ReplaceTags.SERIES_TAIL) continue;
             int endIndex = PairedParenthesis(input, i + 1);
             for (int j = i + 1; j < endIndex; j++) if (buffer[j] == origChar) buffer[j] = subChar;
             i = endIndex;
@@ -1800,7 +1788,7 @@ public class MyString
         int startIndex = 0;
         while (startIndex < input.Length && input[startIndex] == startChar) startIndex++;
         if (startIndex == input.Length) return String.Empty;
-        return input.Slice(startIndex).ToString();
+        return input[startIndex..].ToString();
     }
     public static string TrimExtremeNum(Real input, Real threshold)
         => (MathR.Abs(input) < threshold && MathR.Abs(input) > 1 / threshold) ? input.ToString("#0.0000000") : input.ToString("E3");
@@ -1829,13 +1817,14 @@ public class RealComplex : MyString
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', H_ = 'H', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
         M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r', R_ = 'R',
         _S = 's', S_ = 'S', SP = '#', _T = 't', TILDE = '~', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
+    public static readonly string SUBS = "σ", ITLOOP = "ι", LOOP = "λ", _FUNC = "φ", _POLAR = "ψ", _PARAM = "ρ";
 
     protected static int CountChars(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck)
     {
         int count = 0, offset = 0;
         do
         {
-            int idx = input.Slice(offset).IndexOfAny(charsToCheck); if (idx < 0) break;
+            int idx = input[offset..].IndexOfAny(charsToCheck); if (idx < 0) break;
             count++; offset += idx + 1;
         } while (offset < input.Length); // To avoid slicing past the end
         return count;
@@ -1923,12 +1912,12 @@ public class RealComplex : MyString
 public class ReplaceTags : RealComplex
 {
     public static readonly string[] FUNCTIONS =
-        [ "floor", "ceiling", "round", "sign", "F", "gamma", "beta", "zeta", "mod", "nCr", "nPr",
-            "max", "min", "distance", "log", "exp", "sqrt", "abs", "factorial", "arsinh", "arcosh", "artanh",
-            "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "conjugate", "e" ];
+        [ "floor", "ceiling", "round", "sign", "factorial", "mod", "nCr", "nPr", "max", "min", "distance", "conjugate", "e", "real",
+            "abs", "log", "exp", "sqrt", "arsinh", "arcosh", "artanh", "arcsin", "arccos", "arctan",
+            "sinh", "cosh", "tanh", "sin", "cos", "tan" ];
     public static readonly string[] SPECIALS =
-        [ "stereographic", "homothety", "sum", "product", "iterate", "iterate1", "iterate2", "composite", "composite1", "composite2",
-            "cocoon", "real", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
+        [ "hypergeometric", "gamma", "beta", "zeta", "stereographic", "homothety", "sum", "product", "iterate", "iterate1", "iterate2",
+            "composite", "composite1", "composite2", "cocoon", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
     public static readonly string[] EX_COMPLEX =
         [
             "stereo(3, 1, 1, z)",
@@ -1937,7 +1926,7 @@ public class ReplaceTags : RealComplex
             "prod(exp(2/(coc(e(-k/5))z-1)+1), k, 1, 5)",
             "iterate(/sin(Z), z, 100)",
             "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9e(/60)))",
-            "subs(iterateLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(e(-k/j/3))), j, 100)",
+            "subs(itLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(e(-k/j/3))), j, 100)",
             "comp(z, sin(ZZZ), cos(z/Z))"
         ];
     public static readonly string[] EX_REAL =
@@ -1948,7 +1937,7 @@ public class ReplaceTags : RealComplex
             "loop(dist(x, y)-dist(x+1, y-coc(.2k))-1, k, -50, 50)",
             "comp1(iterate1(abs(/X-1), abs(x)+abs(y), 10), X-1)",
             "iterate2(X+/sin(Y), Y-/sin(X), x, y, 4, 2)",
-            "iterateLoop(x^X, 1, k, 1, 100)",
+            "itLoop(x^X, 1, k, 1, 100)",
             "comp2(xx-yy, 2xy, sin(3X)+cos(2Y), cos(3Y)-sin(2X), z)"
         ];
     public static readonly string[] EX_CURVES =
@@ -1962,29 +1951,28 @@ public class ReplaceTags : RealComplex
             "param(sin(7u), cos(9u), u, 0, 2pi, .001)",
             "loop(param(cos(u)^k, sin(u)^k, u, 0, pi/2), k, 1, 10)"
         ];
-    public static readonly char FUNC_HEAD = TILDE, UNDERLINE = '_', DOLLAR = _D_;
-    public static readonly string SUBS = "σ", ITLOOP = "ι", LOOP = "λ", _FUNC = "φ", _POLAR = "ψ", _PARAM = "ρ",
-        LOG = _L.ToString(), EXP = E_.ToString(), SQRT = _Q.ToString(), ABS = _A.ToString(), FACT = _F_.ToString(),
-        SIN = _S.ToString(), COS = _C.ToString(), TAN = _T.ToString(), // This should come first
+    public static readonly char FUNC_HEAD = TILDE, SERIES_TAIL = '_', REAL_TAIL = _D_, COMPLEX_TAIL = SP;
+    private static string ToS(char c) => c.ToString();
+    public static readonly string FLOOR = ToS(_F), CEIL = ToS(_C), ROUND = ToS(_R), SGN = ToS(_S), FACT = ToS(_F_),
+        MOD = ToS(M_), NCR = ToS(C_), NPR = ToS(A_), _MAX = ToS(MAX), _MIN = ToS(MIN), DIST = ToS(D_);
+    public static readonly string CONJ = ToS(J_), EI = EXP = ToS(E_), _REAL = ToS(R_);
+    public static readonly string ABS = ToS(_A), LOG = ToS(_L), EXP = ToS(E_), SQRT = ToS(_Q);
+    public static readonly string SIN = ToS(_S), COS = ToS(_C), TAN = ToS(_T), // These should come first
         AS = String.Concat(_A, SIN), AC = String.Concat(_A, COS), AT = String.Concat(_A, TAN),
         SH = String.Concat(SIN, _H), CH = String.Concat(COS, _H), TH = String.Concat(TAN, _H),
-        ASH = String.Concat(AS, _H), ACH = String.Concat(AC, _H), ATH = String.Concat(AT, _H),
-        PROD = P_.ToString(), SUM = S_.ToString(), COC = K_.ToString(), _REAL = _R.ToString(),
-        F = F_.ToString(), GA = G_.ToString(), BETA = B_.ToString(), ZETA = _Z_.ToString(), STEREO = R_.ToString(), HOMOTH = H_.ToString(),
-        FLOOR = _F.ToString(), CEIL = _C.ToString(), ROUND = _R.ToString(), SIGN = _S.ToString(),
-        MOD = M_.ToString(), NCR = C_.ToString(), NPR = A_.ToString(), _MAX = MAX.ToString(), _MIN = MIN.ToString(), DIST = D_.ToString(),
-        IT = I_.ToString(), IT1 = String.Concat(MODE_1, IT), IT2 = String.Concat(MODE_2, IT),
-        COMP = J_.ToString(), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP),
-        CONJ = J_.ToString(), E_SP = String.Concat(EXP, SP), PI = P.ToString(), _GA = G.ToString();
+        ASH = String.Concat(AS, _H), ACH = String.Concat(AC, _H), ATH = String.Concat(AT, _H);
+    public static readonly string HYPGEO = ToS(F_), GA = ToS(G_), BETA = ToS(B_), ZETA = ToS(_Z_),
+        STEREO = ToS(R_), HOMOTH = ToS(H_), SUM = ToS(S_), PROD = ToS(P_), COC = ToS(K_), PI = ToS(P), _GA = ToS(G);
+    public static readonly string IT = ToS(I_), IT1 = String.Concat(MODE_1, IT), IT2 = String.Concat(MODE_2, IT),
+        COMP = ToS(J_), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP);
     private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
         => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
     private static readonly Dictionary<string, string> COMMON_STANDARD = new()
         {
+            { "abs", ABS }, { "Abs", ABS },
             { "log", LOG }, { "Log", LOG }, { "ln", LOG }, { "Ln", LOG },
             { "exp", EXP }, { "Exp", EXP },
             { "sqrt", SQRT }, { "Sqrt", SQRT },
-            { "abs", ABS }, { "Abs", ABS },
-            { "factorial", FACT }, { "Factorial", FACT }, { "fact", FACT }, { "Fact", FACT },
             { "arsinh", ASH }, { "Arsinh", ASH }, { "asinh", ASH }, { "Asinh", ASH },
             { "arcosh", ACH }, { "Arcosh", ACH }, { "acosh", ACH }, { "Acosh", ACH },
             { "artanh", ATH }, { "Artanh", ATH }, { "atanh", ATH }, { "Atanh", ATH },
@@ -2000,55 +1988,56 @@ public class ReplaceTags : RealComplex
         };
     private static readonly Dictionary<string, string> COMMON_SERIES = AddSuffix(new()
         {
-            { "product", PROD }, { "Product", PROD }, { "prod", PROD }, { "Prod", PROD },
-            { "sum", SUM }, { "Sum", SUM },
-            { "F", F },
+            { "hypergeometric", HYPGEO }, { "Hypergeometric", HYPGEO }, { "hypgeo", HYPGEO }, { "Hypgeo", HYPGEO },
             { "gamma", GA }, { "Gamma", GA }, { "ga", GA }, { "Ga", GA },
             { "beta", BETA }, { "Beta", BETA },
             { "zeta", ZETA }, { "Zeta", ZETA },
             { "stereographic", STEREO }, { "Stereographic", STEREO}, { "stereo", STEREO}, { "Stereo", STEREO},
             { "homothety", HOMOTH }, { "Homothety", HOMOTH }, { "homoth", HOMOTH }, { "Homoth", HOMOTH },
+            { "sum", SUM }, { "Sum", SUM },
+            { "product", PROD }, { "Product", PROD }, { "prod", PROD }, { "Prod", PROD },
             { "iterate2", IT2 }, { "Iterate2", IT2 },
             { "composite2", COMP2 }, { "Composite2", COMP2 }, { "comp2", COMP2 }, { "Comp2", COMP2 },
             { "cocoon", COC}, { "Cocoon", COC}, { "coc", COC}, { "Coc", COC}
-        }, UNDERLINE);
+        }, SERIES_TAIL);
     private static readonly Dictionary<string, string> COMMON = Concat(COMMON_SERIES, COMMON_STANDARD);
     private static readonly Dictionary<string, string> REAL_STANDARD = AddSuffix(new()
         {
             { "floor", FLOOR }, { "Floor", FLOOR },
             { "ceiling", CEIL }, { "Ceiling", CEIL }, { "ceil", CEIL }, { "Ceil", CEIL },
             { "round", ROUND }, { "Round", ROUND },
-            { "sign", SIGN }, { "Sign", SIGN }, { "sgn", SIGN }, { "Sgn", SIGN }
-        }, DOLLAR);
-    private static readonly Dictionary<string, string> REAL_SERIES = AddSuffix(new()
+            { "sign", SGN }, { "Sign", SGN }, { "sgn", SGN }, { "Sgn", SGN },
+            { "factorial", FACT }, { "Factorial", FACT }, { "fact", FACT }, { "Fact", FACT }
+        }, REAL_TAIL);
+    private static readonly Dictionary<string, string> REAL_SERIES = AddSuffix(AddSuffix(new()
         {
             { "mod", MOD }, { "Mod", MOD }, { "nCr", NCR }, { "nPr", NPR },
             { "max", _MAX }, { "Max", _MAX }, { "min", _MIN }, { "Min", _MIN },
             { "distance", DIST}, { "Distance", DIST}, { "dist", DIST}, { "Dist", DIST},
             { "iterate1", IT1 }, { "Iterate1", IT1 },
-            { "composite1", COMP1 }, { "Composite1", COMP1 }, { "comp1", COMP1 }, { "Comp1", COMP1 },
-        }, UNDERLINE);
+            { "composite1", COMP1 }, { "Composite1", COMP1 }, { "comp1", COMP1 }, { "Comp1", COMP1 }
+        }, REAL_TAIL), SERIES_TAIL);
     private static readonly Dictionary<string, string> REAL = Concat(REAL_SERIES, REAL_STANDARD);
-    private static readonly Dictionary<string, string> COMPLEX_STANDARD = new()
-        { { "conjugate", CONJ }, { "Conjugate", CONJ }, { "conj", CONJ }, { "Conj", CONJ }, { "e", E_SP } };
-    private static readonly Dictionary<string, string> COMPLEX_SERIES = AddSuffix(new()
+    private static readonly Dictionary<string, string> COMPLEX_STANDARD = AddSuffix(new()
+        { { "conjugate", CONJ }, { "Conjugate", CONJ }, { "conj", CONJ }, { "Conj", CONJ }, { "e", EI } }, COMPLEX_TAIL);
+    private static readonly Dictionary<string, string> COMPLEX_SERIES = AddSuffix(AddSuffix(new()
         {
             { "iterate", IT }, { "Iterate", IT },
             { "composite", COMP }, { "Composite", COMP }, { "comp", COMP }, { "Comp", COMP },
             { "real", _REAL }, { "Real", _REAL }
-        }, UNDERLINE);
+        }, COMPLEX_TAIL), SERIES_TAIL);
     private static readonly Dictionary<string, string> COMPLEX = Concat(COMPLEX_SERIES, COMPLEX_STANDARD);
     private static readonly Dictionary<string, string> CONSTANTS = new()
         { { "pi", PI }, { "Pi", PI }, { "gamma", _GA }, { "Gamma", _GA }, { "ga", _GA }, { "Ga", _GA } };
     private static readonly Dictionary<string, string> TAGS = AddSuffix(new()
         {
             { "substitute", SUBS}, { "Substitute", SUBS}, { "subs", SUBS}, { "Subs", SUBS},
-            { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }, // Must precede "loop" to avoid confusion
+            { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP },{ "itLoop", ITLOOP }, { "ItLoop", ITLOOP }, // Must precede "loop"
             { "loop", LOOP }, { "Loop", LOOP },
             { "function", _FUNC }, { "Function", _FUNC }, { "func", _FUNC }, { "Func", _FUNC },
             { "polar", _POLAR }, { "Polar", _POLAR },
             { "parametric", _PARAM }, { "Parametric", _PARAM }, { "param", _PARAM }, { "Param", _PARAM }
-        }, UNDERLINE);
+        }, SERIES_TAIL);
     private static readonly Dictionary<string, string> REAL_COMPLEX = Concat(REAL, COMPLEX);
     private static Dictionary<string, string> AddPrefixSuffix(Dictionary<string, string> dictionary)
     {
@@ -2501,6 +2490,10 @@ public sealed class ComplexSub : RecoverMultiply
         }
         tagL = input[start - 1] switch
         {
+            _A => handleSub(c => new(Complex.Modulus(c)), 2),
+            _L => handleSub(Complex.Log, 2),
+            E_ => handleSub(Complex.Exp, 2),
+            _Q => handleSub(Complex.Sqrt, 2),
             _S => isInverse.trig ? handleSub(Complex.Asin, 3) : handleSub(Complex.Sin, 2),
             _C => isInverse.trig ? handleSub(Complex.Acos, 3) : handleSub(Complex.Cos, 2),
             _T => isInverse.trig ? handleSub(Complex.Atan, 3) : handleSub(Complex.Tan, 2),
@@ -2510,13 +2503,11 @@ public sealed class ComplexSub : RecoverMultiply
                 _C => isInverse.hyper ? handleSub(Complex.Acosh, 4) : handleSub(Complex.Cosh, 3),
                 _T => isInverse.hyper ? handleSub(Complex.Atanh, 4) : handleSub(Complex.Tanh, 3)
             },
-            _A => handleSub(c => new(Complex.Modulus(c)), 2),
-            J_ => handleSub(Complex.Conjugate, 2), // Special for complex
-            _L => handleSub(Complex.Log, 2),
-            E_ => handleSub(Complex.Exp, 2),
-            SP => handleSub(Complex.Ei, 3), // Special for complex
-            _Q => handleSub(Complex.Sqrt, 2),
-            _F_ => handleSub(Complex.Factorial, 2),
+            SP => input[start - 2] switch
+            {
+                J_ => handleSub(Complex.Conjugate, 3),
+                E_ => handleSub(Complex.Ei, 3)
+            }, // Special for complex, extensible
             _ => tagL
         };
         return new(mtx, copy);
@@ -2536,17 +2527,22 @@ public sealed class ComplexSub : RecoverMultiply
             H_ => handleSub(Homothety, 2),
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
-            I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
-            J_ => input[idx - 2] switch { TILDE => handleSub(Composite, 2), MODE_2 => handleSub(Composite2, 3) },
+            I_ => handleSub(Iterate2, 3),
+            J_ => handleSub(Composite2, 3),
             K_ => handleSub(Cocoon, 2),
-            _R => handleSub(RealBlock, 2) // Special for complex
+            SP => input[idx - 2] switch
+            {
+                R_ => handleSub(RealBlock, 3),
+                I_ => handleSub(Iterate, 3),
+                J_ => handleSub(Composite, 3)
+            } // Special for complex, extensible
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
     private Matrix<Complex> ObtainCore(string input)
     {
-        while (input.Contains(UNDERLINE)) input = SeriesSub(input); // Hard to count
+        while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // Hard to count
         var (length, start, end, tagL) = PrepareLoop(input);
         for (int i = 0; i < length; i++)
         {
@@ -2601,9 +2597,9 @@ public sealed class RealSub : RecoverMultiply
     #endregion
 
     #region Basic Calculations
+    private static Real SafeSign(Real r) => Real.IsNaN(r) ? Real.NaN : MathR.Sign(r); // Since MathR.Sign does not accept Real.NaN
     private static Real FactorialBase(Real n) => n < 0 ? Real.NaN : n == 0 ? 1 : n * FactorialBase(n - 1);
-    public static Real Factorial(Real r) => FactorialBase(MathR.Floor(r));
-    private static Real SafeSign(Real r) => Real.IsNaN(r) ? Real.NaN : MathR.Sign(r);
+    private static Real Factorial(Real r) => FactorialBase(MathR.Floor(r));
     private static Real Mod(Real n, Real r) => r != 0 ? n % MathR.Abs(r) : Real.NaN;
     private static Real Combination(Real n, Real r)
         => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n > 0 ?
@@ -3023,6 +3019,10 @@ public sealed class RealSub : RecoverMultiply
         }
         tagL = input[start - 1] switch
         {
+            _A => handleSub(MathR.Abs, 2),
+            _L => handleSub(MathR.Log, 2),
+            E_ => handleSub(MathR.Exp, 2),
+            _Q => handleSub(MathR.Sqrt, 2),
             _S => isInverse.trig ? handleSub(MathR.Asin, 3) : handleSub(MathR.Sin, 2),
             _C => isInverse.trig ? handleSub(MathR.Acos, 3) : handleSub(MathR.Cos, 2),
             _T => isInverse.trig ? handleSub(MathR.Atan, 3) : handleSub(MathR.Tan, 2),
@@ -3032,18 +3032,14 @@ public sealed class RealSub : RecoverMultiply
                 _C => isInverse.hyper ? handleSub(MathR.Acosh, 4) : handleSub(MathR.Cosh, 3),
                 _T => isInverse.hyper ? handleSub(MathR.Atanh, 4) : handleSub(MathR.Tanh, 3)
             },
-            _A => handleSub(MathR.Abs, 2),
-            _L => handleSub(MathR.Log, 2),
-            E_ => handleSub(MathR.Exp, 2),
-            _Q => handleSub(MathR.Sqrt, 2),
-            _F_ => handleSub(Factorial, 2),
             _D_ => input[start - 2] switch
             {
                 _F => handleSub(MathR.Floor, 3),
                 _C => handleSub(MathR.Ceiling, 3),
                 _R => handleSub(MathR.Round, 3),
-                _S => handleSub(SafeSign, 3) // Since MathR.Sign does not accept Real.NaN
-            }, // Special for real
+                _S => handleSub(SafeSign, 3),
+                _F_ => handleSub(Factorial, 3)
+            }, // Special for real, extensible
             _ => tagL
         };
         return new(mtx, copy);
@@ -3055,12 +3051,6 @@ public sealed class RealSub : RecoverMultiply
         { ThrowException(input[idx - tagL] != FUNC_HEAD); return (func, tagL); }
         var (braFunc, tagL) = input[idx - 1] switch
         {
-            M_ => handleSub(Mod, 2),
-            C_ => handleSub(Combination, 2),
-            A_ => handleSub(Permutation, 2),
-            MAX => handleSub(Max, 2),
-            MIN => handleSub(Min, 2),
-            D_ => handleSub(Distance, 2), // By far, special for real
             F_ => handleSub(Hypergeometric, 2),
             G_ => handleSub(Gamma, 2),
             B_ => handleSub(Beta, 2),
@@ -3069,16 +3059,27 @@ public sealed class RealSub : RecoverMultiply
             H_ => handleSub(Homothety, 2),
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
-            I_ => input[idx - 2] switch { MODE_1 => handleSub(Iterate1, 3), MODE_2 => handleSub(Iterate2, 3) },
-            J_ => input[idx - 2] switch { MODE_1 => handleSub(Composite1, 3), MODE_2 => handleSub(Composite2, 3) },
-            K_ => handleSub(Cocoon, 2)
+            I_ => handleSub(Iterate2, 3),
+            J_ => handleSub(Composite2, 3),
+            K_ => handleSub(Cocoon, 2),
+            _D_ => input[idx - 2] switch
+            {
+                M_ => handleSub(Mod, 3),
+                C_ => handleSub(Combination, 3),
+                A_ => handleSub(Permutation, 3),
+                MAX => handleSub(Max, 3),
+                MIN => handleSub(Min, 3),
+                D_ => handleSub(Distance, 3),
+                I_ => handleSub(Iterate1, 4),
+                J_ => handleSub(Composite1, 4)
+            } // Special for real, extensible
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
     private Matrix<Real> ObtainCore(string input)
     {
-        while (input.Contains(UNDERLINE)) input = SeriesSub(input); // Hard to count
+        while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // Hard to count
         var (length, start, end, tagL) = PrepareLoop(input);
         for (int i = 0; i < length; i++)
         {
@@ -3104,8 +3105,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
     public static readonly Complex ZERO = new(0), ONE = new(1), I = new(0, 1);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Complex(Real real, Real imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use primary constructor
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static (Real, Real) ReIm(Complex c) => (c.real, c.imaginary);
 
     #region Operators
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -3128,7 +3127,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator ~(Complex c)
-    { Real re = c.real, im = c.imaginary, denom = re * re + im * im; return new(re / denom, -im / denom); }
+    { Real re = c.real, im = c.imaginary, denom = re * re + im * im; return new(re / denom, -im / denom); } // Inverse
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Complex operator /(Complex c, Real r) => new(c.real / r, c.imaginary / r);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -3140,13 +3139,9 @@ public readonly struct Complex // Manually inlined to reduce overhead
     #endregion
 
     #region Elementary Functions
-    public static Complex Pow(Complex c1, Complex c2)
-    {
-        Real re1 = c1.real, im1 = c1.imaginary; if (re1 == 0 && im1 == 0) return ZERO; // Necessary apriori checking
-        Real re2 = c2.real, im2 = c2.imaginary, re3 = MathR.Log(re1 * re1 + im1 * im1) / 2, im3 = MathR.Atan2(im1, re1);
-        var (mod, unit) = (MathR.Exp(re2 * re3 - im2 * im3), MathR.SinCos(re2 * im3 + im2 * re3));
-        return new(mod * unit.Cos, mod * unit.Sin);
-    }
+    public static (Real, Real) ReIm(Complex c) => (c.real, c.imaginary);
+    public static Complex Conjugate(Complex c) => new(c.real, -c.imaginary);
+    public static Real Modulus(Complex c) => Real.Hypot(c.real, c.imaginary);
     public static Complex Log(Complex c)
     {
         Real re = c.real, im = c.imaginary;
@@ -3162,6 +3157,19 @@ public readonly struct Complex // Manually inlined to reduce overhead
         var (mod, unit) = (MathR.Exp(-MathR.Tau * c.imaginary), MathR.SinCos(MathR.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
     } // Often used in analytic number theory, represented by 'q'
+    public static Complex Pow(Complex c1, Complex c2)
+    {
+        Real re1 = c1.real, im1 = c1.imaginary; if (re1 == 0 && im1 == 0) return ZERO; // Necessary apriori checking
+        Real re2 = c2.real, im2 = c2.imaginary, re3 = MathR.Log(re1 * re1 + im1 * im1) / 2, im3 = MathR.Atan2(im1, re1);
+        var (mod, unit) = (MathR.Exp(re2 * re3 - im2 * im3), MathR.SinCos(re2 * im3 + im2 * re3));
+        return new(mod * unit.Cos, mod * unit.Sin);
+    }
+    public static Complex Sqrt(Complex c)
+    {
+        Real re = c.real, im = c.imaginary;
+        var (mod, unit) = (MathR.Pow(re * re + im * im, QUARTER), MathR.SinCos(MathR.Atan2(im, re) / 2));
+        return new(mod * unit.Cos, mod * unit.Sin);
+    }
     public static Complex Sin(Complex c)
     {
         var (mod, unit) = (MathR.Exp(-c.imaginary) / 2, MathR.SinCos(c.real));
@@ -3233,15 +3241,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * im / denom;
         return new(MathR.Log(_re * _re + _im * _im) / 4, MathR.Atan2(_im, _re) / 2);
     }
-    public static Complex Sqrt(Complex c)
-    {
-        Real re = c.real, im = c.imaginary;
-        var (mod, unit) = (MathR.Pow(re * re + im * im, QUARTER), MathR.SinCos(MathR.Atan2(im, re) / 2));
-        return new(mod * unit.Cos, mod * unit.Sin);
-    }
-    public static Real Modulus(Complex c) => Real.Hypot(c.real, c.imaginary);
-    public static Complex Conjugate(Complex c) => new(c.real, -c.imaginary);
-    public static Complex Factorial(Complex c) => new(RealSub.Factorial(c.real));
+    //
     public static Complex Stereographic(Complex pt, Real r, Complex ctr)
     { var (x, y) = ReIm(pt); return pt * (r / (1 + MathR.Sqrt(1 - x * x - y * y))) + ctr; }
     public static Complex Homothety(Complex pt, Real r, Complex ctr) => (pt - ctr) / r + ctr;
