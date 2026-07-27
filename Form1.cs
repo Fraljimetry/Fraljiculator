@@ -40,7 +40,7 @@ public partial class Graph : Form
         X_LEFT_MIC = 1565, X_RIGHT_MIC = 1765, Y_UP_MIC = 745, Y_DOWN_MIC = 945, X_LEFT_CHECK = 1921, X_RIGHT_CHECK = 1922,
         Y_UP_CHECK = 1081, Y_DOWN_CHECK = 1082, REF_POS_1 = 9, REF_POS_2 = 27, WIDTH_IND = 22, HEIGHT_IND = 55,
         LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 200, THRESHOLD = 1000;
-    private static Real[] scopes; // Corresponding to tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]
+    private static Real[] scopes; // Corresponds to tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]
     private static int[] borders; // = [x_left, x_right, y_up, y_down]
     private static Matrix<Complex> output_complex;
     private static Matrix<Real> output_real;
@@ -75,31 +75,31 @@ public partial class Graph : Form
     }
     public static void ReduceFontSizeByScale(Control parentCtrl, ref Real scalingFactor)
     {
-        scalingFactor = Graphics.FromHwnd(IntPtr.Zero).DpiX / 96 / (Real)1.5; // Originally scaled to 150%
+        scalingFactor = Graphics.FromHwnd(IntPtr.Zero).DpiX / 96 / (Real)1.5; // Originally designed for 150% display scaling
         foreach (Control ctrl in parentCtrl.Controls)
         {
             ctrl.Font = new(ctrl.Font.FontFamily, ctrl.Font.Size / (float)scalingFactor, ctrl.Font.Style);
             if (ctrl.Controls.Count > 0) ReduceFontSizeByScale(ctrl, ref scalingFactor);
         }
-    } // Also used for Message Boxes, so scalingFactor should not be passed as a field
+    } // Also used for message boxes, so scalingFactor should remain a parameter rather than a field
     private void BanMouseWheel()
     {
         ComboBox[] comboBoxes = [ComboExamples, ComboFunctions, ComboSpecial, ComboColoring, ComboContour];
         foreach (var cbx in comboBoxes) cbx.MouseWheel += (sender, e) => ((HandledMouseEventArgs)e).Handled = true;
-    } // The default wheeling clashes with the personalized combo boxes
+    } // Default mouse-wheel behavior conflicts with the custom combo boxes
     private void InitializeTimers()
     {
         static System.Windows.Forms.Timer setT(int interval) => new() { Interval = interval };
         GraphTimer = setT(1000); WaitTimer = setT(500); DisplayTimer = setT(1000 / UPDATE);
         WaitTimer.Tick += (sender, e) =>
         {
-            ReverseBool(ref is_flashing); // Cannot pass properties as reference
+            ReverseBool(ref is_flashing); // Properties cannot be passed by reference
             PictureWait.Visible = is_flashing;
         };
         DisplayTimer.Tick += (sender, e) =>
         {
             if (++display_elapsed % UPDATE == 0) SetText(TimeDisplay, (display_elapsed / UPDATE).ToString() + "s");
-            SetText(PointNumDisplay, (pixel_number + segment_number).ToString()); // Refreshing $"{RATE}" times per second
+            SetText(PointNumDisplay, (pixel_number + segment_number).ToString()); // Refreshes $"{RATE}" times per second
         };
     }
     private void InitializeGraphics()
@@ -157,18 +157,18 @@ public partial class Graph : Form
         if (!GeneralInput_Undo())
         {
             Real _scope = Obtain(GeneralInput);
-            scopes = [-_scope, _scope, -_scope, _scope]; // Remind the signs
+            scopes = [-_scope, _scope, -_scope, _scope]; // Note the signs
             for (int i = 0; i < tbxDetails.Length; i++) SetText(tbxDetails[i], scopes[i].ToString("0.################"));
-        } // Never using scientific notation
+        } // Never use scientific notation
         else for (int i = 0; i < tbxDetails.Length; i++) scopes[i] = Obtain(tbxDetails[i]);
-        MyString.ThrowException(InvalidScopesX() || InvalidScopesY()); // The detailed exception is determined later
+        MyString.ThrowException(InvalidScopesX() || InvalidScopesY()); // A more specific exception is determined later
         borders = [x_left, x_right, y_up, y_down];
     }
     private void TextBoxFocus(object sender, EventArgs e)
     {
         foreach (var ctrl in Controls.OfType<TextBox>())
             ctrl.GotFocus += (sender, e) => { ((TextBox)sender).SelectionStart = ((TextBox)sender).Text.Length; };
-    } // Forcing the caret to appear at the end of each textbox
+    } // Forces the caret to the end of each text box
     #endregion
 
     #region External Methods
@@ -178,28 +178,28 @@ public partial class Graph : Form
     [return: MarshalAs(UnmanagedType.Bool)]
     static extern bool BlockInput([MarshalAs(UnmanagedType.Bool)] bool fBlockIt);
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    public static extern bool HideCaret(IntPtr hWnd); // Also used for Message Boxes
+    public static extern bool HideCaret(IntPtr hWnd); // Also used for message boxes
     protected override void WndProc(ref Message m) // Window Procedure
     {
         const int WM_NCLBTNDOWN = 0x00A1, HTCAPTION = 0x0002; // Window Message, Non-Client Left Button Down, Hit Test Caption
-        if (m.Msg == WM_NCLBTNDOWN && m.WParam.ToInt32() == HTCAPTION) return; // Preventing dragging the title bar
+        if (m.Msg == WM_NCLBTNDOWN && m.WParam.ToInt32() == HTCAPTION) return; // Prevents the title bar from being dragged
         base.WndProc(ref m);
-    } // Overriding WndProc to customize window behavior
+    } // Overrides WndProc to customize window behavior
     #endregion
 
     #region Shorthands
     private static int AddOne(int input) => input + 1;
     private static Color Swap(Color c1, Color c2) => swap_colors ? c1 : c2;
     private static Color Argb(int a, int r, int g, int b) => Color.FromArgb(a, r, g, b);
-    public static Color Argb(int r, int g, int b) => Color.FromArgb(r, g, b); // Also used for Message Boxes
+    public static Color Argb(int r, int g, int b) => Color.FromArgb(r, g, b); // Also used for message boxes
     public static Real ArgRGB(Real x, Real y) => Real.IsNaN(x) && Real.IsNaN(y) ? -1 : y == 0 ?
-        (x == 0 ? -1 : x > 0 ? 0 : MathR.PI) : (y > 0 ? MathR.Atan2(y, x) : MathR.Atan2(y, x) + MathR.Tau); // Sensitive checking
+        (x == 0 ? -1 : x > 0 ? 0 : MathR.PI) : (y > 0 ? MathR.Atan2(y, x) : MathR.Atan2(y, x) + MathR.Tau); // Numerically sensitive check
     private static int Frac(int input, Real alpha) => (int)(input * alpha);
     private static bool IllegalRatio(Real ratio) => ratio < 0 || ratio > 1;
     private static int RowBorders(int[] borders) => borders[1] - borders[0];
     private static int ColumnBorders(int[] borders) => borders[3] - borders[2];
     private static Real RowScopes() => scopes[1] - scopes[0];
-    private static Real ColumnScopes() => scopes[3] - scopes[2]; // The sign convention varies from place to place
+    private static Real ColumnScopes() => scopes[3] - scopes[2]; // Sign conventions vary across the codebase
     private static bool InvalidScopesX() => scopes[0] >= scopes[1];
     private static bool InvalidScopesY() => scopes[2] >= scopes[3];
     private static int[] GetBorders(int mode) => mode switch
@@ -235,7 +235,7 @@ public partial class Graph : Form
     { graphics.DrawRectangle(BDR_PEN, GetRect(borders)); graphics.FillRectangle(BACK_BRUSH, GetRect(borders, 1)); }
     private static void DrawAxesGrids(int[] borders)
     {
-        bdp_painted = true; // To prevent calling Graph_Paint afterwards
+        bdp_painted = true; // Prevents Graph_Paint from being called afterward
         static Real calculateGrid(Real range) => MathR.Pow(GRID, MathR.Floor(MathR.Log(range / 2, GRID)));
         var (xGrid, yGrid) = (calculateGrid(RowScopes()), calculateGrid(ColumnScopes()));
         var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
@@ -279,7 +279,7 @@ public partial class Graph : Form
     // 2. GRAPHING
     #region Numerics
     private static Real GetRatioRow(int[] borders) => RowScopes() / RowBorders(borders);
-    private static Real GetRatioColumn(int[] borders) => -ColumnScopes() / ColumnBorders(borders); // Remind the minus sign
+    private static Real GetRatioColumn(int[] borders) => -ColumnScopes() / ColumnBorders(borders); // Note the minus sign
     private static int LinearTransformX(Real x, int[] borders, Real ratioRow) => (int)(borders[0] + (x - scopes[0]) / ratioRow);
     private static int LinearTransformY(Real y, int[] borders, Real ratioColumn) => (int)(borders[2] + (y - scopes[3]) / ratioColumn);
     private static (Real, Real) LinearTransform(int x, int y, Real xCoor, Real yCoor, int[] borders)
@@ -305,7 +305,7 @@ public partial class Graph : Form
             minMax[0, p] = seekM(MathR.Min, _destPtr, columns); minMax[1, p] = seekM(MathR.Max, _destPtr, columns);
         });
         return (seekM(MathR.Min, minMax.RowPtr(0), rows), seekM(MathR.Max, minMax.RowPtr(1), rows));
-    } // To find the min and max of the atan'ed matrix to prevent infinitude
+    } // Finds the minimum and maximum after applying atan, which bounds infinite values
     private unsafe static (int, int, Matrix<Real>, Matrix<Real>) GetRowColumnCoor()
     {
         var (rows, columns, _x, _y) = (RowBorders(borders), ColumnBorders(borders), GetRatioRow(borders), GetRatioColumn(borders));
@@ -320,7 +320,7 @@ public partial class Graph : Form
     #endregion
 
     #region Rendering Core
-    private static (int, BitmapData) GetBppBmpData(Bitmap bmp) // bpp: bytesPerPixel
+    private static (int, BitmapData) GetBppBmpData(Bitmap bmp) // bpp: bytes per pixel
         => (Image.GetPixelFormatSize(bmp.PixelFormat) / 8, bmp.LockBits(rectangle, ImageLockMode.ReadWrite, bmp.PixelFormat));
     private unsafe static void ClearBitmap(Bitmap bmp)
     {
@@ -561,7 +561,7 @@ public partial class Graph : Form
     private void RunDisplayBase(Action computeAction)
     {
         if (is_checking) return; // Necessary
-        ClearBitmap(bmp_mac); ClearBitmap(bmp_mic); // Necessary courtesy of ZAL
+        ClearBitmap(bmp_mac); ClearBitmap(bmp_mic); // Required thanks to ZAL
         computeAction();
         DisplayBase(() => { graphics.DrawImage(GetBitmap(is_main), 0, 0); });
     }
@@ -582,7 +582,7 @@ public partial class Graph : Form
             MyString.ThrowInvalidLengths(split, [5, 6, 8]);
             if (split.Length != 8)
             {
-                Matrix<Complex> z = ComplexSub.InitilizeZ(xCoor, yCoor, rows, columns); // Special for complex
+                Matrix<Complex> z = ComplexSub.InitilizeZ(xCoor, yCoor, rows, columns); // Complex-specific
                 Matrix<Complex> Z = new ComplexSub(split[1], z, null, null, rows, columns).Obtain();
                 RealComplex.CheckFor(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
                 {
@@ -616,7 +616,7 @@ public partial class Graph : Form
                 RunDisplayBase(RealComputation);
             });
         }
-    } // Deliberate buffer-free zone, rendering self-contained delay [See: ComplexSub.ProcessSPI, RealSub.ProcessSPI]
+    } // Intentionally buffer-free; rendering provides its own delay [see ComplexSub.ProcessSPI and RealSub.ProcessSPI]
     private void DisplayLoop(string[] split)
     {
         RealComplex.CheckFor(RealSub.ToInt(split[2]), RealSub.ToInt(split[3]), loops =>
@@ -674,7 +674,7 @@ public partial class Graph : Form
             4 => Argb(decay, Frac(proportion, alpha), 0, Frac(255, alpha)),
             5 => Argb(decay, Frac(255, alpha), 0, Frac(255 - proportion, alpha)),
             _ => Color.Empty
-        }; // The ARGB hexagon for standard domain coloring
+        }; // ARGB color hexagon used for standard domain coloring
     } // Reference: https://en.wikipedia.org/wiki/Domain_coloring & https://complex-analysis.com/content/domain_coloring.html
     private static Color ObtainColorWheel(Complex c, Real alpha = 1)
         => ObtainColorBase(ArgRGB(c.real, c.imaginary), alpha, (int)(255 / (1 + decay * Complex.Modulus(shade ? c : Complex.ZERO))));
@@ -757,7 +757,7 @@ public partial class Graph : Form
     private async void AllButton_Click(object sender, EventArgs e) => await Async(() =>
     {
         RunPreview_Click(sender, e);
-        if (error_input) return; // To prevent the emergence of the second error box
+        if (error_input) return; // Prevents a second error box from appearing
         Invoke(() => { StopTimers(); Thread.Sleep(SLEEP); StartTimers(); }); // Executed on the UI thread
         RunConfirm_Click(sender, e);
     });
@@ -779,7 +779,7 @@ public partial class Graph : Form
         finally
         {
             if (error_input) StopTimers();
-            SetTextboxButtonReadOnly(false); // Necessary to revive the controls after errors
+            SetTextboxButtonReadOnly(false); // Required to re-enable the controls after an error
             SetScrollBars(false);
             PictureWait.Visible = false;
         }
@@ -797,7 +797,7 @@ public partial class Graph : Form
     {
         display_elapsed = 0;
         SetText(TimeDisplay, "0s");
-        is_flashing = false; // Ensuring deferred emergence of the hourglass
+        is_flashing = false; // Delays the hourglass
         DisplayTimer.Start(); WaitTimer.Start(); GraphTimer.Start();
         TimeNow = DateTime.Now;
     }
@@ -851,7 +851,7 @@ public partial class Graph : Form
     {
         DateTime currentTime = DateTime.Now;
         return $@"{AddressInput.Text}\{currentTime:yyyy}_{currentTime.DayOfYear}_{currentTime:HH_mm_ss}_{suffix}";
-    } // The address must be written in a single line
+    } // The address must fit on a single line
     private void ExportGraph()
     {
         export_number++;
@@ -879,7 +879,7 @@ public partial class Graph : Form
         {
             is_checking = true;
             PrepareSetDisplay(GetBorders(3), false);
-            bool noInput = NoInput(); // Should not return immediately if NoInput()
+            bool noInput = NoInput(); // Do not return immediately when NoInput() is true
             InputLabel.ForeColor = noInput ? Color.White : CORRECT_GREEN;
             InputString.BackColor = noInput ? FOCUS_GRAY : CORRECT_GREEN;
             PictureCorrect.Visible = !noInput; PictureIncorrect.Visible = false;
@@ -891,7 +891,7 @@ public partial class Graph : Form
         Action<object, EventArgs>[] checkActions =
         [
             GeneralInput_DoubleClick,
-            Details_TextChanged, // Sensitive position
+            Details_TextChanged, // Order-sensitive position
             InputString_DoubleClick,
             ThickInput_DoubleClick,
             DenseInput_DoubleClick,
@@ -902,7 +902,7 @@ public partial class Graph : Form
     private void Graph_KeyUp(object sender, KeyEventArgs e)
     {
         HandleModifierKeys(e, false);
-        if (suppress_key_up) return; // Should not merge with the next line
+        if (suppress_key_up) return; // Do not merge with the next line
         if (HandleSpecialKeys(e)) return;
         HandleCtrlCombination(sender, e);
     }
@@ -916,7 +916,7 @@ public partial class Graph : Form
                 SetText(InputString, String.Empty);
                 InputString.Focus();
             }, e);
-        else if (e.KeyCode == Keys.Delete) ExecuteSuppress(null, e); // Banning the original deletion
+        else if (e.KeyCode == Keys.Delete) ExecuteSuppress(null, e); // Suppresses the default Delete action
     }
     private static void HandleModifierKeys(KeyEventArgs e, bool isKeyDown)
     {
@@ -1239,7 +1239,7 @@ public partial class Graph : Form
         if (ProcessingGraphics()) return; int pos = InputString.SelectionStart;
         SetText(InputString, MyString.Replace(InputString.Text, String.Concat(selectedItem, RecoverMultiply.LR_BRA),
             pos, pos + InputString.SelectionLength - 1));
-        InputString.Focus(); InputString.SelectionStart = pos + selectedItem.Length + 1; // Should not place before .Focus()
+        InputString.Focus(); InputString.SelectionStart = pos + selectedItem.Length + 1; // Must remain after .Focus()
     }
     private void ComboExamples_SelectedIndexChanged(object sender, EventArgs e)
     {
@@ -1247,7 +1247,7 @@ public partial class Graph : Form
         if (ProcessingGraphics() || String.IsNullOrEmpty(selection) || ComboExamples.SelectedIndex == -1) return;
         SetText(InputString, selection);
         SetValuesForSelectedIndex(ComboExamples.SelectedIndex);
-        ComboExamples_Undo(); // To prevent repetitive call
+        ComboExamples_Undo(); // Prevents repeated calls
         Delete_Click(e);
         InputString_Focus();
     }
@@ -1269,7 +1269,7 @@ public partial class Graph : Form
     private void CheckAuto_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref is_auto);
     private void CheckEdit_CheckedChanged(object sender, EventArgs e)
     {
-        DraftBox.ReadOnly = !DraftBox.ReadOnly; // Cannot pass properties as reference
+        DraftBox.ReadOnly = !DraftBox.ReadOnly; // Properties cannot be passed by reference
         DraftBox.BackColor = DraftBox.ReadOnly ? Color.Black : SystemColors.ControlDarkDark;
         DraftBox.ForeColor = DraftBox.ReadOnly ? READONLY_GRAY : Color.White;
         DraftBox.ScrollBars = DraftBox.ReadOnly ? ScrollBars.None : ScrollBars.Vertical;
@@ -1280,9 +1280,9 @@ public partial class Graph : Form
     #region Click & Mouse Down & Text Changed
     private void Delete_Click(int[] borders, bool isMain)
     {
-        Details_TextChanged(null, EventArgs.Empty); // So that axes and grids are drawn correctly
+        Details_TextChanged(null, EventArgs.Empty); // Ensures that the axes and grids are drawn correctly
         ClearBitmap(GetBitmap(isMain));
-        Invalidate(isMain ? rect_mac : rect_mic); Update(); // To clear the overflowed curves
+        Invalidate(isMain ? rect_mac : rect_mic); Update(); // Clears curves that extend beyond the display bounds
         DrawBackdropAxesGrids(borders, isMain);
     } // Sensitive
     private void Delete_Click(EventArgs e) { DeleteMain_Click(this, e); DeletePreview_Click(this, e); }
@@ -1343,7 +1343,7 @@ public partial class Graph : Form
                 bool noInput = String.IsNullOrEmpty(tbx.Text); noSomeInput = noSomeInput || noInput;
                 if (!noInput) Obtain(tbx); // For checking
             }
-            lbl.ForeColor = noSomeInput ? Color.White : CORRECT_GREEN; // White if any being null or empty
+            lbl.ForeColor = noSomeInput ? Color.White : CORRECT_GREEN; // White if any input is null or empty
         }
         catch (Exception) { lbl.ForeColor = ERROR_RED; }
     }
@@ -1352,12 +1352,12 @@ public partial class Graph : Form
     {
         if (ProcessingGraphics()) return;
         MiniChecks([X_Left, X_Right, Y_Left, Y_Right], DetailLabel);
-        if (scopes == null) return; // Necessary for the initialization
+        if (scopes == null) return; // Required during initialization
 
         void checkScopes(bool b1, bool b2, Color c) { if (b1) X_Scope.ForeColor = c; if (b2) Y_Scope.ForeColor = c; }
         try { SetThicknessDensenessScopesBorders(false); }
         catch (Exception) { checkScopes(InvalidScopesX(), InvalidScopesY(), ERROR_RED); }
-        finally { checkScopes(!InvalidScopesX(), !InvalidScopesY(), CORRECT_GREEN); } // Should not declare the bools ahead
+        finally { checkScopes(!InvalidScopesX(), !InvalidScopesY(), CORRECT_GREEN); } // Keep the Boolean expressions inline
     } // Sensitive
     private void X_Left_TextChanged(object sender, EventArgs e) => Details_TextChanged(sender, e);
     private void X_Right_TextChanged(object sender, EventArgs e) => Details_TextChanged(sender, e);
@@ -1382,7 +1382,7 @@ public partial class Graph : Form
             PictureIncorrect.Visible = true; PictureCorrect.Visible = false;
         });
         InputString.SelectionStart = pos;
-        if (PictureCorrect.Visible) DisplayMouseMoveCore(); // Displaying the value at the lower-right corner
+        if (PictureCorrect.Visible) DisplayMouseMoveCore(); // Displays the value in the lower-right corner
     }
     private void AddressInput_TextChanged(object sender, EventArgs e)
     {
@@ -1392,7 +1392,7 @@ public partial class Graph : Form
     }
     //
     private static void BanDoubleClick(TextBox tbx, MouseEventArgs e)
-    { tbx.SelectionStart = tbx.GetCharIndexFromPosition(e.Location); tbx.SelectionLength = 0; } // To ban the default selection
+    { tbx.SelectionStart = tbx.GetCharIndexFromPosition(e.Location); tbx.SelectionLength = 0; } // Suppresses the default selection behavior
     private void InputString_MouseDoubleClick(object sender, MouseEventArgs e) => BanDoubleClick(InputString, e);
     private void AddressInput_MouseDoubleClick(object sender, MouseEventArgs e) => BanDoubleClick(AddressInput, e);
     private void GeneralInput_MouseDoubleClick(object sender, MouseEventArgs e) => BanDoubleClick(GeneralInput, e);
@@ -1461,7 +1461,7 @@ public partial class Graph : Form
     private void Y_Right_KeyDown(object sender, KeyEventArgs e) => AutoKeyDown(Y_Right, e);
     private void ThickInput_KeyDown(object sender, KeyEventArgs e) => AutoKeyDown(ThickInput, e);
     private void DenseInput_KeyDown(object sender, KeyEventArgs e) => AutoKeyDown(DenseInput, e);
-    private static void Combo_KeyDown(KeyEventArgs e) // To ban the default keyboard search
+    private static void Combo_KeyDown(KeyEventArgs e) // Suppresses the default keyboard search
         => e.SuppressKeyPress = e.KeyCode >= Keys.A && e.KeyCode <= Keys.Z;
     private void ComboExamples_KeyDown(object sender, KeyEventArgs e) => Combo_KeyDown(e);
     private void ComboFunctions_KeyDown(object sender, KeyEventArgs e) => Combo_KeyDown(e);
@@ -1586,7 +1586,7 @@ public partial class Graph : Form
     //
     private static void ResizeControl(PictureBox pbx, int delta, bool isLarge)
     {
-        if (isLarge ? is_resized : !is_resized) return; // To prevent repetitive call
+        if (isLarge ? is_resized : !is_resized) return; // Prevents repeated calls
         var (_location, _size) = isLarge ? (-delta, 2 * delta) : (delta, -2 * delta);
         pbx.Location = new(pbx.Location.X + _location, pbx.Location.Y + _location);
         pbx.Size = new(pbx.Width + _size, pbx.Height + _size);
@@ -1602,7 +1602,7 @@ public partial class Graph : Form
     private void ExportButton_MouseHover(object sender, EventArgs e) => AddressInput_DoubleClick(sender, e);
     private void StoreButton_MouseHover(object sender, EventArgs e) => AddressInput_DoubleClick(sender, e);
     #endregion
-} /// The visualization interface
+} /// Provides the visualization interface
 public class MyMessageBox : Form
 {
     #region Fields
@@ -1621,7 +1621,7 @@ public class MyMessageBox : Form
     #region Methods
     private static void BtnOk_MouseEnterLeave(bool isEnter)
     {
-        if (isEnter ? is_resized : !is_resized) return; // To prevent repetitive call
+        if (isEnter ? is_resized : !is_resized) return; // Prevents repeated calls
         var (_size, _location, _font) = isEnter ? (2, -1, 1) : (-2, 1, -1);
         btnOk.Size = new(btnOk.Width + _size, btnOk.Height + _size);
         btnOk.Location = new(btnOk.Location.X + _location, btnOk.Location.Y + _location);
@@ -1688,7 +1688,7 @@ public class MyMessageBox : Form
     public static void ShowException(string message, int width, int height)
         => Display(message, width, height, EXCEPTION_FONT, EXCEPTION_BUTTON, Color.White);
     #endregion
-} /// Customized box construction
+} /// Constructs custom message boxes
 
 /// <summary>
 /// TOOLKIT SECTION
@@ -1699,7 +1699,7 @@ public class MyString
     public static readonly string[] FUNC = AddSuffix(["function", "Function", "func", "Func"]), POLAR = AddSuffix(["polar", "Polar"]),
         PARAM = AddSuffix(["parametric", "Parametric", "param", "Param"]), ZETAS = AddSuffix(["zeta", "Zeta"]);
     public static readonly string[] FPP_NAMES = [.. FUNC, .. POLAR, .. PARAM];
-    protected static readonly char SUB_CHAR = ';'; // Replacing ",^"
+    protected static readonly char SUB_CHAR = ';'; // Replaces ",^"
 
     #region Parentheses
     private static int PairedParenthesis(ReadOnlySpan<char> input, int start)
@@ -1719,7 +1719,7 @@ public class MyString
         static int pairedInnerBra(ReadOnlySpan<char> input, int start)
         { for (int i = start + 1; ; i++) if (input[i] == ')') return i; }
         int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
-    } // Backward lookup for parenthesis pairs, extremely sensitive
+    } // Performs a backward lookup for matching parentheses; highly sensitive
     public static bool CheckParenthesis(ReadOnlySpan<char> input)
     {
         int sum = 0;
@@ -1758,7 +1758,7 @@ public class MyString
             i = endIndex;
         } // Sensitive
         return buffer.ToString();
-    } // To prevent interior ',' from interfering with exterior splitting
+    } // Prevents commas inside parentheses from interfering with outer splitting
     private static string[] ReplaceRecover(ReadOnlySpan<char> input)
         => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
     public static string ReplaceSubstrings(string input, ReadOnlySpan<string> substrings, string substitution)
@@ -1807,12 +1807,12 @@ public class MyString
         return false;
     }
     #endregion
-} /// String manipulations
+} /// Provides string-manipulation utilities
 public class RealComplex : MyString
 {
     protected static readonly Real GAMMA = (Real)0.5772156649015329, LOG2 = MathR.Log(2);
     protected static readonly int THRESHOLD = 10, BRKCHK = 5 * THRESHOLD, STEP = 1; // STEP: a tunable chunk size
-    protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replacing "+-*/"
+    protected static readonly string SUB_CHAR_STR = SUB_CHAR.ToString(), SUB_CHARS = ":;"; // Replaces "+-*/"
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', D_ = 'D', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', H_ = 'H', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
         M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r', R_ = 'R',
@@ -1906,9 +1906,9 @@ public class RealComplex : MyString
         return (SplitByChars(_input, signs), GetSignsBuilder(String.Concat(signHead ? signs[1] : signs[0], _input), signs));
     } // Sensitive
     protected static (bool trig, bool hyper) IsInverseFunc(ReadOnlySpan<char> input, int start)
-        => (start > 1 ? input[start - 2] == _A : true, start > 2 ? input[start - 3] == _A : true); // Should not simplify
+        => (start > 1 ? input[start - 2] == _A : true, start > 2 ? input[start - 3] == _A : true); // Do not simplify
     protected static (int, int, int, int) PrepareLoop(ReadOnlySpan<char> input) => (CountChars(input, "("), input.Length - 1, -1, 0);
-} /// Commonalities for RealSub & ComplexSub
+} /// Provides shared functionality for RealSub and ComplexSub
 public class ReplaceTags : RealComplex
 {
     public static readonly string[] FUNCTIONS =
@@ -1957,7 +1957,7 @@ public class ReplaceTags : RealComplex
         MOD = ToS(M_), NCR = ToS(C_), NPR = ToS(A_), _MAX = ToS(MAX), _MIN = ToS(MIN), DIST = ToS(D_);
     public static readonly string CONJ = ToS(J_), EI = EXP = ToS(E_), _REAL = ToS(R_);
     public static readonly string ABS = ToS(_A), LOG = ToS(_L), EXP = ToS(E_), SQRT = ToS(_Q);
-    public static readonly string SIN = ToS(_S), COS = ToS(_C), TAN = ToS(_T), // These should come first
+    public static readonly string SIN = ToS(_S), COS = ToS(_C), TAN = ToS(_T),
         AS = String.Concat(_A, SIN), AC = String.Concat(_A, COS), AT = String.Concat(_A, TAN),
         SH = String.Concat(SIN, _H), CH = String.Concat(COS, _H), TH = String.Concat(TAN, _H),
         ASH = String.Concat(AS, _H), ACH = String.Concat(AC, _H), ATH = String.Concat(AT, _H);
@@ -1966,7 +1966,7 @@ public class ReplaceTags : RealComplex
     public static readonly string IT = ToS(I_), IT1 = String.Concat(MODE_1, IT), IT2 = String.Concat(MODE_2, IT),
         COMP = ToS(J_), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP);
     private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
-        => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series first, Standard next
+        => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series functions first, then standard functions
     private static readonly Dictionary<string, string> COMMON_STANDARD = new()
         {
             { "abs", ABS }, { "Abs", ABS },
@@ -2057,7 +2057,7 @@ public class ReplaceTags : RealComplex
     private static string ReplaceCommon(string input) => ReplaceConstant(ReplaceBase(input, AddPrefixSuffix(COMMON)));
     protected static string ReplaceRealComplex(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(REAL_COMPLEX)));
     protected static string ReplaceCurves(string input) => ReplaceBase(input, AddPrefixSuffix(TAGS));
-} /// Function name interpretors
+} /// Interprets function names
 public class RecoverMultiply : ReplaceTags
 {
     public static readonly string LR_BRA = "()", LR_CBRA = "{}", _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_),
@@ -2076,15 +2076,15 @@ public class RecoverMultiply : ReplaceTags
     {
         if (input.Length == 1) return input.ToString();
         Func<char, bool> isVar = isComplex ? IsVarComplex : IsVarReal;
-        StringBuilder recoveredInput = new(input.Length * 2); // The longest possible length
+        StringBuilder recoveredInput = new(input.Length * 2); // Maximum possible length
         recoveredInput.Append(input[0]);
-        for (int i = 1; i < input.Length; i++) // Should not use parallel
+        for (int i = 1; i < input.Length; i++) // Do not parallelize this loop
         {
             if (DecideRecovery(input[i - 1], input[i], isVar)) recoveredInput.Append('*');
             recoveredInput.Append(input[i]);
         }
         return recoveredInput.ToString();
-    } // Pulled out of loops
+    } // Moved outside the loops
     private static bool DecideRecovery(char c1, char c2, Func<char, bool> isVar)
     {
         bool isConstNum(char c) => IsConst(c) || Char.IsNumber(c);
@@ -2098,11 +2098,11 @@ public class RecoverMultiply : ReplaceTags
     private static bool IsVarReal(char c) => VAR_REAL.Contains(c);
     private static bool IsVarComplex(char c) => VAR_COMPLEX.Contains(c);
     private static bool IsConst(char c) => CONST.Contains(c);
-    private static bool IsArithmetic(char c) => ARITH.Contains(c); // Function heads preceded by these require no anterior recovery
+    private static bool IsArithmetic(char c) => ARITH.Contains(c); // Function heads after these operators do not require recovery
     private static bool IsFunctionHead(char c) => c == FUNC_HEAD;
     private static bool IsBraL(char c) => BRA_L.Contains(c);
     private static bool IsBraR(char c) => BRA_R.Contains(c);
-} /// Recovery of omitted '*'
+} /// Restores omitted multiplication operators ("*")
 
 /// <summary>
 /// COMPUTATION SECTION
@@ -2110,17 +2110,17 @@ public class RecoverMultiply : ReplaceTags
 public sealed class ComplexSub : RecoverMultiply
 {
     #region Fields & Constructors
-    private readonly uint colBytes, strdBytes, resBytes; // Byte lengths of chunks
-    private readonly int rows, columns, rowChk, strd, res, resInit; // Lengths of chunks
+    private readonly uint colBytes, strdBytes, resBytes; // Chunk sizes in bytes
+    private readonly int rows, columns, rowChk, strd, res, resInit; // Chunk lengths
     private readonly int[] rowOffs, strdInit; // For row extraction
-    private readonly bool useList, brkChk; // useList: whether to use cstMtcs, brkChk: whether to break into chunks
+    private readonly bool useList, brkChk; // useList: whether to use cstMtcs; brkChk: whether to split processing into chunks
     private readonly Matrix<Complex> z;
-    private readonly Matrix<Complex>[] buffCocs; // To precompute repetitively used blocks
-    private readonly MatrixCopy<Complex>[] braValues; // To store values between parenthesis pairs
-    private readonly List<ConstMatrix<Complex>> cstMtcs = []; // To store reusable constant matrices
+    private readonly Matrix<Complex>[] buffCocs; // Precomputes repeatedly used blocks
+    private readonly MatrixCopy<Complex>[] braValues; // Stores values for matching pairs of parentheses
+    private readonly List<ConstMatrix<Complex>> cstMtcs = []; // Stores reusable constant matrices
 
     private int countBra, countCst; // countBra: parentheses, countCst: constants
-    private bool readList; // Reading or writing cstMtcs
+    private bool readList; // Indicates whether cstMtcs is being read or written
     private string input;
     private Matrix<Complex> Z; // For substitution
 
@@ -2244,7 +2244,7 @@ public sealed class ComplexSub : RecoverMultiply
         CheckFor(sub ? RealSub.ToInt(split[subIdx + 1]) : 1, RealSub.ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
-            action(buffer); if (!buffer.readList) buffer.readList = true; // To precompute cstMtcs
+            action(buffer); if (!buffer.readList) buffer.readList = true; // Precomputes cstMtcs
         });
         return buffer.Z;
     } // Meticulously optimized
@@ -2271,7 +2271,7 @@ public sealed class ComplexSub : RecoverMultiply
         ComplexSub body = ObtainSub(split[0], Z, new Matrix<Complex>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
         return body.Obtain();
-    } // For shallow and complicated composites
+    } // Used for shallow but complicated composite expressions
     private Matrix<Complex> RealBlock(string[] split) { ThrowInvalidLengths(split, [1]); return Const(new(RealSub.Obtain(split[0]))); }
     #endregion
 
@@ -2409,7 +2409,7 @@ public sealed class ComplexSub : RecoverMultiply
         Z_ => HandleSolo<Complex>(input, new(Z, true)),
         '{' => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
         '[' => braValues[Int32.Parse(TryBraNum(input, '[', ']'))],
-        I => HandleSolo<Complex>(input, ConstMtx(Complex.I)), // Special for complex
+        I => HandleSolo<Complex>(input, ConstMtx(Complex.I)), // Complex-specific
         E => HandleSolo<Complex>(input, ConstMtx(new(MathR.E))),
         P => HandleSolo<Complex>(input, ConstMtx(new(MathR.PI))),
         G => HandleSolo<Complex>(input, ConstMtx(new(GAMMA))),
@@ -2421,7 +2421,7 @@ public sealed class ComplexSub : RecoverMultiply
         Matrix<Complex> tower = CopyMtx(PowerCore(chunks[^1]));
         for (int k = chunks.Length - 2; k >= 0; k--)
         {
-            string[] split = SplitByChars(chunks[k], "^"); // Special for "^"
+            string[] split = SplitByChars(chunks[k], "^"); // Special handling for "^"
             for (int m = split.Length - 1; m >= 0; m--) Power(Transform(split[m]).matrix, tower);
         }
         return new(tower);
@@ -2507,7 +2507,7 @@ public sealed class ComplexSub : RecoverMultiply
             {
                 J_ => handleSub(Complex.Conjugate, 3),
                 E_ => handleSub(Complex.Ei, 3)
-            }, // Special for complex, extensible
+            }, // Complex-specific and extensible
             _ => tagL
         };
         return new(mtx, copy);
@@ -2535,14 +2535,14 @@ public sealed class ComplexSub : RecoverMultiply
                 R_ => handleSub(RealBlock, 3),
                 I_ => handleSub(Iterate, 3),
                 J_ => handleSub(Composite, 3)
-            } // Special for complex, extensible
+            } // Complex-specific and extensible
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
     private Matrix<Complex> ObtainCore(string input)
     {
-        while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // Hard to count
+        while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // The number of substitutions is not known in advance
         var (length, start, end, tagL) = PrepareLoop(input);
         for (int i = 0; i < length; i++)
         {
@@ -2555,21 +2555,21 @@ public sealed class ComplexSub : RecoverMultiply
     public Matrix<Complex> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRA) ? Const(Obtain(input)) : ObtainCore(input);
     #endregion
-} /// Computing complex-variable expressions
+} /// Computes complex-variable expressions
 public sealed class RealSub : RecoverMultiply
 {
     #region Fields & Constructors
-    private readonly uint colBytes, strdBytes, resBytes; // Byte lengths of chunks
-    private readonly int rows, columns, rowChk, strd, res, resInit; // Lengths of chunks
+    private readonly uint colBytes, strdBytes, resBytes; // Chunk sizes in bytes
+    private readonly int rows, columns, rowChk, strd, res, resInit; // Chunk lengths
     private readonly int[] rowOffs, strdInit; // For row extraction
-    private readonly bool useList, brkChk; // useList: whether to use cstMtcs, brkChk: whether to break into chunks
+    private readonly bool useList, brkChk; // useList: whether to use cstMtcs; brkChk: whether to split processing into chunks
     private readonly Matrix<Real> x, y;
-    private readonly Matrix<Real>[] buffCocs; // To precompute repetitively used blocks
-    private readonly MatrixCopy<Real>[] braValues; // To store values between parenthesis pairs
-    private readonly List<ConstMatrix<Real>> cstMtcs = []; // To store reusable constant matrices
+    private readonly Matrix<Real>[] buffCocs; // Precomputes repeatedly used blocks
+    private readonly MatrixCopy<Real>[] braValues; // Stores values for matching pairs of parentheses
+    private readonly List<ConstMatrix<Real>> cstMtcs = []; // Stores reusable constant matrices
 
     private int countBra, countCst; // countBra: parentheses, countCst: constants
-    private bool readList; // Reading or writing cstMtcs
+    private bool readList; // Indicates whether cstMtcs is being read or written
     private string input;
     private Matrix<Real> X, Y; // For substitution
 
@@ -2593,11 +2593,11 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> ObtainValue(ReadOnlySpan<char> input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
     public static Real Obtain(ReadOnlySpan<char> input, Real? x = null)
         => new RealSub(input, x != null ? new((Real)x) : null, null, null, null, null, 1, 1).Obtain(false)[0, 0];
-    public static int ToInt(ReadOnlySpan<char> input) => (int)Obtain(input); // Often bound to RealComplex.CheckFor
+    public static int ToInt(ReadOnlySpan<char> input) => (int)Obtain(input); // Often used with RealComplex.CheckFor
     #endregion
 
     #region Basic Calculations
-    private static Real SafeSign(Real r) => Real.IsNaN(r) ? Real.NaN : MathR.Sign(r); // Since MathR.Sign does not accept Real.NaN
+    private static Real SafeSign(Real r) => Real.IsNaN(r) ? Real.NaN : MathR.Sign(r); // MathR.Sign does not accept Real.NaN
     private static Real FactorialBase(Real n) => n < 0 ? Real.NaN : n == 0 ? 1 : n * FactorialBase(n - 1);
     private static Real Factorial(Real r) => FactorialBase(MathR.Floor(r));
     private static Real Mod(Real n, Real r) => r != 0 ? n % MathR.Abs(r) : Real.NaN;
@@ -2644,7 +2644,7 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> Max(string[] split) => ProcessMMD(split, _value => _value.Max());
     private Matrix<Real> Min(string[] split) => ProcessMMD(split, _value => _value.Min());
     private Matrix<Real> Distance(string[] split) => ProcessMMD(split, Distance);
-    #endregion // Special for real
+    #endregion // Real-specific
 
     #region Additional Calculations
     private unsafe Matrix<Real> Hypergeometric(string[] split) // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
@@ -2749,7 +2749,7 @@ public sealed class RealSub : RecoverMultiply
         CheckFor(sub ? ToInt(split[subIdx + 1]) : 1, ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
-            action(buffer); if (!buffer.readList) buffer.readList = true; // To precompute cstMtcs
+            action(buffer); if (!buffer.readList) buffer.readList = true; // Precomputes cstMtcs
         });
         return buffer.X;
     } // Meticulously optimized
@@ -2766,9 +2766,9 @@ public sealed class RealSub : RecoverMultiply
             buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
             var (temp1, temp2) = (buffer1.Obtain(), buffer2.Obtain()); // Necessary
             buffer1.X = buffer2.X = temp1; buffer1.Y = buffer2.Y = temp2;
-            if (!buffer1.readList) buffer1.readList = buffer2.readList = true; // To precompute cstMtcs
+            if (!buffer1.readList) buffer1.readList = buffer2.readList = true; // Precomputes cstMtcs
         });
-        return (split[^1], buffer1.X, buffer1.Y); // Or, alternatively, buffer2
+        return (split[^1], buffer1.X, buffer1.Y); // buffer2 would work as well
     }
     public (string, Matrix<Real>, Matrix<Real>) ProcessComposite2(string[] split)
     {
@@ -2778,7 +2778,7 @@ public sealed class RealSub : RecoverMultiply
         {
             var (temp1, temp2) = (value1, value2); // Necessary
             Matrix<Real> obtainValue() => ObtainSub(split[j++], temp1, temp2, buffCocs).Obtain();
-            value1 = obtainValue(); value2 = obtainValue(); // Even and odd terms respectively
+            value1 = obtainValue(); value2 = obtainValue(); // Even and odd terms, respectively
         }
         return (split[^1], value1, value2);
     }
@@ -2800,7 +2800,7 @@ public sealed class RealSub : RecoverMultiply
         RealSub body = ObtainSub(split[0], X, Y, new Matrix<Real>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
         return body.Obtain();
-    } // For shallow and complicated composites
+    } // Used for shallow but complicated composite expressions
     #endregion
 
     #region Elements
@@ -2950,7 +2950,7 @@ public sealed class RealSub : RecoverMultiply
         Matrix<Real> tower = CopyMtx(PowerCore(chunks[^1]));
         for (int k = chunks.Length - 2; k >= 0; k--)
         {
-            string[] split = SplitByChars(chunks[k], "^"); // Special for "^"
+            string[] split = SplitByChars(chunks[k], "^"); // Special handling for "^"
             for (int m = split.Length - 1; m >= 0; m--) Power(Transform(split[m]).matrix, tower);
         }
         return new(tower);
@@ -3039,7 +3039,7 @@ public sealed class RealSub : RecoverMultiply
                 _R => handleSub(MathR.Round, 3),
                 _S => handleSub(SafeSign, 3),
                 _F_ => handleSub(Factorial, 3)
-            }, // Special for real, extensible
+            }, // Real-specific and extensible
             _ => tagL
         };
         return new(mtx, copy);
@@ -3072,14 +3072,14 @@ public sealed class RealSub : RecoverMultiply
                 D_ => handleSub(Distance, 3),
                 I_ => handleSub(Iterate1, 4),
                 J_ => handleSub(Composite1, 4)
-            } // Special for real, extensible
+            } // Real-specific and extensible
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
     private Matrix<Real> ObtainCore(string input)
     {
-        while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // Hard to count
+        while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // The number of substitutions is not known in advance
         var (length, start, end, tagL) = PrepareLoop(input);
         for (int i = 0; i < length; i++)
         {
@@ -3092,7 +3092,7 @@ public sealed class RealSub : RecoverMultiply
     public Matrix<Real> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : ObtainCore(input);
     #endregion
-} /// Computing real-variable expressions
+} /// Computes real-variable expressions
 
 /// <summary>
 /// STRUCTURE SECTION
@@ -3104,7 +3104,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
     public static readonly Real QUARTER = (Real)0.25, PI_HALF = MathR.PI / 2, PI_THIRD = MathR.PI / 3;
     public static readonly Complex ZERO = new(0), ONE = new(1), I = new(0, 1);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Complex(Real real, Real imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use primary constructor
+    public Complex(Real real, Real imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use a primary constructor
 
     #region Operators
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -3156,10 +3156,10 @@ public readonly struct Complex // Manually inlined to reduce overhead
     {
         var (mod, unit) = (MathR.Exp(-MathR.Tau * c.imaginary), MathR.SinCos(MathR.Tau * c.real));
         return new(mod * unit.Cos, mod * unit.Sin);
-    } // Often used in analytic number theory, represented by 'q'
+    } // Often represented by "q" in analytic number theory
     public static Complex Pow(Complex c1, Complex c2)
     {
-        Real re1 = c1.real, im1 = c1.imaginary; if (re1 == 0 && im1 == 0) return ZERO; // Necessary apriori checking
+        Real re1 = c1.real, im1 = c1.imaginary; if (re1 == 0 && im1 == 0) return ZERO; // Required a priori check
         Real re2 = c2.real, im2 = c2.imaginary, re3 = MathR.Log(re1 * re1 + im1 * im1) / 2, im3 = MathR.Atan2(im1, re1);
         var (mod, unit) = (MathR.Exp(re2 * re3 - im2 * im3), MathR.SinCos(re2 * im3 + im2 * re3));
         return new(mod * unit.Cos, mod * unit.Sin);
@@ -3246,7 +3246,7 @@ public readonly struct Complex // Manually inlined to reduce overhead
     { var (x, y) = ReIm(pt); return pt * (r / (1 + MathR.Sqrt(1 - x * x - y * y))) + ctr; }
     public static Complex Homothety(Complex pt, Real r, Complex ctr) => (pt - ctr) / r + ctr;
     #endregion
-} /// Optimized Real-entried complex numbers
+} /// Represents optimized complex numbers with Real components
 public readonly struct Matrix<TEntry>
 {
     private readonly TEntry[] matrix;
@@ -3255,7 +3255,7 @@ public readonly struct Matrix<TEntry>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Matrix(int[] rowOffs, int col) { this.rowOffs = rowOffs; matrix = GC.AllocateUninitializedArray<TEntry>(rowOffs[^1] + col); }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Matrix(TEntry x) { matrix = [x]; rowOffs = [0]; } // Special for real
+    public Matrix(TEntry x) { matrix = [x]; rowOffs = [0]; } // Real-specific
     public TEntry this[int row, int column]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -3267,14 +3267,14 @@ public readonly struct Matrix<TEntry>
     public readonly unsafe TEntry* RowPtr(int row = 0) { fixed (TEntry* ptr = &Access(matrix, Access(rowOffs, row))) { return ptr; } }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ref T Access<T>(T[] array, int index) => ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index);
-} /// Optimized real or complex matrices
+} /// Represents optimized matrices with real or complex entries
 public readonly struct MatrixCopy<TEntry>(Matrix<TEntry> matrix, bool copy = false)
 {
     public readonly Matrix<TEntry> matrix = matrix;
     public readonly bool copy = copy;
-} /// Matrices to be copied or not
+} /// Controls whether matrices are copied
 public readonly struct ConstMatrix<TEntry>(TEntry _const, Matrix<TEntry> matrix)
 {
     public readonly TEntry _const = _const;
     public readonly Matrix<TEntry> matrix = matrix;
-} /// Constant matrices for recycling
+} /// Represents reusable constant matrices
