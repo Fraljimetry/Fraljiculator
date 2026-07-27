@@ -1633,7 +1633,7 @@ public class MyMessageBox : Form
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
     private void SetUpForm(int width, int height)
     {
-        FormBorderStyle = FormBorderStyle.None; TopMost = true; Size = new(width, height);
+        FormBorderStyle = FormBorderStyle.None; Size = new(width, height);
         StartPosition = FormStartPosition.CenterScreen; BackColor = SystemColors.ControlDark;
     }
     private static void SetUpTextBox(string message, int width, int height, Color txtColor)
@@ -1758,7 +1758,7 @@ public class MyString
             i = endIndex;
         } // Sensitive
         return buffer.ToString();
-    } // To prevent the interior ',' from interfering with exterior splitting
+    } // To prevent interior ',' from interfering with exterior splitting
     private static string[] ReplaceRecover(ReadOnlySpan<char> input)
         => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
     public static string ReplaceSubstrings(string input, ReadOnlySpan<string> substrings, string substitution)
@@ -1944,10 +1944,10 @@ public class ReplaceTags : RealComplex
         [
             "func(zeta(x))",
             "func(beta(sinh(x), cosh(x)), -2, 2, .0001)",
-            "subs(func(sum(sin(xj)/j, k, 0, 100), -pi, pi, .001), j, 2^k)",
+            "subs(func(sum(sin(jx)/j, k, 0, 100), -pi, pi, .001), j, 2^k)",
             "polar(sqrt(cos(2u)), u, 0, 2pi, .0001)",
             "polar(cos(5u)cos(7u), u, 0, 2pi, .001)",
-            "loop(polar(.1kcos(5u+.7kpi), u, 0, pi), k, 1, 10)",
+            "loop(polar(coc(.1k)cos(5u+coc(.7kpi)), u, 0, pi), k, 1, 10)",
             "param(sin(7u), cos(9u), u, 0, 2pi, .001)",
             "loop(param(cos(u)^k, sin(u)^k, u, 0, pi/2), k, 1, 10)"
         ];
