@@ -50,12 +50,12 @@ public partial class Graph : Form
         ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted;
     private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile", INPUT_DEFAULT = "z",
         GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO", MICRO = "MICRO", ZERO = "0",
-        REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History stored at", CAPTION_DEFAULT = "Yours inputs will be shown here.",
-        MISTAKES_HEAD = "\r\nCommon mistakes include:", WRONG_FORMAT = "THE INPUT IS IN A WRONG FORMAT.",
+        REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History saved at", CAPTION_DEFAULT = "Your inputs will be shown here.",
+        MISTAKES_HEAD = "\r\nCommon mistakes include:", WRONG_FORMAT = "THE INPUT FORMAT IS INVALID.",
         WRONG_ADDRESS = "THE ADDRESS DOES NOT EXIST.", DISPLAY_ERROR = "UNAVAILABLE.",
-        DRAFT_DEFAULT = $"\r\nPrecision of real numbers: \r\n{typeof(Real)}.", TIP = "ReadOnly",
+        DRAFT_DEFAULT = $"\r\nReal-number precision: \r\n{typeof(Real)}.", TIP = "Read-only",
         SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 6), _SEP = new('-', 80), TAB = new(' ', 4);
-    private static readonly string[] CONTOUR_MODES = ["Cartesian (x,y)", "Polar (r,θ)"], COLOR_MODES =
+    private static readonly string[] CONTOUR_MODES = ["Cartesian (x, y)", "Polar (r, θ)"], COLOR_MODES =
         ["Commonplace", "Monochromatic", "Bichromatic", "Kaleidoscopic", "Miscellaneous"];
     #endregion
 
@@ -981,28 +981,28 @@ public partial class Graph : Form
         => ShowBoxBase(MyMessageBox.ShowException, message + MISTAKES_HEAD + "\r\n", contents, 1);
     private static void GetInputErrorBox(string message) => ShowErrorBox(message,
     [
-        "Misspelling of function/variable names.",
-        "Incorrect grammar of special functions.",
-        "Excess or deficiency of characters.",
-        "Real/Complex mode confusion.",
-        "Invalid other parameters."
+        "Misspelled function or variable names.",
+        "Invalid special-function syntax.",
+        "Extra or missing characters.",
+        "Confusion between real & complex modes.",
+        "Other invalid parameters."
     ]);
     private static void GetExportStoreErrorBox() => ShowErrorBox(WRONG_ADDRESS,
     [
-        "Files not created beforehand.",
-        "The address ending with \\.",
-        "The address quoted automatically.",
-        "The file storage being full."
+        "The destination folder does not exist.",
+        "A path ending with a backslash.",
+        "A path enclosed in quotation marks.",
+        "A full destination drive."
     ]);
     private static string GetComment(string input) => TAB + $"# {input}";
     private static string GetManual()
     {
         string content = $" DESIGNER:\tFraljimetry\r\n DATE:\t\t{DATE}\r\n LOCATION:\tXi'an, China";
-        content += $"\r\n\r\n{TAB}This software was developed in Visual Studio 2022, written in C#, " +
-            "to visualize real/complex functions and equations with no more than two variables." +
-            $"\r\n\r\n{TAB}To bolster artistry and practicality, numerous parameters are tunable, " +
-            "making it possible to generate images tailored for users of various ends." +
-            $"\r\n\r\n{TAB}Note: Default variables are case-sensitive while function names are not, unless otherwise stated.";
+        content += $"\r\n\r\n{TAB}This software was developed with Visual Studio 2022 and written in C# " +
+            $"to visualize real and complex functions and equations involving no more than two variables." +
+            $"\r\n\r\n{TAB}To enhance both visual appeal and practicality, numerous parameters can be adjusted " +
+            $"to generate images for a variety of purposes." +
+            $"\r\n\r\n{TAB}Note: Default variable names are case-sensitive, whereas function names are not, unless otherwise stated.";
 
         static string subTitleContent(string subtitle, string content) => $"\r\n\r\n{_SEP}\r\n{TAB}{subtitle}\r\n{_SEP}" + content;
         content += subTitleContent("ELEMENTS",
@@ -1031,20 +1031,20 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Stereographic & Stereo(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))" +
             $"\r\n\r\n{TAB}Homothety & Homoth(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))";
         content += subTitleContent("REPETITIONS",
-            $"\r\n\r\n{GetComment("Capitalizations represent substitutions of variables.")}" +
+            $"\r\n\r\n{GetComment("Capital letters denote variable substitutions.")}" +
             $"\r\n\r\n{TAB}Sum(f(x,y,k) & f(z,k), k, int a, int b)" +
             $"\r\n{TAB}Product & Prod(f(x,y,k) & f(z,k), k, int a, int b)" +
             $"\r\n\r\n{TAB}Iterate1(f(x,y,X,k), g(x,y), k, int a, int b)" +
             $"\r\n{TAB}Iterate2(f1(x,y,X,Y,k), f2(x,y,X,Y,k), g1(x,y), g2(x,y), k, int a, int b, 1&2&F(z))" +
             $"\r\n{TAB}Iterate(f(z,Z,k), g(z), k, int a, int b)" +
-            $"\r\n{TAB}{GetComment("g: initial values; f: iterations.")}" +
+            $"\r\n{TAB}{GetComment("g: initial values; f: iteration rules.")}" +
             $"\r\n\r\n{TAB}Composite1 & Comp1(f(x,y), g1(x,y,X), ... , gn(x,y,X))" +
             $"\r\n{TAB}Composite2 & Comp2" +
             $"\r\n{TAB}{TAB}(f1(x,y), f2(x,y), g1(x,y,X,Y), h1(x,y,X,Y), ... , gn(...), hn(...), 1&2&F(z))" +
             $"\r\n{TAB}Composite & Comp(f(z), g1(z,Z), ... , gn(z,Z))" +
-            $"\r\n{TAB}{GetComment("f: initial values; g: compositions.")}" +
+            $"\r\n{TAB}{GetComment("f: initial values; g: composition functions.")}" +
             $"\r\n\r\n{TAB}Cocoon & Coc" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
-            $"\r\n{TAB}{GetComment("f: body; {*}: the *-th tag; g: values of tags.")}");
+            $"\r\n{TAB}{GetComment("f: body; {*}: tag number *; g: tag values.")}");
         content += subTitleContent("PLANAR CURVES",
             $"\r\n\r\n{TAB}Function & Func(f(x)) & " +
             $"\r\n{TAB}Function & Func(f(x), Real increment) & " +
@@ -1055,8 +1055,8 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Parametric & Param(f(u), g(u), u, Real a, Real b) & " +
             $"\r\n{TAB}Parametric & Param(f(u), g(u), u, Real a, Real b, Real increment)");
         content += subTitleContent("RECURSIONS",
-            $"\r\n\r\n{GetComment("Enumerated in decreasing hierarchy.")}" +
-            $"\r\n\r\n{TAB}... | ... | ...{GetComment("Consecutive displays, R&C hybrid.")}") +
+            $"\r\n\r\n{GetComment("Listed from higher to lower levels.")}" +
+            $"\r\n\r\n{TAB}... | ...{GetComment("Consecutive displays; real & complex expressions may be mixed.")}") +
             $"\r\n\r\n{TAB}Substitute & Subs(Input(a,b,c,...), a, aNew, b, bNew, c, cNew, ...)" +
             $"\r\n{TAB}{GetComment("Verbatim substitutions without precomputation.")}" +
             $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
@@ -1065,41 +1065,41 @@ public partial class Graph : Form
             $"\r\n{TAB}IterateLoop & ItLoop(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(x,y), k, int a, int b, F(z,k))" +
             $"\r\n\r\n{TAB}IterateLoop & ItLoop(f(z,Z,k), g(z), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop & ItLoop(f(z,Z,k), g(z), k, int a, int b, F(z,Z,k))" +
-            $"\r\n{TAB}{GetComment("Displaying iterations loopwise.")}";
+            $"\r\n{TAB}{GetComment("Displays iterations one loop at a time.")}";
         content += subTitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i{GetComment("e and i are case-sensitive.")}");
         content += subTitleContent("SHORTCUTS", "\r\n");
 
         static string getShortcuts(string key, int blank, string meaning) => $"\r\n{TAB}[{key}]" + new string('\t', blank) + meaning;
-        content += getShortcuts("Control + P", 3, "Graph in MicroBox");
-        content += getShortcuts("Control + G", 3, "Graph in MacroBox");
+        content += getShortcuts("Control + P", 3, "Graph in Microbox");
+        content += getShortcuts("Control + G", 3, "Graph in Macrobox");
         content += getShortcuts("Control + B", 3, "Graph in Microbox & Macrobox");
-        content += getShortcuts("Control + S", 3, "Save screen as .png");
-        content += getShortcuts("Control + K", 3, "Save history as .txt");
+        content += getShortcuts("Control + S", 3, "Save a screenshot as a PNG file");
+        content += getShortcuts("Control + K", 3, "Save the history as a TXT file");
         content += getShortcuts("Control + Shift + C", 2, "Check all inputs");
-        content += getShortcuts("Control + R", 3, "Clear all check results");
-        content += getShortcuts("Control + D", 3, "Restore to default");
-        content += getShortcuts("Shift + Back", 3, "Clear InputBox");
+        content += getShortcuts("Control + R", 3, "Clear all validation results");
+        content += getShortcuts("Control + D", 3, "Restore default settings");
+        content += getShortcuts("Shift + Back", 3, "Clear the input box");
         content += getShortcuts("Control + D2", 3, "View Fraljimetry's profile");
-        content += getShortcuts("Control + D3", 3, "Clear all ReadOnly displays");
-        content += getShortcuts("Control + OemQuestion", 2, "View user manual");
-        content += getShortcuts("Delete", 3, "Clear Microbox & Macrobox");
+        content += getShortcuts("Control + D3", 3, "Clear all read-only displays");
+        content += getShortcuts("Control + OemQuestion", 2, "View the user manual");
+        content += getShortcuts("Delete", 3, "Clear the Microbox & Macrobox");
         content += getShortcuts("Escape", 3, "Close Fraljiculator");
-        return content + $"\r\n\r\n{GetComment("Double click the subtitle to repaint backdrop.")}";
+        return content + $"\r\n\r\n{GetComment("Double-click the subtitle to repaint the backdrop.")}";
     }
     private static string AddContact(string platform, int blank, string account, string note)
         => $"\r\n\r\n{TAB}{platform}:" + new string('\t', blank) + account + (note != String.Empty ? (TAB + GetComment(note)) : note);
     private static string GetProfile()
     {
-        string content = "Dear math lovers & mathematicians:" +
-            $"\r\n\r\n{TAB}Hi! I'm Fralji, a content creator on Bilibili since July of 2021, when I was a freshman before entering college." +
-            $"\r\n\r\n{TAB}I aim to deliver unique lectures on many branches of mathematics. To know more about my work, visit shaodaji.cc " +
-            $"\r\n\r\n{TAB}If you have any problem on the usage of this application, or anything concerning math, please reach to me via:";
+        string content = "Dear math lovers and mathematicians," +
+            $"\r\n\r\n{TAB}Hi! I'm Fralji, a content creator on Bilibili since July 2021, shortly before I began my first year of college." +
+            $"\r\n\r\n{TAB}I aim to deliver lectures on many branches of mathematics. To learn more about my work, visit shaodaji.cc." +
+            $"\r\n\r\n{TAB}If you have any questions about using this application or about mathematics, please contact me via:";
         content += AddContact("Bilibili", 2, "355884223", String.Empty);
         content += AddContact("Email", 2, "frankjiiiiiiii@gmail.com", String.Empty);
-        content += AddContact("Wechat", 1, "F1r4a2n8k5y7", "recommended");
+        content += AddContact("WeChat", 1, "F1r4a2n8k5y7", "Recommended");
         content += AddContact("QQ", 2, "472955101", String.Empty);
         content += AddContact("Facebook", 1, "Fraljimetry", String.Empty);
-        content += AddContact("Instagram", 1, "shaodaji", "NOT recommended");
+        content += AddContact("Instagram", 1, "shaodaji", "Not recommended");
         return content + "\r\n\r\n" + new string(' ', 85) + $"{DATE}";
     }
     private void TitleLabel_DoubleClick(object sender, EventArgs e) => MyMessageBox.ShowFormal(GetManual(), 720, 540);
@@ -1108,39 +1108,39 @@ public partial class Graph : Form
         => ShowBoxBase(MyMessageBox.ShowCustom, $"[{title}]" + new string(' ', 20) + $"{DATE}", contents, 2);
     private void InputLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("INPUTBOX",
     [
-        "Space and Enter keys are both acceptable. Unsupported keys are blocked, and removed if pasted from the clipboard.",
-        "It may lead to misinterpretation if excessive multiplication signs are omitted. For example, \"gammax\" could be parsed as \"max\"."
+        "The Space and Enter keys are both accepted. Unsupported keys are blocked during typing and removed when pasted from the clipboard.",
+        "Omitting too many multiplication signs may cause misinterpretation. For example, \"gammax\" could be parsed as \"max\"."
     ]);
     private void AtLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("ADDRESS",
     [
-        "Create a file for snapshot storage and paste its address here. It will be instantly validated.",
-        "PNG snapshots and history lists will be named in the following formats respectively: " +
+        "Create or select a folder for snapshot storage and paste its path here. The path will be validated immediately.",
+        "PNG snapshots and history files are named using the following formats, respectively: " +
         "\"yyyy_ddd_hh_mm_ss_No.#\" and \"yyyy_ddd_hh_mm_ss_stockpile\"."
     ]);
     private void GeneralLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("GENERAL SCOPE",
     [
-        "Detailed scope takes effect only when general scope is set to \"0\".",
-        "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the InputBox."
+        "The detailed scope takes effect only when the general scope is set to \"0\".",
+        "Any valid variable-free algebraic expression is accepted and checked in the same way as the main input."
     ]);
     private void DetailLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DETAILED SCOPE",
     [
-        "It is not supported to create a mirror effect by reversing endpoints.",
-        "Any legitimate variable-free algebraic expression is acceptable, checked in the same way as in the InputBox."
+        "Creating a mirror effect by reversing the endpoints is not supported.",
+        "Any valid variable-free algebraic expression is accepted and checked in the same way as the main input."
     ]);
     private void ThickLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("MAGNITUDE",
     [
-        "Represents: (i) Widths of planar curves, (ii) Sizes of special points, (iii) Decay rates of translucence.",
-        "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
+        "Controls\r\n (i) the widths of planar curves,\r\n (ii) the sizes of special points, and\r\n (iii) translucency decay rates.",
+        "Choose a value appropriate for the current scale. The examples have been carefully tuned."
     ]);
     private void DenseLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DENSITY",
     [
-        "Represents:\r\n(i) Densities of contours (real and complex),\r\n(ii) Coloring periods of planar curves.",
-        "It should be chosen appropriately according to the scale. The examples have been carefully tuned."
+        "Controls\r\n (i) contour density for real and complex plots\r\n (ii) the coloring periods of planar curves.",
+        "Choose a value appropriate for the current scale. The examples have been carefully tuned."
     ]);
     private void DraftLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("HISTORY LIST",
     [
-        "The input will be saved both in this box and to the clipboard.",
-        "Clicked points, along with the timestamps of snapshots and other information, will also be recorded in detail."
+        "The input is saved in this box and copied to the clipboard.",
+        "Clicked points, snapshot timestamps, and other details are also recorded."
     ]);
     private void ExampleLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("EXAMPLES",
     [
@@ -1149,34 +1149,36 @@ public partial class Graph : Form
     ]);
     private void FunctionLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("FUNCTIONS",
     [
-        "The two combo boxes contain regular and special operations respectively, the latter having more involved grammar.",
-        "Select something in the input box and choose an item here to substitute your selection."
+        "The two combo boxes contain regular and special operations, respectively; special operations use more complex syntax.",
+        "Select text in the input box, then choose an item here to replace the selection."
     ]);
     private void ModeLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("COLORING MODES",
     [
-        "Represents:\r\n(i) Arguments of meromorphic functions," +
-        "\r\n(ii) Values of two-variable functions,\r\n(iii) Parameterizations of planar curves.",
+        "These modes represent:\r\n (i) arguments of meromorphic functions,\r\n (ii) values of two-variable functions, " +
+        "and\r\n (iii) parameterizations of planar curves.",
         "The first three modes support swappable color schemes, while the last two do not."
     ]);
     private void ContourLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("CONTOUR MODES",
     [
-        "Applied to the complex mode only, for contouring meromorphic functions.",
-        "Only the Polar option supports translucent display, representing the decaying behavior of the modulus."
+        "These options apply only in complex mode and control the contours of meromorphic functions.",
+        "Only the Polar option supports a translucent display that represents the decay of the modulus."
     ]);
     private void PointNumLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("PIXELS",
     [
-        "Logs the number of points or line segments rendered in the previous loop, roughly proportional to time and iteration count.",
-        "A value of zero often results from overflowed values or inappropriate settings."
+        "Shows the number of points or line segments rendered in the previous loop.",
+        "This count is roughly proportional to execution time and iteration count.",
+        "A value of zero often indicates numeric overflow or unsuitable settings."
     ]);
     private void TimeLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("DURATION",
     [
-        "Auto-snapshot may not capture updates here in real time, but the timespan will be saved in the history list.",
-        "This value is a valuable indicator of optimization, referenced for choosing appropriate iterations and other settings."
+        "Automatic snapshots may not capture updates here in real time, but the elapsed time is saved in the history list.",
+        "This value helps evaluate optimization and choose suitable iteration counts and other settings."
     ]);
     private void PreviewLabel_DoubleClick(object sender, EventArgs e) => ShowCustomBox("MICROCOSM",
     [
-        "Since graphing cannot be paused manually during execution, a preview is necessary for estimating computation time.",
-        "It differs from the main graph only in sharpness. Graphing here is roughly 20 times faster (less after optimization)."
+        "Because graphing cannot be paused manually during execution, the preview helps estimate computation time.",
+        "The preview differs from the main graph only in resolution.",
+        "It renders roughly 20 times faster, although the speedup may be smaller after optimization."
     ]);
     #endregion
 
@@ -1353,7 +1355,6 @@ public partial class Graph : Form
         if (ProcessingGraphics()) return;
         MiniChecks([X_Left, X_Right, Y_Left, Y_Right], DetailLabel);
         if (scopes == null) return; // Required during initialization
-
         void checkScopes(bool b1, bool b2, Color c) { if (b1) X_Scope.ForeColor = c; if (b2) Y_Scope.ForeColor = c; }
         try { SetThicknessDensenessScopesBorders(false); }
         catch (Exception) { checkScopes(InvalidScopesX(), InvalidScopesY(), ERROR_RED); }
@@ -1422,7 +1423,6 @@ public partial class Graph : Form
         void selectSuppress(int pos) { tbx.SelectionStart = caretPosition + pos; e.SuppressKeyPress = true; }
         void insertSelectSuppress(string insertion, int pos)
         { SetText(tbx, tbx.Text.Insert(caretPosition, insertion)); selectSuppress(pos); }
-
         if (!MyString.CheckParenthesis(tbx.Text.AsSpan(caretPosition, tbx.SelectionLength))) selectSuppress(0);
         else if (e.KeyCode == Keys.D9 && (ModifierKeys & Keys.Shift) != 0)
         {
