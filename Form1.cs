@@ -1003,7 +1003,6 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}To enhance both visual appeal and practicality, numerous parameters can be adjusted " +
             $"to generate images for a variety of purposes." +
             $"\r\n\r\n{TAB}Note: Default variable names are case-sensitive, whereas function names are not, unless otherwise stated.";
-
         static string subTitleContent(string subtitle, string content) => $"\r\n\r\n{_SEP}\r\n{TAB}{subtitle}\r\n{_SEP}" + content;
         content += subTitleContent("ELEMENTS",
             $"\r\n\r\n{TAB}+ - * / ^ ( )" +
@@ -1068,7 +1067,6 @@ public partial class Graph : Form
             $"\r\n{TAB}{GetComment("Displays iterations one loop at a time.")}";
         content += subTitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i{GetComment("e and i are case-sensitive.")}");
         content += subTitleContent("SHORTCUTS", "\r\n");
-
         static string getShortcuts(string key, int blank, string meaning) => $"\r\n{TAB}[{key}]" + new string('\t', blank) + meaning;
         content += getShortcuts("Control + P", 3, "Graph in Microbox");
         content += getShortcuts("Control + G", 3, "Graph in Macrobox");
@@ -2601,12 +2599,14 @@ public sealed class RealSub : RecoverMultiply
     private static Real FactorialBase(Real n) => n < 0 ? Real.NaN : n == 0 ? 1 : n * FactorialBase(n - 1);
     private static Real Factorial(Real r) => FactorialBase(MathR.Floor(r));
     private static Real Mod(Real n, Real r) => r != 0 ? n % MathR.Abs(r) : Real.NaN;
-    private static Real Combination(Real n, Real r)
+    private static Real CombinationBase(Real n, Real r)
         => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n > 0 ?
-        Combination(n - 1, r - 1) + Combination(n - 1, r) : r > 0 ?
-        Combination(n + 1, r) - Combination(n, r - 1) :
-        Combination(n + 1, r + 1) - Combination(n, r + 1); // Generalized Pascal's triangle
-    private static Real Permutation(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * Permutation(n, r - 1);
+        CombinationBase(n - 1, r - 1) + CombinationBase(n - 1, r) : r > 0 ?
+        CombinationBase(n + 1, r) - CombinationBase(n, r - 1) :
+        CombinationBase(n + 1, r + 1) - CombinationBase(n, r + 1); // Generalized Pascal's triangle
+    private static Real Combination(Real n, Real r) => CombinationBase(MathR.Floor(n), MathR.Floor(r));
+    private static Real PermutationBase(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * PermutationBase(n, r - 1);
+    private static Real Permutation(Real n, Real r) => PermutationBase(MathR.Floor(n), MathR.Floor(r));
     private static Real Distance(Real[] array) { Real sum = 0; foreach (Real a in array) sum += a * a; return Real.Sqrt(sum); }
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => HandleMtx(UninitMtx(), output =>
@@ -2639,8 +2639,8 @@ public sealed class RealSub : RecoverMultiply
             Parallel.For(0, rowChk, p => { processMMD(strdInit[p], strd); }); if (res != 0) processMMD(resInit, res);
         });
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
-    private Matrix<Real> Combination(string[] split) => ProcessMCP(split, (n, r) => Combination(MathR.Floor(n), MathR.Floor(r)));
-    private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, (n, r) => Permutation(MathR.Floor(n), MathR.Floor(r)));
+    private Matrix<Real> Combination(string[] split) => ProcessMCP(split, Combination);
+    private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, Permutation);
     private Matrix<Real> Max(string[] split) => ProcessMMD(split, _value => _value.Max());
     private Matrix<Real> Min(string[] split) => ProcessMMD(split, _value => _value.Min());
     private Matrix<Real> Distance(string[] split) => ProcessMMD(split, Distance);
