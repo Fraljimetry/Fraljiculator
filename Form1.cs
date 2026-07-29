@@ -2596,17 +2596,18 @@ public sealed class RealSub : RecoverMultiply
 
     #region Basic Calculations
     private static Real SafeSign(Real r) => Real.IsNaN(r) ? Real.NaN : MathR.Sign(r); // MathR.Sign does not accept Real.NaN
-    private static Real FactorialBase(Real n) => n < 0 ? Real.NaN : n == 0 ? 1 : n * FactorialBase(n - 1);
-    private static Real Factorial(Real r) => FactorialBase(MathR.Floor(r));
+    private static Real FactorialBase(long n) { if (n < 0) return Real.NaN; Real f = 1; for (; n > 1; n--) f *= n; return f; }
+    private static Real Factorial(Real r) => FactorialBase((long)MathR.Floor(r));
     private static Real Mod(Real n, Real r) => r != 0 ? n % MathR.Abs(r) : Real.NaN;
-    private static Real CombinationBase(Real n, Real r)
-        => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n > 0 ?
-        CombinationBase(n - 1, r - 1) + CombinationBase(n - 1, r) : r > 0 ?
-        CombinationBase(n + 1, r) - CombinationBase(n, r - 1) :
-        CombinationBase(n + 1, r + 1) - CombinationBase(n, r + 1); // Generalized Pascal's triangle
-    private static Real Combination(Real n, Real r) => CombinationBase(MathR.Floor(n), MathR.Floor(r));
-    private static Real PermutationBase(Real n, Real r) => r < 0 ? 0 : r == 0 ? 1 : (n - r + 1) * PermutationBase(n, r - 1);
-    private static Real Permutation(Real n, Real r) => PermutationBase(MathR.Floor(n), MathR.Floor(r));
+    private static Real ParitySign(long a) => Int64.IsEvenInteger(a) ? 1 : -1;
+    private static Real CCore(long n, long r)
+    { r = MathR.Min(r, n - r); Real a = n, c = 1; for (long i = 1; i <= r; i++, a--) c *= a / i; return c; }
+    private static Real CombinationBase(long n, long r) // Generalized Pascal's triangle
+        => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n >= 0 ?
+        CCore(n, r) : r >= 0 ? (ParitySign(r) * CCore(r - n - 1, r)) : (ParitySign(n - r) * CCore(-r - 1, -n - 1));
+    private static Real Combination(Real n, Real r) => CombinationBase((long)MathR.Floor(n), (long)MathR.Floor(r));
+    private static Real PermutationBase(long n, long r) { if (r < 0) return 0; Real p = 1; for (; r > 0; r--, n--) p *= n; return p; }
+    private static Real Permutation(Real n, Real r) => PermutationBase((long)MathR.Floor(n), (long)MathR.Floor(r));
     private static Real Distance(Real[] array) { Real sum = 0; foreach (Real a in array) sum += a * a; return Real.Sqrt(sum); }
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => HandleMtx(UninitMtx(), output =>
@@ -3241,7 +3242,6 @@ public readonly struct Complex // Manually inlined to reduce overhead
             _re = (1 - modSquare) / denom, _im = 2 * im / denom;
         return new(MathR.Log(_re * _re + _im * _im) / 4, MathR.Atan2(_im, _re) / 2);
     }
-    //
     public static Complex Stereographic(Complex pt, Real r, Complex ctr)
     { var (x, y) = ReIm(pt); return pt * (r / (1 + MathR.Sqrt(1 - x * x - y * y))) + ctr; }
     public static Complex Homothety(Complex pt, Real r, Complex ctr) => (pt - ctr) / r + ctr;
