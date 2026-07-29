@@ -2596,18 +2596,18 @@ public sealed class RealSub : RecoverMultiply
 
     #region Basic Calculations
     private static Real SafeSign(Real r) => Real.IsNaN(r) ? Real.NaN : MathR.Sign(r); // MathR.Sign does not accept Real.NaN
-    private static Real FactorialBase(long n) { if (n < 0) return Real.NaN; Real f = 1; for (; n > 1; n--) f *= n; return f; }
-    private static Real Factorial(Real r) => MathR.Round(FactorialBase((long)MathR.Floor(r)));
+    private static Real FactorialBase(int n) { if (n < 0) return Real.NaN; Real f = 1; for (; n > 1; n--) f *= n; return f; }
+    private static Real Factorial(Real r) => MathR.Round(FactorialBase((int)MathR.Floor(r)));
     private static Real Mod(Real n, Real r) => r != 0 ? n % MathR.Abs(r) : Real.NaN;
-    private static Real ParitySign(long a) => Int64.IsEvenInteger(a) ? 1 : -1;
-    private static Real CombinationCore(long n, long r)
-    { r = MathR.Min(r, n - r); Real c = 1; for (long i = 1; i <= r; i++, n--) c *= (Real)n / (Real)i; return c; }
-    private static Real CombinationBase(long n, long r) // Generalized Pascal's triangle
+    private static Real ParitySign(int a) => Int32.IsEvenInteger(a) ? 1 : -1;
+    private static Real CombinationCore(int n, int r)
+    { r = MathR.Min(r, n - r); Real c = 1; for (int i = 1; i <= r; i++, n--) c *= (Real)n / (Real)i; return c; }
+    private static Real CombinationBase(int n, int r) // Generalized Pascal's triangle
         => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n >= 0 ? CombinationCore(n, r) :
         r >= 0 ? (ParitySign(r) * CombinationCore(r - n - 1, r)) : (ParitySign(n - r) * CombinationCore(-r - 1, -n - 1));
-    private static Real Combination(Real n, Real r) => MathR.Round(CombinationBase((long)MathR.Floor(n), (long)MathR.Floor(r)));
-    private static Real PermutationBase(long n, long r) { if (r < 0) return 0; Real p = 1; for (; r > 0; r--, n--) p *= n; return p; }
-    private static Real Permutation(Real n, Real r) => MathR.Round(PermutationBase((long)MathR.Floor(n), (long)MathR.Floor(r)));
+    private static Real Combination(Real n, Real r) => MathR.Round(CombinationBase((int)MathR.Floor(n), (int)MathR.Floor(r)));
+    private static Real PermutationBase(int n, int r) { if (r < 0) return 0; Real p = 1; for (; r > 0; r--, n--) p *= n; return p; }
+    private static Real Permutation(Real n, Real r) => MathR.Round(PermutationBase((int)MathR.Floor(n), (int)MathR.Floor(r)));
     private static Real Distance(Real[] array) { Real sum = 0; foreach (Real a in array) sum += a * a; return Real.Sqrt(sum); }
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => HandleMtx(UninitMtx(), output =>
