@@ -2600,11 +2600,11 @@ public sealed class RealSub : RecoverMultiply
     private static Real Factorial(Real r) => MathR.Round(FactorialBase((long)MathR.Floor(r)));
     private static Real Mod(Real n, Real r) => r != 0 ? n % MathR.Abs(r) : Real.NaN;
     private static Real ParitySign(long a) => Int64.IsEvenInteger(a) ? 1 : -1;
-    private static Real CCore(long n, long r)
+    private static Real CombinationCore(long n, long r)
     { r = MathR.Min(r, n - r); Real c = 1; for (long i = 1; i <= r; i++, n--) c *= (Real)n / (Real)i; return c; }
     private static Real CombinationBase(long n, long r) // Generalized Pascal's triangle
-        => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n >= 0 ?
-        CCore(n, r) : r >= 0 ? (ParitySign(r) * CCore(r - n - 1, r)) : (ParitySign(n - r) * CCore(-r - 1, -n - 1));
+        => (n == r || r == 0) ? 1 : (r > n && n >= 0 || 0 > r && r > n || n >= 0 && 0 > r) ? 0 : n >= 0 ? CombinationCore(n, r) :
+        r >= 0 ? (ParitySign(r) * CombinationCore(r - n - 1, r)) : (ParitySign(n - r) * CombinationCore(-r - 1, -n - 1));
     private static Real Combination(Real n, Real r) => MathR.Round(CombinationBase((long)MathR.Floor(n), (long)MathR.Floor(r)));
     private static Real PermutationBase(long n, long r) { if (r < 0) return 0; Real p = 1; for (; r > 0; r--, n--) p *= n; return p; }
     private static Real Permutation(Real n, Real r) => MathR.Round(PermutationBase((long)MathR.Floor(n), (long)MathR.Floor(r)));
