@@ -1013,7 +1013,7 @@ public partial class Graph : Form
             $"\r\n{TAB}Arcsin & Asin, Arccos & Acos, Arctan & Atan," +
             $"\r\n{TAB}Arsinh & Asinh, Arcosh & Acosh, Artanh & Atanh," +
             $"\r\n\r\n{TAB}Abs, Log & Ln, Exp, Sqrt{TAB}(f(x,y) & f(z))" +
-            $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), e(f(z)){GetComment("e(z) := Exp(2πiz), case-sensitive.")}") +
+            $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), Ei(f(z)){GetComment("Ei(z) := Exp(2πiz).")}") +
             $"\r\n\r\n{TAB}Real(...)" +
             $"{TAB}{GetComment("Variable-free real blocks in complex expressions.")}";
         content += subTitleContent("COMBINATORICS",
@@ -1913,7 +1913,7 @@ public class RealComplex : MyString
 public class ReplaceTags : RealComplex
 {
     public static readonly string[] FUNCTIONS =
-        [ "floor", "ceiling", "round", "sign", "factorial", "mod", "nCr", "nPr", "max", "min", "distance", "conjugate", "e", "real",
+        [ "floor", "ceiling", "round", "sign", "factorial", "mod", "nCr", "nPr", "max", "min", "distance", "conjugate", "ei", "real",
             "abs", "log", "exp", "sqrt", "arsinh", "arcosh", "artanh", "arcsin", "arccos", "arctan",
             "sinh", "cosh", "tanh", "sin", "cos", "tan" ];
     public static readonly string[] SPECIALS =
@@ -1924,10 +1924,10 @@ public class ReplaceTags : RealComplex
             "stereo(3, 1, 1, z)",
             "z^coc(1+10i)cos((z-1)/(z^13+z+1))",
             "subs(coc(sum(/(1-exp(k{0})), k, 1, j), log(z))-j, j, 100)",
-            "prod(exp(2/(coc(e(-k/5))z-1)+1), k, 1, 5)",
+            "prod(exp(2/(coc(ei(-k/5))z-1)+1), k, 1, 5)",
             "iterate(/sin(Z), z, 100)",
-            "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9e(/60)))",
-            "subs(itLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(e(-k/j/3))), j, 100)",
+            "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9ei(/60)))",
+            "subs(itLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(ei(-k/j/3))), j, 100)",
             "comp(sin(zzz), cos(z/Z), log(Z), x)"
         ];
     public static readonly string[] EX_REAL =
@@ -2022,7 +2022,7 @@ public class ReplaceTags : RealComplex
         }, REAL_TAIL), SERIES_TAIL);
     private static readonly Dictionary<string, string> REAL = Concat(REAL_SERIES, REAL_STANDARD);
     private static readonly Dictionary<string, string> COMPLEX_STANDARD = AddSuffix(new()
-        { { "conjugate", CONJ }, { "Conjugate", CONJ }, { "conj", CONJ }, { "Conj", CONJ }, { "e", EI } }, COMPLEX_TAIL);
+        { { "conjugate", CONJ }, { "Conjugate", CONJ }, { "conj", CONJ }, { "Conj", CONJ }, { "ei", EI }, { "Ei", EI } }, COMPLEX_TAIL);
     private static readonly Dictionary<string, string> COMPLEX_SERIES = AddSuffix(AddSuffix(new()
         { { "real", _REAL }, { "Real", _REAL } }, COMPLEX_TAIL), SERIES_TAIL);
     private static readonly Dictionary<string, string> COMPLEX = Concat(COMPLEX_SERIES, COMPLEX_STANDARD);
