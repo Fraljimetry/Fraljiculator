@@ -1928,7 +1928,7 @@ public class ReplaceTags : RealComplex
             "iterate(/sin(Z), z, 100)",
             "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9ei(/60)))",
             "subs(itLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(ei(-k/j/3))), j, 100)",
-            "comp(sin(zzz), cos(z/Z), log(Z), x)"
+            "comp(sin(zzz), cos(z/Z), log(Z), y)"
         ];
     public static readonly string[] EX_REAL =
         [
