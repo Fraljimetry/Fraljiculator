@@ -651,11 +651,7 @@ public partial class Graph : Form
     {
         if (NoInput()) return; // Necessary
         string[] split = MyString.SplitByChars(InputString.Text, "|");
-        for (int loops = 0; loops < split.Length; loops++)
-        {
-            CheckComplex.Checked = MyString.ReplaceZetas(split[loops]).AsSpan().ContainsAny(RecoverMultiply._ZZ_);
-            DisplayLevel1(RecoverMultiply.Simplify(split[loops]));
-        }
+        for (int loops = 0; loops < split.Length; loops++) DisplayLevel1(RecoverMultiply.Simplify(split[loops]));
     }
     #endregion
 
@@ -875,17 +871,22 @@ public partial class Graph : Form
     }
     private void CheckValidityCore(Action errorHandler)
     {
-        try
+        void correctHandler()
         {
-            is_checking = true;
-            PrepareSetDisplay(GetBorders(3), false);
             bool noInput = NoInput(); // Do not return immediately when NoInput() is true
             InputLabel.ForeColor = noInput ? Color.White : CORRECT_GREEN;
             InputString.BackColor = noInput ? FOCUS_GRAY : CORRECT_GREEN;
             PictureCorrect.Visible = !noInput; PictureIncorrect.Visible = false;
         }
-        catch (Exception) { errorHandler(); }
-    }
+        is_checking = true;
+        try { PrepareSetDisplay(GetBorders(3), false); correctHandler(); }
+        catch
+        {
+            CheckComplex.Checked = !CheckComplex.Checked;
+            try { PrepareSetDisplay(GetBorders(3), false); correctHandler(); }
+            catch { CheckComplex.Checked = !CheckComplex.Checked; errorHandler(); }
+        }
+    } // Sensitive
     private void CheckAll(object sender, EventArgs e)
     {
         Action<object, EventArgs>[] checkActions =
@@ -1694,8 +1695,8 @@ public class MyMessageBox : Form
 public class MyString
 {
     private static string[] AddSuffix(string[] str) { for (int i = 0; i < str.Length; i++) str[i] += "("; return str; }
-    public static readonly string[] FUNC = AddSuffix(["function", "Function", "func", "Func"]), POLAR = AddSuffix(["polar", "Polar"]),
-        PARAM = AddSuffix(["parametric", "Parametric", "param", "Param"]), ZETAS = AddSuffix(["zeta", "Zeta"]);
+    public static readonly string[] FUNC = AddSuffix(["function", "Function", "func", "Func"]),
+        POLAR = AddSuffix(["polar", "Polar"]), PARAM = AddSuffix(["parametric", "Parametric", "param", "Param"]);
     public static readonly string[] FPP_NAMES = [.. FUNC, .. POLAR, .. PARAM];
     protected static readonly char SUB_CHAR = ';'; // Replaces ",^"
 
@@ -1761,7 +1762,6 @@ public class MyString
         => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
     public static string ReplaceSubstrings(string input, ReadOnlySpan<string> substrings, string substitution)
     { foreach (string s in substrings) input = input.Replace(s, substitution); return input; }
-    public static string ReplaceZetas(string input) => ReplaceSubstrings(input, ZETAS, "(");
     protected static string RemoveEnterBlank(string input) => ReplaceSubstrings(input, RecoverMultiply.ENTER_BLANK, String.Empty);
     public static string BeautifyInput(string input) => RemoveEnterBlank(input).Replace(",", ", ").Replace("|", " | ");
     #endregion
