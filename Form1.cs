@@ -2529,7 +2529,7 @@ public sealed class ComplexSub : RecoverMultiply
             I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
             J_ => input[idx - 2] switch { TILDE => handleSub(Composite, 2), MODE_2 => handleSub(Composite2, 3) },
             K_ => handleSub(Cocoon, 2),
-            SP => input[idx - 2] switch { R_ => handleSub(RealBlock, 3) } // Complex-specific
+            SP => handleSub(RealBlock, 3) // Complex-specific
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
