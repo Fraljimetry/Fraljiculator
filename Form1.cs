@@ -1,3 +1,5 @@
+/// https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
+
 using Real = System.Double;
 using MathR = System.Math;
 
@@ -1036,11 +1038,13 @@ public partial class Graph : Form
             $"\r\n{TAB}Product & Prod(f(x,y,k) & f(z,k), k, int a, int b)" +
             $"\r\n\r\n{TAB}Iterate1(f(x,y,X,k), g(x,y), k, int a, int b)" +
             $"\r\n{TAB}Iterate2(f1(x,y,X,Y,k), f2(x,y,X,Y,k), g1(x,y), g2(x,y), k, int a, int b, 1&2&F(z))" +
+            $"\r\n{TAB}Iterate(f(z,Z,k), g(z), k, int a, int b, F(x,y))" +
             $"\r\n{TAB}Iterate(f(z,Z,k), g(z), k, int a, int b)" +
             $"\r\n{TAB}{GetComment("g: initial values; f: iteration rules.")}" +
             $"\r\n\r\n{TAB}Composite1 & Comp1(f(x,y), g1(x,y,X), ... , gn(x,y,X))" +
             $"\r\n{TAB}Composite2 & Comp2" +
             $"\r\n{TAB}{TAB}(f1(x,y), f2(x,y), g1(x,y,X,Y), h1(x,y,X,Y), ... , gn(...), hn(...), 1&2&F(z))" +
+            $"\r\n{TAB}Composite & Comp(f(z), g1(z,Z), ... , gn(z,Z), F(x,y))" +
             $"\r\n{TAB}Composite & Comp(f(z), g1(z,Z), ... , gn(z,Z))" +
             $"\r\n{TAB}{GetComment("f: initial values; g: composition functions.")}" +
             $"\r\n\r\n{TAB}Cocoon & Coc" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
@@ -1201,7 +1205,7 @@ public partial class Graph : Form
                 case 4: _general = "pi"; break;
                 case 5: _general = "1.5"; break;
                 case 6: _general = "0"; setD("-1.6", "0.6", "-1.1", "1.1"); _thick = "100"; _retain = _shade = true; _axes = false; break;
-                case 7: _general = "2"; _color = 0; break;
+                case 7: _general = "2"; _color = 4; break;
             }
         else if (index > complexL && index < complexL + realL + 1)
             switch (index - complexL - 1)
@@ -1232,7 +1236,6 @@ public partial class Graph : Form
 
         SetText(GeneralInput, _general); SetText(ThickInput, _thick); SetText(DenseInput, _dense);
         CheckPoints.Checked = _points; CheckRetain.Checked = _retain; CheckShade.Checked = _shade; CheckCoor.Checked = _axes;
-        CheckComplex.Checked = ComboExamples.SelectedIndex < complexL;
         ComboColoring.SelectedIndex = _color;
     }
     private void Combo_SelectionChanged(string selectedItem)
@@ -1925,7 +1928,7 @@ public class ReplaceTags : RealComplex
             "iterate(/sin(Z), z, 100)",
             "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9e(/60)))",
             "subs(itLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(e(-k/j/3))), j, 100)",
-            "comp(z, sin(ZZZ), cos(z/Z))"
+            "comp(sin(zzz), cos(z/Z), log(Z), x)"
         ];
     public static readonly string[] EX_REAL =
         [
@@ -1994,6 +1997,8 @@ public class ReplaceTags : RealComplex
             { "homothety", HOMOTH }, { "Homothety", HOMOTH }, { "homoth", HOMOTH }, { "Homoth", HOMOTH },
             { "sum", SUM }, { "Sum", SUM },
             { "product", PROD }, { "Product", PROD }, { "prod", PROD }, { "Prod", PROD },
+            { "iterate", IT }, { "Iterate", IT },
+            { "composite", COMP }, { "Composite", COMP }, { "comp", COMP }, { "Comp", COMP },
             { "iterate2", IT2 }, { "Iterate2", IT2 },
             { "composite2", COMP2 }, { "Composite2", COMP2 }, { "comp2", COMP2 }, { "Comp2", COMP2 },
             { "cocoon", COC}, { "Cocoon", COC}, { "coc", COC}, { "Coc", COC}
@@ -2019,11 +2024,7 @@ public class ReplaceTags : RealComplex
     private static readonly Dictionary<string, string> COMPLEX_STANDARD = AddSuffix(new()
         { { "conjugate", CONJ }, { "Conjugate", CONJ }, { "conj", CONJ }, { "Conj", CONJ }, { "e", EI } }, COMPLEX_TAIL);
     private static readonly Dictionary<string, string> COMPLEX_SERIES = AddSuffix(AddSuffix(new()
-        {
-            { "iterate", IT }, { "Iterate", IT },
-            { "composite", COMP }, { "Composite", COMP }, { "comp", COMP }, { "Comp", COMP },
-            { "real", _REAL }, { "Real", _REAL }
-        }, COMPLEX_TAIL), SERIES_TAIL);
+        { { "real", _REAL }, { "Real", _REAL } }, COMPLEX_TAIL), SERIES_TAIL);
     private static readonly Dictionary<string, string> COMPLEX = Concat(COMPLEX_SERIES, COMPLEX_STANDARD);
     private static readonly Dictionary<string, string> CONSTANTS = new()
         { { "pi", PI }, { "Pi", PI }, { "gamma", _GA }, { "Gamma", _GA }, { "ga", _GA }, { "Ga", _GA } };
@@ -2255,10 +2256,10 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> Homothety(string[] split) => ProcessSH(split, Complex.Homothety);
     private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
-    private Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
+    public Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
     private Matrix<Complex> Iterate2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessIterate2);
     private Matrix<Complex> Composite2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessComposite2);
-    private Matrix<Complex> Composite(string[] split)
+    public Matrix<Complex> Composite(string[] split)
     {
         Matrix<Complex> _value = ObtainValue(split[0]);
         for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, buffCocs).Obtain();
@@ -2505,7 +2506,7 @@ public sealed class ComplexSub : RecoverMultiply
             {
                 J_ => handleSub(Complex.Conjugate, 3),
                 E_ => handleSub(Complex.Ei, 3)
-            }, // Complex-specific and extensible
+            }, // Complex-specific
             _ => tagL
         };
         return new(mtx, copy);
@@ -2525,15 +2526,10 @@ public sealed class ComplexSub : RecoverMultiply
             H_ => handleSub(Homothety, 2),
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
-            I_ => handleSub(Iterate2, 3),
-            J_ => handleSub(Composite2, 3),
+            I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
+            J_ => input[idx - 2] switch { TILDE => handleSub(Composite, 2), MODE_2 => handleSub(Composite2, 3) },
             K_ => handleSub(Cocoon, 2),
-            SP => input[idx - 2] switch
-            {
-                R_ => handleSub(RealBlock, 3),
-                I_ => handleSub(Iterate, 3),
-                J_ => handleSub(Composite, 3)
-            } // Complex-specific and extensible
+            SP => input[idx - 2] switch { R_ => handleSub(RealBlock, 3) } // Complex-specific
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
@@ -2754,6 +2750,8 @@ public sealed class RealSub : RecoverMultiply
         });
         return buffer.X;
     } // Meticulously optimized
+    private Matrix<Real> ProcessIC(string[] split, Func<string[], Matrix<Complex>> function)
+        => new RealSub(split[^1], function(split[..^1]), rows, columns).Obtain();
     public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split)
     {
         ThrowInvalidLengths(split, [8, 6]); bool sub = split.Length == 8;
@@ -2788,6 +2786,8 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
     private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
     private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
+    private Matrix<Real> Iterate(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Iterate);
+    private Matrix<Real> Composite(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Composite);
     private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
     private Matrix<Real> Composite2(string[] split) => ChooseMode(ProcessComposite2(split));
     private Matrix<Real> Composite1(string[] split)
@@ -3040,7 +3040,7 @@ public sealed class RealSub : RecoverMultiply
                 _R => handleSub(MathR.Round, 3),
                 _S => handleSub(SafeSign, 3),
                 _F_ => handleSub(Factorial, 3)
-            }, // Real-specific and extensible
+            }, // Real-specific
             _ => tagL
         };
         return new(mtx, copy);
@@ -3060,8 +3060,8 @@ public sealed class RealSub : RecoverMultiply
             H_ => handleSub(Homothety, 2),
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
-            I_ => handleSub(Iterate2, 3),
-            J_ => handleSub(Composite2, 3),
+            I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
+            J_ => input[idx - 2] switch { TILDE => handleSub(Composite, 2), MODE_2 => handleSub(Composite2, 3) },
             K_ => handleSub(Cocoon, 2),
             _D_ => input[idx - 2] switch
             {
@@ -3073,7 +3073,7 @@ public sealed class RealSub : RecoverMultiply
                 D_ => handleSub(Distance, 3),
                 I_ => handleSub(Iterate1, 4),
                 J_ => handleSub(Composite1, 4)
-            } // Real-specific and extensible
+            } // Real-specific
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
