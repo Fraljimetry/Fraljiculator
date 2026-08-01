@@ -1205,7 +1205,7 @@ public partial class Graph : Form
                 case 4: _general = "pi"; break;
                 case 5: _general = "1.5"; break;
                 case 6: _general = "0"; setD("-1.6", "0.6", "-1.1", "1.1"); _thick = "100"; _retain = _shade = true; _axes = false; break;
-                case 7: _general = "2"; _color = 4; break;
+                case 7: _general = "2"; _color = 4; _dense = "pi/2"; break;
             }
         else if (index > complexL && index < complexL + realL + 1)
             switch (index - complexL - 1)
@@ -1928,7 +1928,7 @@ public class ReplaceTags : RealComplex
             "iterate(/sin(Z), z, 100)",
             "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9ei(/60)))",
             "subs(itLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(ei(-k/j/3))), j, 100)",
-            "comp(sin(zzz), cos(z/Z), log(Z), y)"
+            "comp(sin(zzz), cos(z/Z), log(Z), y-pisgn(y))"
         ];
     public static readonly string[] EX_REAL =
         [
