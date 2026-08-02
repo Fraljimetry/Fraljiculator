@@ -1059,8 +1059,8 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Parametric & Param(f(u), g(u), u, Real a, Real b) & " +
             $"\r\n{TAB}Parametric & Param(f(u), g(u), u, Real a, Real b, Real increment)");
         content += subTitleContent("RECURSIONS",
-            $"\r\n\r\n{GetComment("Listed from higher to lower levels.")}" +
-            $"\r\n\r\n{TAB}... | ...{GetComment("Consecutive displays; real & complex expressions may be mixed.")}") +
+            $"\r\n\r\n{GetComment("Listed from higher to lower priorities.")}" +
+            $"\r\n\r\n{TAB}... | ...{GetComment("Consecutive displays.")}") +
             $"\r\n\r\n{TAB}Substitute & Subs(Input(a,b,c,...), a, aNew, b, bNew, c, cNew, ...)" +
             $"\r\n{TAB}{GetComment("Verbatim substitutions without precomputation.")}" +
             $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
@@ -1928,7 +1928,7 @@ public class ReplaceTags : RealComplex
             "iterate(/sin(Z), z, 100)",
             "conj(coc(iterate((/(ZZZZ)+Z){0}, z, 1000), .9ei(/60)))",
             "subs(itLoop(ZZ+z, 0, k, 1, j, abs(Z)coc(ei(-k/j/3))), j, 100)",
-            "comp(sin(zzz), cos(z/Z), log(Z), y-pisgn(y))"
+            "comp(sin(zzz), cos(z/Z), log(Z), y-pi sgn(y))"
         ];
     public static readonly string[] EX_REAL =
         [
