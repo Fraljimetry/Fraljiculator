@@ -35,7 +35,7 @@ public partial class Graph : Form
     private static Real scale_factor, epsilon, stride, mod_stride, arg_stride, stride_real, size_real, decay;
     private static readonly Real GRID_WIDTH_1 = 3, GRID_WIDTH_2 = 2, CURVE_WIDTH_LIMIT = 20, STRIDE = (Real)0.25, MOD = (Real)0.25,
         ARG = MathR.PI / 12, STRIDE_REAL = 1, EPS_REAL = (Real)0.015, EPS_COMPLEX = (Real)0.015, SIZE_REAL = (Real)0.5,
-        DECAY = (Real)0.2, DEPTH = 2, CURVE_WIDTH = 5, INCREMENT = (Real)0.01;
+        DECAY = (Real)0.2, DEPTH = 2, CURVE_WIDTH = 5, INCREMENT = (Real)0.001;
     private static int display_elapsed, x_left, x_right, y_up, y_down, color_mode, contour_mode,
         loop_number, chosen_number, export_number, pixel_number, segment_number;
     private static readonly int X_LEFT_MAC = 620, X_RIGHT_MAC = 1520, Y_UP_MAC = 45, Y_DOWN_MAC = 945,
@@ -1201,9 +1201,9 @@ public partial class Graph : Form
         InputString.ReadOnly = true;
         if (index < L1) set = index switch
         {
-            0 => (4, "1.1", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
+            0 => (1, "1.1", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, true, false, false)),
             1 => (3, "1.2", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            2 => (2, "1.1", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, true, false, false)),
+            2 => (3, "1.1", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
             3 => (4, "pi/2", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
             4 => (3, "pi", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
             5 => (3, "1.5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
@@ -1214,21 +1214,21 @@ public partial class Graph : Form
         {
             0 => (2, "10", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
             1 => (4, "2pi", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            2 => (0, "4", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            2 => (3, "5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
             3 => (0, "5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, true)),
-            4 => (1, "10", ("", "", "", ""), ("0.1", DENSE_DEFAULT), (true, true, false, false)),
-            5 => (3, "1.5pi", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (false, false, true, false)),
+            4 => (1, "e", ("", "", "", ""), ("0.1", DENSE_DEFAULT), (true, true, false, false)),
+            5 => (3, "3pi/2", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (false, false, true, false)),
             6 => (0, "0", ("0", "1", "0", "1"), ("0.2", DENSE_DEFAULT), (true, false, false, true)),
             7 => (4, "2", ("", "", "", ""), ("5", DENSE_DEFAULT), (false, false, true, false))
         };
         else if (index > L1 + L2 + 1 && index < L1 + L2 + L3 + 2) set = (index - L1 - L2 - 2) switch
         {
-            0 => (3, "5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            1 => (0, "3", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            2 => (2, "pi", ("", "", "", ""), ("0.5", "2"), (true, false, false, false)),
-            3 => (1, "1.1", ("", "", "", ""), (THICK_DEFAULT, "100"), (true, false, false, false)),
+            0 => (0, "5", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
+            1 => (0, "1.5", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
+            2 => (2, "0", ("0", "1", "0", "1"), ("0.5", "8"), (true, false, false, false)),
+            3 => (0, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
             4 => (3, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
-            5 => (3, "1.1", ("", "", "", ""), ("0.5", "10"), (true, false, false, true)),
+            5 => (3, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, true)),
             6 => (3, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
             7 => (0, "0", ("-0.2", "1.2", "-0.2", "1.2"), ("0.5", DENSE_DEFAULT), (true, false, false, true))
         };
@@ -1941,13 +1941,13 @@ public class ReplaceTags : RealComplex
     public static readonly string[] EX_CURVES =
         [
             "func(zeta(x))",
-            "func(beta(sinh(x), cosh(x)), -2, 2, .0001)",
-            "subs(func(sum(sin(jx)/j, k, 0, 100), -pi, pi, .001), j, 2^k)",
+            "func(exp(/(xx-1)), -1, 1)",
+            "subs(func(sum(abs(jx-round(jx))/j, k, 0, 10)), j, coc(2^k))",
             "polar(sqrt(cos(2u)), u, 0, 2pi, .0001)",
-            "polar(cos(5u)cos(7u), u, 0, 2pi, .001)",
+            "polar(cos(5u)cos(7u), u, 0, 2pi)",
             "loop(polar(coc(.1k)cos(5u+coc(.7kpi)), u, 0, pi), k, 1, 10)",
-            "param(sin(7u), cos(9u), u, 0, 2pi, .001)",
-            "loop(param(cos(u)^k, sin(u)^k, u, 0, pi/2), k, 1, 10)"
+            "param(sin(7u), cos(9u), u, 0, 2pi)",
+            "loop(param(cos(u)^k, sin(u)^k, u, 0, pi/2, .01), k, 1, 10)"
         ];
     public static readonly char FUNC_HEAD = TILDE, SERIES_TAIL = '_', REAL_TAIL = _D_, COMPLEX_TAIL = SP;
     private static string ToS(char c) => c.ToString();
