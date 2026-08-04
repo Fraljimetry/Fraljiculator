@@ -346,7 +346,10 @@ public partial class Graph : Form
         if (_value > Real.Lerp(mM.max, mM.min, size_real)) SetPixel(_ptr, _pole, ref pixNum);
     }
     private unsafe void ComplexSpecial(byte* _ptr, Color _zero, Color _pole, Real _value, ref int pixNum)
-    { if (_value < epsilon) SetPixel(_ptr, _zero, ref pixNum); if (_value > 1 / epsilon) SetPixel(_ptr, _pole, ref pixNum); }
+    {
+        if (_value < epsilon) SetPixel(_ptr, _zero, ref pixNum);
+        if (_value > 1 / epsilon) SetPixel(_ptr, _pole, ref pixNum);
+    }
     private delegate void PixelLoop(int x, int y, IntPtr pixelPtr, ref int pixNum); // Instead of Action<int, int, IntPtr, ref int>
     private unsafe static void LoopBase(PixelLoop pixelLoop)
     {
@@ -767,9 +770,11 @@ public partial class Graph : Form
         {
             Graph_DoubleClick(sender, e);
             SetTextboxButtonReadOnly(true);
+
             pixel_number = segment_number = export_number = 0;
             error_input = error_address = is_checking = false;
             clicked = true; loop_number++;
+
             PrepareSetDisplay(borders, isMain);
             endAction();
         }
@@ -1006,8 +1011,9 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}To enhance both visual appeal and practicality, numerous parameters can be adjusted " +
             $"to generate images for a variety of purposes." +
             $"\r\n\r\n{TAB}Note: Default variable names are case-sensitive, whereas function names are not, unless otherwise stated.";
-        static string subTitleContent(string subtitle, string content) => $"\r\n\r\n{_SEP}\r\n{TAB}{subtitle}\r\n{_SEP}" + content;
-        content += subTitleContent("ELEMENTS",
+
+        static string subtitleContent(string subtitle, string content) => $"\r\n\r\n{_SEP}\r\n{TAB}{subtitle}\r\n{_SEP}" + content;
+        content += subtitleContent("ELEMENTS",
             $"\r\n\r\n{TAB}+ - * / ^ ( )" +
             $"\r\n\r\n{TAB}Sin, Cos, Tan, Sinh, Cosh, Tanh," +
             $"\r\n{TAB}Arcsin & Asin, Arccos & Acos, Arctan & Atan," +
@@ -1016,11 +1022,11 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), Ei(f(z)){GetComment("Ei(z) := Exp(2πiz).")}") +
             $"\r\n\r\n{TAB}Real(...)" +
             $"{TAB}{GetComment("Variable-free real blocks in complex expressions.")}";
-        content += subTitleContent("COMBINATORICS",
+        content += subtitleContent("COMBINATORICS",
             $"\r\n\r\n{TAB}Floor, Ceiling & Ceil, Round, Sign & Sgn, Factorial & Fact(Real a)" +
             $"\r\n\r\n{TAB}Mod(Real a, Real n), nCr, nPr(int n, int r)" +
             $"\r\n\r\n{TAB}Max, Min, Dist(Real a, Real b, ...)");
-        content += subTitleContent("SPECIALTIES",
+        content += subtitleContent("SPECIALTIES",
             $"\r\n\r\n{GetComment("R&C := Real & Complex.")}" +
             $"\r\n\r\n{TAB}Hypergeometric & Hypgeo(R&C a, R&C b, R&C c, f(x,y) & f(z)) & " +
             $"\r\n{TAB}Hypergeometric & Hypgeo(R&C a, R&C b, R&C c, f(x,y) & f(z), int n)" +
@@ -1032,7 +1038,7 @@ public partial class Graph : Form
             $"\r\n{TAB}Zeta(f(x,y) & f(z), int n){GetComment("Reduced accuracy if n is too large.")}") +
             $"\r\n\r\n{TAB}Stereographic & Stereo(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))" +
             $"\r\n\r\n{TAB}Homothety & Homoth(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))";
-        content += subTitleContent("REPETITIONS",
+        content += subtitleContent("REPETITIONS",
             $"\r\n\r\n{GetComment("Capital letters denote variable substitutions.")}" +
             $"\r\n\r\n{TAB}Sum(f(x,y,k) & f(z,k), k, int a, int b)" +
             $"\r\n{TAB}Product & Prod(f(x,y,k) & f(z,k), k, int a, int b)" +
@@ -1049,7 +1055,7 @@ public partial class Graph : Form
             $"\r\n{TAB}{GetComment("f: initial values; g: composition functions.")}" +
             $"\r\n\r\n{TAB}Cocoon & Coc" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
             $"\r\n{TAB}{GetComment("f: body; {*}: tag number *; g: tag values.")}");
-        content += subTitleContent("PLANAR CURVES",
+        content += subtitleContent("PLANAR CURVES",
             $"\r\n\r\n{TAB}Function & Func(f(x)) & " +
             $"\r\n{TAB}Function & Func(f(x), Real increment) & " +
             $"\r\n{TAB}Function & Func(f(x), Real a, Real b) & " +
@@ -1058,7 +1064,7 @@ public partial class Graph : Form
             $"\r\n{TAB}Polar(f(θ), θ, Real a, Real b, Real increment)" +
             $"\r\n\r\n{TAB}Parametric & Param(f(u), g(u), u, Real a, Real b) & " +
             $"\r\n{TAB}Parametric & Param(f(u), g(u), u, Real a, Real b, Real increment)");
-        content += subTitleContent("RECURSIONS",
+        content += subtitleContent("RECURSIONS",
             $"\r\n\r\n{GetComment("Listed from higher to lower priorities.")}" +
             $"\r\n\r\n{TAB}... | ...{GetComment("Consecutive displays.")}") +
             $"\r\n\r\n{TAB}Substitute & Subs(Input(a,b,c,...), a, aNew, b, bNew, c, cNew, ...)" +
@@ -1070,8 +1076,9 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}IterateLoop & ItLoop(f(z,Z,k), g(z), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop & ItLoop(f(z,Z,k), g(z), k, int a, int b, F(z,Z,k))" +
             $"\r\n{TAB}{GetComment("Displays iterations one loop at a time.")}";
-        content += subTitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i{GetComment("e and i are case-sensitive.")}");
-        content += subTitleContent("SHORTCUTS", "\r\n");
+        content += subtitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i{GetComment("e and i are case-sensitive.")}");
+        content += subtitleContent("SHORTCUTS", "\r\n");
+
         static string getShortcuts(string key, int blank, string meaning) => $"\r\n{TAB}[{key}]" + new string('\t', blank) + meaning;
         content += getShortcuts("Control + P", 3, "Graph in Microbox");
         content += getShortcuts("Control + G", 3, "Graph in Macrobox");
@@ -1188,58 +1195,54 @@ public partial class Graph : Form
     #region Index Change & Check Change
     private void SetValuesForSelectedIndex(int index)
     {
-        int _color = 3; string _general = "1.1", _thick = THICK_DEFAULT, _dense = DENSE_DEFAULT;
-        bool _points = false, _retain = false, _shade = false, _axes = true;
-        int complexL = ReplaceTags.EX_COMPLEX.Length, realL = ReplaceTags.EX_REAL.Length, curveL = ReplaceTags.EX_CURVES.Length;
+        (int iC, string sG, (string xL, string xR, string yL, string yR) sD, (string T, string D) sO, (bool, bool, bool, bool) bC) set;
+        var (L1, L2, L3) = (ReplaceTags.EX_COMPLEX.Length, ReplaceTags.EX_REAL.Length, ReplaceTags.EX_CURVES.Length);
 
-        InputString.ReadOnly = true; // Necessary
-        void setD(string xLeft, string xRight, string yLeft, string yRight)
-        { SetText(X_Left, xLeft); SetText(X_Right, xRight); SetText(Y_Left, yLeft); SetText(Y_Right, yRight); }
-        if (index < complexL)
-            switch (index)
-            {
-                case 0: _color = 4; _axes = false; break;
-                case 1: _general = "1.2"; break;
-                case 2: _color = 2; _points = true; break;
-                case 3: _general = "pi/2"; _color = 4; break;
-                case 4: _general = "pi"; break;
-                case 5: _general = "1.5"; break;
-                case 6: _general = "0"; setD("-1.6", "0.6", "-1.1", "1.1"); _thick = "100"; _retain = _shade = true; _axes = false; break;
-                case 7: _general = "2"; _color = 4; _dense = "pi/2"; break;
-            }
-        else if (index > complexL && index < complexL + realL + 1)
-            switch (index - complexL - 1)
-            {
-                case 0: _general = "10"; _color = 2; break;
-                case 1: _general = "2pi"; _color = 4; break;
-                case 2: _general = "4"; _color = 0; break;
-                case 3: _general = "5"; _thick = "0.5"; _color = 0; _retain = true; break;
-                case 4: _general = "10"; _thick = "0.1"; _color = 1; _points = true; break;
-                case 5: _general = "pi"; _color = 1; break;
-                case 6: _general = "0"; setD("0", "1", "0", "1"); _thick = "0.2"; _color = 0; _retain = true; break;
-                case 7: _general = "2"; _thick = "5"; _color = 4; _shade = true; _axes = false; break;
-            }
-        else if (index > complexL + realL + 1 && index < complexL + realL + curveL + 2)
-            switch (index - complexL - realL - 2)
-            {
-                case 0: _general = "5"; break;
-                case 1: _general = "3"; _color = 0; break;
-                case 2: _general = "pi"; _thick = "0.5"; _dense = "2"; _color = 2; break;
-                case 3: _dense = "100"; _color = 1; break;
-                case 4: _thick = "0.5"; break;
-                case 5: _thick = "0.5"; _dense = "10"; _retain = true; break;
-                case 6: _thick = "0.5"; break;
-                case 7: _general = "0"; setD("-0.2", "1.2", "-0.2", "1.2"); _thick = "0.5"; _color = 0; _retain = true; break;
-            }
-        else ComboExamples_Undo();
-        InputString.ReadOnly = false; // Necessary
+        InputString.ReadOnly = true;
+        if (index < L1) set = index switch
+        {
+            0 => (4, "1.1", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
+            1 => (3, "1.2", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            2 => (2, "1.1", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, true, false, false)),
+            3 => (4, "pi/2", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            4 => (3, "pi", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            5 => (3, "1.5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            6 => (3, "0", ("-1.6", "0.6", "-1.1", "1.1"), ("100", DENSE_DEFAULT), (false, false, true, true)),
+            7 => (4, "2", ("", "", "", ""), (THICK_DEFAULT, "pi/2"), (true, false, false, false))
+        };
+        else if (index > L1 && index < L1 + L2 + 1) set = (index - L1 - 1) switch
+        {
+            0 => (2, "10", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            1 => (4, "2pi", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            2 => (0, "4", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            3 => (0, "5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, true)),
+            4 => (1, "10", ("", "", "", ""), ("0.1", DENSE_DEFAULT), (true, true, false, false)),
+            5 => (3, "1.5pi", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (false, false, true, false)),
+            6 => (0, "0", ("0", "1", "0", "1"), ("0.2", DENSE_DEFAULT), (true, false, false, true)),
+            7 => (4, "2", ("", "", "", ""), ("5", DENSE_DEFAULT), (false, false, true, false))
+        };
+        else if (index > L1 + L2 + 1 && index < L1 + L2 + L3 + 2) set = (index - L1 - L2 - 2) switch
+        {
+            0 => (3, "5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            1 => (0, "3", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            2 => (2, "pi", ("", "", "", ""), ("0.5", "2"), (true, false, false, false)),
+            3 => (1, "1.1", ("", "", "", ""), (THICK_DEFAULT, "100"), (true, false, false, false)),
+            4 => (3, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
+            5 => (3, "1.1", ("", "", "", ""), ("0.5", "10"), (true, false, false, true)),
+            6 => (3, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
+            7 => (0, "0", ("-0.2", "1.2", "-0.2", "1.2"), ("0.5", DENSE_DEFAULT), (true, false, false, true))
+        };
+        else { ComboExamples_Undo(); InputString.ReadOnly = false; return; }
+        InputString.ReadOnly = false;
 
-        SetText(GeneralInput, _general); SetText(ThickInput, _thick); SetText(DenseInput, _dense);
-        CheckPoints.Checked = _points; CheckRetain.Checked = _retain; CheckShade.Checked = _shade; CheckCoor.Checked = _axes;
-        ComboColoring.SelectedIndex = _color;
+        ComboColoring.SelectedIndex = set.iC;
+        SetText(GeneralInput, set.sG); SetText(ThickInput, set.sO.T); SetText(DenseInput, set.sO.D);
+        SetText(X_Left, set.sD.xL); SetText(X_Right, set.sD.xR); SetText(Y_Left, set.sD.yL); SetText(Y_Right, set.sD.yR);
+        (CheckCoor.Checked, CheckPoints.Checked, CheckShade.Checked, CheckRetain.Checked) = set.bC;
     }
-    private void Combo_SelectionChanged(string selectedItem)
+    private void ComboFS_SelectionChanged(ComboBox cbx)
     {
+        string selectedItem = cbx.SelectedItem.ToString();
         if (ProcessingGraphics()) return; int pos = InputString.SelectionStart;
         SetText(InputString, MyString.Replace(InputString.Text, String.Concat(selectedItem, RecoverMultiply.LR_BRA),
             pos, pos + InputString.SelectionLength - 1));
@@ -1255,14 +1258,11 @@ public partial class Graph : Form
         Delete_Click(e);
         InputString_Focus();
     }
-    private void ComboFunctions_SelectedIndexChanged(object sender, EventArgs e)
-        => Combo_SelectionChanged(ComboFunctions.SelectedItem.ToString());
-    private void ComboSpecial_SelectedIndexChanged(object sender, EventArgs e)
-        => Combo_SelectionChanged(ComboSpecial.SelectedItem.ToString());
-    private void ComboColoring_SelectedIndexChanged(object sender, EventArgs e)
-        => color_mode = AddOne(ComboColoring.SelectedIndex);
-    private void ComboContour_SelectedIndexChanged(object sender, EventArgs e)
-        => contour_mode = AddOne(ComboContour.SelectedIndex);
+    private void ComboFunctions_SelectedIndexChanged(object sender, EventArgs e) => ComboFS_SelectionChanged(ComboFunctions);
+    private void ComboSpecial_SelectedIndexChanged(object sender, EventArgs e) => ComboFS_SelectionChanged(ComboSpecial);
+    private static int ComboCC_SelectionChanged(ComboBox cbx) => AddOne(cbx.SelectedIndex);
+    private void ComboColoring_SelectedIndexChanged(object sender, EventArgs e) => color_mode = ComboCC_SelectionChanged(ComboColoring);
+    private void ComboContour_SelectedIndexChanged(object sender, EventArgs e) => contour_mode = ComboCC_SelectionChanged(ComboContour);
     //
     private void CheckComplex_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref is_complex);
     private void CheckSwap_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref swap_colors);
@@ -1358,6 +1358,7 @@ public partial class Graph : Form
         MiniChecks([X_Left, X_Right, Y_Left, Y_Right], DetailLabel);
         if (scopes == null) return; // Required during initialization
         void checkScopes(bool b1, bool b2, Color c) { if (b1) X_Scope.ForeColor = c; if (b2) Y_Scope.ForeColor = c; }
+
         try { SetThicknessDensenessScopesBorders(false); }
         catch (Exception) { checkScopes(InvalidScopesX(), InvalidScopesY(), ERROR_RED); }
         finally { checkScopes(!InvalidScopesX(), !InvalidScopesY(), CORRECT_GREEN); } // Keep the Boolean expressions inline
@@ -1394,8 +1395,8 @@ public partial class Graph : Form
         else AtLabel.ForeColor = Directory.Exists(AddressInput.Text) ? CORRECT_GREEN : ERROR_RED;
     }
     //
-    private static void BanDoubleClick(TextBox tbx, MouseEventArgs e)
-    { tbx.SelectionStart = tbx.GetCharIndexFromPosition(e.Location); tbx.SelectionLength = 0; } // Suppresses the default selection behavior
+    private static void BanDoubleClick(TextBox tbx, MouseEventArgs e) // Suppresses the default selection behavior
+    { tbx.SelectionStart = tbx.GetCharIndexFromPosition(e.Location); tbx.SelectionLength = 0; }
     private void InputString_MouseDoubleClick(object sender, MouseEventArgs e) => BanDoubleClick(InputString, e);
     private void AddressInput_MouseDoubleClick(object sender, MouseEventArgs e) => BanDoubleClick(AddressInput, e);
     private void GeneralInput_MouseDoubleClick(object sender, MouseEventArgs e) => BanDoubleClick(GeneralInput, e);
@@ -1421,38 +1422,44 @@ public partial class Graph : Form
     //
     private static void AutoKeyDown(TextBox tbx, KeyEventArgs e)
     {
-        if (tbx.ReadOnly) return; int caretPosition = tbx.SelectionStart; // Necessary
+        if (tbx.ReadOnly) return;
+        int caretPosition = tbx.SelectionStart; // Necessary
         void selectSuppress(int pos) { tbx.SelectionStart = caretPosition + pos; e.SuppressKeyPress = true; }
         void insertSelectSuppress(string insertion, int pos)
         { SetText(tbx, tbx.Text.Insert(caretPosition, insertion)); selectSuppress(pos); }
+        char obtainLeft() => e.KeyCode switch { Keys.D9 => '(', Keys.OemOpenBrackets => '{' };
+        char obtainRight(char left) => left switch { '(' => ')', '{' => '}' };
+
         if (!MyString.CheckParenthesis(tbx.Text.AsSpan(caretPosition, tbx.SelectionLength))) selectSuppress(0);
-        else if (e.KeyCode == Keys.D9 && (ModifierKeys & Keys.Shift) != 0)
+        else if ((e.KeyCode == Keys.D9 || e.KeyCode == Keys.OemOpenBrackets) && (ModifierKeys & Keys.Shift) != 0)
         {
-            if (tbx.SelectionLength == 0) insertSelectSuppress(RecoverMultiply.LR_BRA, 1);
+            char left = obtainLeft(), right = obtainRight(left);
+            if (tbx.SelectionLength == 0) insertSelectSuppress($"{left}{right}", 1);
             else
             {
                 string selectedText = tbx.Text.Substring(caretPosition, tbx.SelectionLength);
                 SetText(tbx, tbx.Text.Remove(caretPosition, tbx.SelectionLength));
-                insertSelectSuppress("(" + selectedText + ")", selectedText.Length + 2);
+                insertSelectSuppress($"{left}{selectedText}{right}", selectedText.Length + 2);
             }
-        } // '{' does not share this privilege
-        else if (e.KeyCode == Keys.D0 && (ModifierKeys & Keys.Shift) != 0)
+        }
+        else if ((e.KeyCode == Keys.D0 || e.KeyCode == Keys.OemCloseBrackets) && (ModifierKeys & Keys.Shift) != 0)
         {
             if (tbx.SelectionLength > 0) selectSuppress(0);
             else if (caretPosition == 0) selectSuppress(0);
-            else if (tbx.Text[caretPosition - 1] == '(') selectSuppress(1);
-        } // '}' does not share this privilege
+            else if (RecoverMultiply.IsBraL(tbx.Text[caretPosition - 1])) selectSuppress(1);
+        }
         else if (e.KeyCode == Keys.Oemcomma) insertSelectSuppress(", ", 2);
         else if (e.KeyCode == Keys.OemPipe) insertSelectSuppress(" | ", 3);
         else if (e.KeyCode == Keys.Back)
         {
             if (caretPosition == 0 || !MyString.CheckParenthesis(tbx.Text) || tbx.SelectionLength > 0) return;
-            else if (tbx.Text[caretPosition - 1] == '(')
+            char c = tbx.Text[caretPosition - 1];
+            if (RecoverMultiply.IsBraL(c))
             {
-                if (tbx.Text[caretPosition] == ')') SetText(tbx, tbx.Text.Remove(caretPosition - 1, 2));
+                if (tbx.Text[caretPosition] == obtainRight(c)) SetText(tbx, tbx.Text.Remove(caretPosition - 1, 2));
                 selectSuppress(-1);
             }
-            else if (tbx.Text[caretPosition - 1] == ')') selectSuppress(-1);
+            else if (RecoverMultiply.IsBraR(c)) selectSuppress(-1);
         }
     } // Sensitive
     private void InputString_KeyDown(object sender, KeyEventArgs e) => AutoKeyDown(InputString, e);
@@ -1546,34 +1553,22 @@ public partial class Graph : Form
     private void CheckEdit_MouseHover(object sender, EventArgs e) => CheckEdit.ForeColor = COMBO_BLUE;
     private void CheckEdit_MouseLeave(object sender, EventArgs e) => CheckEdit.ForeColor = Color.White;
     //
-    private void PointNumDisplay_MouseHover(object sender, EventArgs e)
-    { PointNumLabel.ForeColor = READONLY_PURPLE; PointNumDisplay.ForeColor = Color.White; }
-    private void PointNumDisplay_MouseLeave(object sender, EventArgs e)
-    { PointNumLabel.ForeColor = Color.White; PointNumDisplay.ForeColor = READONLY_GRAY; }
-    private void TimeDisplay_MouseHover(object sender, EventArgs e)
-    { TimeLabel.ForeColor = READONLY_PURPLE; TimeDisplay.ForeColor = Color.White; }
-    private void TimeDisplay_MouseLeave(object sender, EventArgs e)
-    { TimeLabel.ForeColor = Color.White; TimeDisplay.ForeColor = READONLY_GRAY; }
-    private void X_CoorDisplay_MouseHover(object sender, EventArgs e)
-    { X_Coor.ForeColor = READONLY_PURPLE; X_CoorDisplay.ForeColor = Color.White; }
-    private void X_CoorDisplay_MouseLeave(object sender, EventArgs e)
-    { X_Coor.ForeColor = Color.White; X_CoorDisplay.ForeColor = READONLY_GRAY; }
-    private void Y_CoorDisplay_MouseHover(object sender, EventArgs e)
-    { Y_Coor.ForeColor = READONLY_PURPLE; Y_CoorDisplay.ForeColor = Color.White; }
-    private void Y_CoorDisplay_MouseLeave(object sender, EventArgs e)
-    { Y_Coor.ForeColor = Color.White; Y_CoorDisplay.ForeColor = READONLY_GRAY; }
-    private void ModulusDisplay_MouseHover(object sender, EventArgs e)
-    { Modulus.ForeColor = READONLY_PURPLE; ModulusDisplay.ForeColor = Color.White; }
-    private void ModulusDisplay_MouseLeave(object sender, EventArgs e)
-    { Modulus.ForeColor = Color.White; ModulusDisplay.ForeColor = READONLY_GRAY; }
-    private void AngleDisplay_MouseHover(object sender, EventArgs e)
-    { Angle.ForeColor = READONLY_PURPLE; AngleDisplay.ForeColor = Color.White; }
-    private void AngleDisplay_MouseLeave(object sender, EventArgs e)
-    { Angle.ForeColor = Color.White; AngleDisplay.ForeColor = READONLY_GRAY; }
-    private void FunctionDisplay_MouseHover(object sender, EventArgs e)
-    { ValueLabel.ForeColor = READONLY_PURPLE; FunctionDisplay.ForeColor = Color.White; }
-    private void FunctionDisplay_MouseLeave(object sender, EventArgs e)
-    { ValueLabel.ForeColor = Color.White; FunctionDisplay.ForeColor = READONLY_GRAY; }
+    private static void ReadOnlyHover(Label lbl, TextBox tbx) { lbl.ForeColor = READONLY_PURPLE; tbx.ForeColor = Color.White; }
+    private static void ReadOnlyLeave(Label lbl, TextBox tbx) { lbl.ForeColor = Color.White; tbx.ForeColor = READONLY_GRAY; }
+    private void PointNumDisplay_MouseHover(object sender, EventArgs e) => ReadOnlyHover(PointNumLabel, PointNumDisplay);
+    private void PointNumDisplay_MouseLeave(object sender, EventArgs e) => ReadOnlyLeave(PointNumLabel, PointNumDisplay);
+    private void TimeDisplay_MouseHover(object sender, EventArgs e) => ReadOnlyHover(TimeLabel, TimeDisplay);
+    private void TimeDisplay_MouseLeave(object sender, EventArgs e) => ReadOnlyLeave(TimeLabel, TimeDisplay);
+    private void X_CoorDisplay_MouseHover(object sender, EventArgs e) => ReadOnlyHover(X_Coor, X_CoorDisplay);
+    private void X_CoorDisplay_MouseLeave(object sender, EventArgs e) => ReadOnlyLeave(X_Coor, X_CoorDisplay);
+    private void Y_CoorDisplay_MouseHover(object sender, EventArgs e) => ReadOnlyHover(Y_Coor, Y_CoorDisplay);
+    private void Y_CoorDisplay_MouseLeave(object sender, EventArgs e) => ReadOnlyLeave(Y_Coor, Y_CoorDisplay);
+    private void ModulusDisplay_MouseHover(object sender, EventArgs e) => ReadOnlyHover(Modulus, ModulusDisplay);
+    private void ModulusDisplay_MouseLeave(object sender, EventArgs e) => ReadOnlyLeave(Modulus, ModulusDisplay);
+    private void AngleDisplay_MouseHover(object sender, EventArgs e) => ReadOnlyHover(Angle, AngleDisplay);
+    private void AngleDisplay_MouseLeave(object sender, EventArgs e) => ReadOnlyLeave(Angle, AngleDisplay);
+    private void FunctionDisplay_MouseHover(object sender, EventArgs e) => ReadOnlyHover(ValueLabel, FunctionDisplay);
+    private void FunctionDisplay_MouseLeave(object sender, EventArgs e) => ReadOnlyLeave(ValueLabel, FunctionDisplay);
     //
     private void SubtitleBox_MouseHover(object sender, EventArgs e) => SubtitleBox.ForeColor = ERROR_RED;
     private void SubtitleBox_MouseLeave(object sender, EventArgs e) => SubtitleBox.ForeColor = Color.White;
@@ -1613,6 +1608,7 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
+
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1843,6 +1839,7 @@ public class RealComplex : MyString
         rowChk = rows / step; rowOffs = GetArithProg(rows, columns);
         strd = columns * step; strdInit = GetArithProg(rowChk, step);
         resInit = rowChk * step; res = rows - resInit;
+
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
@@ -1937,7 +1934,7 @@ public class ReplaceTags : RealComplex
             "ceil(x)round(y)-floor(y)round(x)",
             "loop(dist(x, y)-dist(x+1, y-coc(.2k))-1, k, -50, 50)",
             "comp1(iterate1(abs(/X-1), abs(x)+abs(y), 10), X-1)",
-            "iterate2(X+/sin(Y), Y-/sin(X), x, y, 4, 2)",
+            "iterate2(X-tan(Y), Y-/cos(X), x, y, 3, z)",
             "itLoop(x^X, 1, k, 1, 100)",
             "comp2(xx-yy, 2xy, sin(3X)+cos(2Y), cos(3Y)-sin(2X), z)"
         ];
@@ -2099,8 +2096,8 @@ public class RecoverMultiply : ReplaceTags
     private static bool IsConst(char c) => CONST.Contains(c);
     private static bool IsArithmetic(char c) => ARITH.Contains(c); // Function heads after these operators do not require recovery
     private static bool IsFunctionHead(char c) => c == FUNC_HEAD;
-    private static bool IsBraL(char c) => BRA_L.Contains(c);
-    private static bool IsBraR(char c) => BRA_R.Contains(c);
+    public static bool IsBraL(char c) => BRA_L.Contains(c);
+    public static bool IsBraR(char c) => BRA_R.Contains(c);
 } /// Restores omitted multiplication operators ("*")
 
 /// <summary>
@@ -2240,6 +2237,7 @@ public sealed class ComplexSub : RecoverMultiply
         ThrowInvalidLengths(split, [validLength, validLength - 2]); bool sub = split.Length == validLength;
         int subIdx = validLength - 3; if (sub) split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
         ComplexSub buffer = ObtainSub(sub ? ReplaceLoop(split, 0, subIdx, "0") : split[0], initMtx, buffCocs, true);
+
         CheckFor(sub ? RealSub.ToInt(split[subIdx + 1]) : 1, RealSub.ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
@@ -2743,6 +2741,7 @@ public sealed class RealSub : RecoverMultiply
         ThrowInvalidLengths(split, [validLength, validLength - 2]); bool sub = split.Length == validLength;
         int subIdx = validLength - 3; if (sub) split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
         RealSub buffer = ObtainSub(sub ? ReplaceLoop(split, 0, subIdx, "0") : split[0], initMtx, null, buffCocs, true);
+
         CheckFor(sub ? ToInt(split[subIdx + 1]) : 1, ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
@@ -2759,6 +2758,7 @@ public sealed class RealSub : RecoverMultiply
         RealSub obtain(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i],
             ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
         if (sub) (split[0], split[1]) = (replaceLoop(0), replaceLoop(1)); var (buffer1, buffer2) = (obtain(0), obtain(1));
+
         CheckFor(sub ? ToInt(split[5]) : 1, ToInt(split[sub ? 6 : 4]), i =>
         {
             if (sub) (buffer1.input, buffer2.input) = (ReplaceLoop(split, 1, 4, i.ToString()), ReplaceLoop(split, 0, 4, i.ToString()));
