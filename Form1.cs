@@ -1041,11 +1041,11 @@ public partial class Graph : Form
             $"\r\n{TAB}Iterate(f(z,Z,k), g(z), k, int a, int b, F(x,y))" +
             $"\r\n{TAB}Iterate(f(z,Z,k), g(z), k, int a, int b)" +
             $"\r\n{TAB}{GetComment("g: initial values; f: iteration rules.")}" +
-            $"\r\n\r\n{TAB}Composite1 & Comp1(f(x,y), g1(x,y,X), ... , gn(x,y,X))" +
-            $"\r\n{TAB}Composite2 & Comp2" +
+            $"\r\n\r\n{TAB}Compose1 & Comp1(f(x,y), g1(x,y,X), ... , gn(x,y,X))" +
+            $"\r\n{TAB}Compose2 & Comp2" +
             $"\r\n{TAB}{TAB}(f1(x,y), f2(x,y), g1(x,y,X,Y), h1(x,y,X,Y), ... , gn(...), hn(...), 1&2&F(z))" +
-            $"\r\n{TAB}Composite & Comp(f(z), g1(z,Z), ... , gn(z,Z), F(x,y))" +
-            $"\r\n{TAB}Composite & Comp(f(z), g1(z,Z), ... , gn(z,Z))" +
+            $"\r\n{TAB}Compose & Comp(f(z), g1(z,Z), ... , gn(z,Z), F(x,y))" +
+            $"\r\n{TAB}Compose & Comp(f(z), g1(z,Z), ... , gn(z,Z))" +
             $"\r\n{TAB}{GetComment("f: initial values; g: composition functions.")}" +
             $"\r\n\r\n{TAB}Cocoon & Coc" + "(f(x,y,{0},...,{n})&f(z,...), g0(x,y)&g0(z), ... , gn(x,y)&gn(z))" +
             $"\r\n{TAB}{GetComment("f: body; {*}: tag number *; g: tag values.")}");
@@ -1918,7 +1918,7 @@ public class ReplaceTags : RealComplex
             "sinh", "cosh", "tanh", "sin", "cos", "tan" ];
     public static readonly string[] SPECIALS =
         [ "hypergeometric", "gamma", "beta", "zeta", "stereographic", "homothety", "sum", "product", "iterate", "iterate1", "iterate2",
-            "composite", "composite1", "composite2", "cocoon", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
+            "compose", "compose1", "compose2", "cocoon", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
     public static readonly string[] EX_COMPLEX =
         [
             "stereo(3, 1, 1, z)",
@@ -1998,9 +1998,9 @@ public class ReplaceTags : RealComplex
             { "sum", SUM }, { "Sum", SUM },
             { "product", PROD }, { "Product", PROD }, { "prod", PROD }, { "Prod", PROD },
             { "iterate", IT }, { "Iterate", IT },
-            { "composite", COMP }, { "Composite", COMP }, { "comp", COMP }, { "Comp", COMP },
+            { "compose", COMP }, { "Compose", COMP }, { "comp", COMP }, { "Comp", COMP },
             { "iterate2", IT2 }, { "Iterate2", IT2 },
-            { "composite2", COMP2 }, { "Composite2", COMP2 }, { "comp2", COMP2 }, { "Comp2", COMP2 },
+            { "compose2", COMP2 }, { "Compose2", COMP2 }, { "comp2", COMP2 }, { "Comp2", COMP2 },
             { "cocoon", COC}, { "Cocoon", COC}, { "coc", COC}, { "Coc", COC}
         }, SERIES_TAIL);
     private static readonly Dictionary<string, string> COMMON = Concat(COMMON_SERIES, COMMON_STANDARD);
@@ -2018,7 +2018,7 @@ public class ReplaceTags : RealComplex
             { "max", _MAX }, { "Max", _MAX }, { "min", _MIN }, { "Min", _MIN },
             { "distance", DIST}, { "Distance", DIST}, { "dist", DIST}, { "Dist", DIST},
             { "iterate1", IT1 }, { "Iterate1", IT1 },
-            { "composite1", COMP1 }, { "Composite1", COMP1 }, { "comp1", COMP1 }, { "Comp1", COMP1 }
+            { "compose1", COMP1 }, { "Compose1", COMP1 }, { "comp1", COMP1 }, { "Comp1", COMP1 }
         }, REAL_TAIL), SERIES_TAIL);
     private static readonly Dictionary<string, string> REAL = Concat(REAL_SERIES, REAL_STANDARD);
     private static readonly Dictionary<string, string> COMPLEX_STANDARD = AddSuffix(new()
@@ -2258,8 +2258,8 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
     public Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
     private Matrix<Complex> Iterate2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessIterate2);
-    private Matrix<Complex> Composite2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessComposite2);
-    public Matrix<Complex> Composite(string[] split)
+    private Matrix<Complex> Compose2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessCompose2);
+    public Matrix<Complex> Compose(string[] split)
     {
         Matrix<Complex> _value = ObtainValue(split[0]);
         for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, buffCocs).Obtain();
@@ -2270,7 +2270,7 @@ public sealed class ComplexSub : RecoverMultiply
         ComplexSub body = ObtainSub(split[0], Z, new Matrix<Complex>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
         return body.Obtain();
-    } // Used for shallow but complicated composite expressions
+    } // Used for shallow but complicated compositions
     private Matrix<Complex> RealBlock(string[] split) { ThrowInvalidLengths(split, [1]); return Const(new(RealSub.Obtain(split[0]))); }
     #endregion
 
@@ -2527,7 +2527,7 @@ public sealed class ComplexSub : RecoverMultiply
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
             I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
-            J_ => input[idx - 2] switch { TILDE => handleSub(Composite, 2), MODE_2 => handleSub(Composite2, 3) },
+            J_ => input[idx - 2] switch { TILDE => handleSub(Compose, 2), MODE_2 => handleSub(Compose2, 3) },
             K_ => handleSub(Cocoon, 2),
             SP => handleSub(RealBlock, 3) // Complex-specific
         };
@@ -2769,7 +2769,7 @@ public sealed class RealSub : RecoverMultiply
         });
         return (split[^1], buffer1.X, buffer1.Y); // buffer2 would work as well
     }
-    public (string, Matrix<Real>, Matrix<Real>) ProcessComposite2(string[] split)
+    public (string, Matrix<Real>, Matrix<Real>) ProcessCompose2(string[] split)
     {
         ThrowException(Int32.IsEvenInteger(split.Length));
         var (value1, value2) = (ObtainValue(split[0]), ObtainValue(split[1]));
@@ -2787,10 +2787,10 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
     private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
     private Matrix<Real> Iterate(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Iterate);
-    private Matrix<Real> Composite(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Composite);
+    private Matrix<Real> Compose(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Compose);
     private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
-    private Matrix<Real> Composite2(string[] split) => ChooseMode(ProcessComposite2(split));
-    private Matrix<Real> Composite1(string[] split)
+    private Matrix<Real> Compose2(string[] split) => ChooseMode(ProcessCompose2(split));
+    private Matrix<Real> Compose1(string[] split)
     {
         Matrix<Real> _value = ObtainValue(split[0]);
         for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, null, buffCocs).Obtain();
@@ -2801,7 +2801,7 @@ public sealed class RealSub : RecoverMultiply
         RealSub body = ObtainSub(split[0], X, Y, new Matrix<Real>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
         return body.Obtain();
-    } // Used for shallow but complicated composite expressions
+    } // Used for shallow but complicated compositions
     #endregion
 
     #region Elements
@@ -3061,7 +3061,7 @@ public sealed class RealSub : RecoverMultiply
             S_ => handleSub(Sum, 2),
             P_ => handleSub(Product, 2),
             I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
-            J_ => input[idx - 2] switch { TILDE => handleSub(Composite, 2), MODE_2 => handleSub(Composite2, 3) },
+            J_ => input[idx - 2] switch { TILDE => handleSub(Compose, 2), MODE_2 => handleSub(Compose2, 3) },
             K_ => handleSub(Cocoon, 2),
             _D_ => input[idx - 2] switch
             {
@@ -3072,7 +3072,7 @@ public sealed class RealSub : RecoverMultiply
                 MIN => handleSub(Min, 3),
                 D_ => handleSub(Distance, 3),
                 I_ => handleSub(Iterate1, 4),
-                J_ => handleSub(Composite1, 4)
+                J_ => handleSub(Compose1, 4)
             } // Real-specific
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
