@@ -1230,7 +1230,7 @@ public partial class Graph : Form
             4 => (3, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
             5 => (3, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, true)),
             6 => (3, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
-            7 => (0, "0", ("-0.2", "1.2", "-0.2", "1.2"), ("0.5", DENSE_DEFAULT), (true, false, false, true))
+            7 => (3, "0", ("-0.2", "1.2", "-0.2", "1.2"), ("0.5", DENSE_DEFAULT), (true, false, false, true))
         };
         else { ComboExamples_Undo(); InputString.ReadOnly = false; return; }
         InputString.ReadOnly = false;
@@ -1944,8 +1944,8 @@ public class ReplaceTags : RealComplex
             "func(exp(/(xx-1)), -1, 1)",
             "subs(func(sum(abs(jx-round(jx))/j, k, 0, 10)), j, coc(2^k))",
             "polar(sqrt(cos(2u)), u, 0, 2pi, .0001)",
-            "polar(cos(5u)cos(7u), u, 0, 2pi)",
-            "loop(polar(coc(.1k)cos(5u+coc(.7kpi)), u, 0, pi), k, 1, 10)",
+            "polar(sin(5u)sin(7u), u, 0, 2pi)",
+            "loop(polar(coc(.1k)cos(6u+coc(.7kpi)), u, 0, 2pi), k, 1, 10)",
             "param(sin(7u), cos(9u), u, 0, 2pi)",
             "loop(param(cos(u)^k, sin(u)^k, u, 0, pi/2, .01), k, 1, 10)"
         ];
