@@ -624,6 +624,7 @@ public partial class Graph : Form
     } // Intentionally buffer-free; rendering provides its own delay [see ComplexSub.ProcessSPI and RealSub.ProcessSPI]
     private void DisplayLoop(string[] split)
     {
+        MyString.ThrowInvalidLengths(split, [4]);
         RealComplex.CheckFor(RealSub.ToInt(split[2]), RealSub.ToInt(split[3]), loops =>
         { DisplayLevel3(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
     }
@@ -721,7 +722,7 @@ public partial class Graph : Form
         => actionHandler(LinearTransform(e.X, e.Y, GetRatioRow(borders), GetRatioColumn(borders), borders));
     private void DisplayMouseMoveCore(int x = 0, int y = 0)
     {
-        if (!MyString.ContainsAny(MyString.BeautifyInput(InputString.Text), MyString.FPP_NAMES))
+        if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
         {
             if (is_complex) SetText(FunctionDisplay, $"[Re] {output_complex[x, y].real}\r\n[Im] {output_complex[x, y].imaginary}");
             else SetText(FunctionDisplay, output_real[x, y].ToString());
@@ -740,7 +741,7 @@ public partial class Graph : Form
         static string trimDown(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
         string _xCoor = trimDown(xCoor), _yCoor = trimDown(yCoor), modulus = trimDown(Real.Hypot(xCoor, yCoor)),
             angle = MyString.GetAngle(xCoor, yCoor), message = String.Empty;
-        if (!MyString.ContainsAny(MyString.BeautifyInput(InputString.Text), MyString.FPP_NAMES))
+        if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
         {
             message += "\r\n\r\n";
             var (x, y) = (e.X - AddOne(borders[0]), e.Y - AddOne(borders[2]));
@@ -1839,7 +1840,6 @@ public class RealComplex : MyString
         rowChk = rows / step; rowOffs = GetArithProg(rows, columns);
         strd = columns * step; strdInit = GetArithProg(rowChk, step);
         resInit = rowChk * step; res = rows - resInit;
-
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
