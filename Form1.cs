@@ -1840,6 +1840,7 @@ public class RealComplex : MyString
         rowChk = rows / step; rowOffs = GetArithProg(rows, columns);
         strd = columns * step; strdInit = GetArithProg(rowChk, step);
         resInit = rowChk * step; res = rows - resInit;
+
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
@@ -3099,13 +3100,12 @@ public sealed class RealSub : RecoverMultiply
 /// STRUCTURE SECTION
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-public readonly struct Complex // Manually inlined to reduce overhead
+[method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+public readonly struct Complex(Real real, Real imaginary = 0) // Manually inlined to reduce overhead
 {
-    public readonly Real real, imaginary;
+    public readonly Real real = real, imaginary = imaginary;
     public static readonly Real QUARTER = (Real)0.25, PI_HALF = MathR.PI / 2, PI_THIRD = MathR.PI / 3;
     public static readonly Complex ZERO = new(0), ONE = new(1), I = new(0, 1);
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Complex(Real real, Real imaginary = 0) { this.real = real; this.imaginary = imaginary; } // Do not use a primary constructor
 
     #region Operators
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
