@@ -263,9 +263,9 @@ public partial class Graph : Form
         if (y >= yInit && y < yEnd) graphics.DrawLine(AXES_PEN, xInit, y, xEnd, y);
         if (x >= xInit && x < xEnd) graphics.DrawLine(AXES_PEN, x, yEnd, x, yInit);
     }
-    private static void DrawBackdropAxesGrids(int[] borders, bool isMain, bool IsFrozen = false)
+    private static void DrawBackdropAxesGrids(int[] borders, bool isMain, bool isFrozen = false)
     {
-        if (!IsFrozen) { DrawBackdrop(borders); SetAxesDrawn(isMain); }
+        if (!isFrozen) { DrawBackdrop(borders); SetAxesDrawn(isMain); }
         if (!delete_coor && !ReturnAxesDrawn(isMain)) { DrawAxesGrids(borders); SetAxesDrawn(isMain, true); }
     } // Sensitive
     private void DrawReferenceRectangles(Color color) => graphics.FillRectangle(new SolidBrush(color), VScrollBarX.Location.X - REF_POS_1,
