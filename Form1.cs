@@ -1,10 +1,10 @@
 /// https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
 
-using System.Buffers;                 // ArrayPool
-using System.Drawing.Imaging;         // BitmapData
-using System.Runtime.CompilerServices;// RuntimeHelpers, Unsafe
-using System.Runtime.InteropServices; // DllImport, StructLayout
-using System.Text;                    // StringBuilder
+using System.Buffers;                  // ArrayPool
+using System.Drawing.Imaging;          // BitmapData
+using System.Runtime.CompilerServices; // RuntimeHelpers, Unsafe
+using System.Runtime.InteropServices;  // DllImport, StructLayout
+using System.Text;                     // StringBuilder
 
 using MathR = System.Math;
 using Real = System.Double;
