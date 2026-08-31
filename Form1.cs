@@ -1,9 +1,9 @@
 /// https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
 
 using System.Buffers; // ArrayPool
-using System.Drawing.Imaging; // BitmapData
-using System.Runtime.CompilerServices; // MethodImpl
-using System.Runtime.InteropServices; // DllImport, StructLayout
+using System.Drawing.Imaging; // PixelFormat, BitmapData, ImageLockMode
+using System.Runtime.CompilerServices; // Unsafe, RuntimeHelpers
+using System.Runtime.InteropServices; // DllImport, MarshalAs, StructLayout
 using System.Text; // StringBuilder
 
 using MathR = System.Math;
