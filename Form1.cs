@@ -2547,7 +2547,7 @@ public sealed class ComplexSub : RecoverMultiply
             braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end), true), ref tagL, true);
             input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
         }
-        return FinalizeMtx(ComputeBraFreePart(input));
+        return FinalizeMtx(ComputeBraFreePart(input)); // No pooling
     }
     public Matrix<Complex> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRA) ? Const(Obtain(input)) : ObtainCore(input);
@@ -3095,7 +3095,7 @@ public sealed class RealSub : RecoverMultiply
             braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end), true), ref tagL, true);
             input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
         }
-        return FinalizeMtx(ComputeBraFreePart(input));
+        return FinalizeMtx(ComputeBraFreePart(input)); // No pooling
     }
     public Matrix<Real> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : ObtainCore(input);
@@ -3251,7 +3251,7 @@ internal sealed class MatrixPoolLease<TEntry>(int length)
         if (Interlocked.Exchange(ref returned, 1) != 0) return;
         ArrayPool<TEntry>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<TEntry>());
     }
-}
+} /// Owns a rented ArrayPool buffer and ensures that it is returned at most once
 public readonly struct Matrix<TEntry>
 {
     private readonly TEntry[] matrix;
