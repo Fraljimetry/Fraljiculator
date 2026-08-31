@@ -1,3 +1,5 @@
+/// https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
+
 using System.Buffers;                  // ArrayPool
 using System.Drawing.Imaging;          // BitmapData
 using System.Runtime.CompilerServices; // RuntimeHelpers, Unsafe
@@ -2371,11 +2373,11 @@ public sealed class ComplexSub : RecoverMultiply
     #region Assembly
     private Matrix<Complex> UninitMtx(bool pooled = false) => pooled ? Matrix<Complex>.Rent(rowOffs, columns) : new(rowOffs, columns);
     private Matrix<Complex> CopyMtx(MatrixCopy<Complex> mc, bool pooled = false) => mc.copy ? Copy(mc.matrix, pooled) : mc.matrix;
-    private Matrix<Complex> OwnScratch(MatrixCopy<Complex> mc)
-    { if (!mc.copy && mc.matrix.IsPooled()) return mc.matrix; return Copy(mc.matrix, true); }
     private static void ReleaseMtx(MatrixCopy<Complex> mc) { if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private Matrix<Complex> FinalizeMtx(MatrixCopy<Complex> mc)
     { if (!mc.matrix.IsPooled()) return mc.matrix; Matrix<Complex> output = Copy(mc.matrix); mc.matrix.Return(); return output; }
+    private Matrix<Complex> OwnScratch(MatrixCopy<Complex> mc)
+    { if (!mc.copy && mc.matrix.IsPooled()) return mc.matrix; return Copy(mc.matrix, true); }
     private MatrixCopy<Complex> ConstMtx(Complex _const, bool pooled = false)
     {
         if (!useList) return new(Const(_const, pooled));
@@ -2539,7 +2541,7 @@ public sealed class ComplexSub : RecoverMultiply
         return ComputeBraFreePart(input, pooled);
     }
     private Matrix<Complex> ObtainCore(string input) => FinalizeMtx(ObtainCoreMtx(input, false));
-    public MatrixCopy<Complex> ObtainScratch()
+    private MatrixCopy<Complex> ObtainScratch()
         => !input.AsSpan().ContainsAny(_ZZ_BRA) ? new(Const(Obtain(input), true)) : ObtainCoreMtx(input, true);
     public Matrix<Complex> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRA) ? Const(Obtain(input)) : ObtainCore(input);
@@ -2760,15 +2762,13 @@ public sealed class RealSub : RecoverMultiply
         {
             if (sub) (buffer1.input, buffer2.input) = (ReplaceLoop(split, 1, 4, i.ToString()), ReplaceLoop(split, 0, 4, i.ToString()));
             buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
-            Matrix<Real> oldX = buffer1.X, oldY = buffer1.Y;
-            MatrixCopy<Real> result1 = buffer1.ObtainScratch(), result2 = buffer2.ObtainScratch();
-            Matrix<Real> newX = buffer1.OwnScratch(result1), newY = buffer2.OwnScratch(result2);
+            var (oldX, oldY) = (buffer1.X, buffer1.Y);
+            var (newX, newY) = (buffer1.OwnScratch(buffer1.ObtainScratch()), buffer2.OwnScratch(buffer2.ObtainScratch())); // Necessary
             buffer1.X = buffer2.X = newX; buffer1.Y = buffer2.Y = newY;
             if (oldX.IsPooled()) oldX.Return(); if (oldY.IsPooled()) oldY.Return();
             if (!buffer1.readList) buffer1.readList = buffer2.readList = true; // Precomputes cstMtcs
         });
-        Matrix<Real> outputX = buffer1.X.IsPooled() ? Copy(buffer1.X) : buffer1.X;
-        Matrix<Real> outputY = buffer1.Y.IsPooled() ? Copy(buffer1.Y) : buffer1.Y;
+        var (outputX, outputY) = (buffer1.X.IsPooled() ? Copy(buffer1.X) : buffer1.X, buffer1.Y.IsPooled() ? Copy(buffer1.Y) : buffer1.Y);
         if (buffer1.X.IsPooled()) buffer1.X.Return(); if (buffer1.Y.IsPooled()) buffer1.Y.Return();
         return (split[^1], outputX, outputY); // buffer2 would work as well
     } // Sensitive
@@ -2919,11 +2919,11 @@ public sealed class RealSub : RecoverMultiply
     #region Assembly
     private Matrix<Real> UninitMtx(bool pooled = false) => pooled ? Matrix<Real>.Rent(rowOffs, columns) : new(rowOffs, columns);
     private Matrix<Real> CopyMtx(MatrixCopy<Real> mc, bool pooled = false) => mc.copy ? Copy(mc.matrix, pooled) : mc.matrix;
-    private Matrix<Real> OwnScratch(MatrixCopy<Real> mc)
-    { if (!mc.copy && mc.matrix.IsPooled()) return mc.matrix; return Copy(mc.matrix, true); }
     private static void ReleaseMtx(MatrixCopy<Real> mc) { if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private Matrix<Real> FinalizeMtx(MatrixCopy<Real> mc)
     { if (!mc.matrix.IsPooled()) return mc.matrix; Matrix<Real> output = Copy(mc.matrix); mc.matrix.Return(); return output; }
+    private Matrix<Real> OwnScratch(MatrixCopy<Real> mc)
+    { if (!mc.copy && mc.matrix.IsPooled()) return mc.matrix; return Copy(mc.matrix, true); }
     private MatrixCopy<Real> ConstMtx(Real _const, bool pooled = false)
     {
         if (!useList) return new(Const(_const, pooled));
@@ -3101,7 +3101,7 @@ public sealed class RealSub : RecoverMultiply
         return ComputeBraFreePart(input, pooled);
     }
     private Matrix<Real> ObtainCore(string input) => FinalizeMtx(ObtainCoreMtx(input, false));
-    public MatrixCopy<Real> ObtainScratch()
+    private MatrixCopy<Real> ObtainScratch()
         => !input.AsSpan().ContainsAny(_XX__YY_BRA) ? new(Const(Obtain(input), true)) : ObtainCoreMtx(input, true);
     public Matrix<Real> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : ObtainCore(input);
