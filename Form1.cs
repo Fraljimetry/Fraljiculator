@@ -1,5 +1,3 @@
-/// https://github.com/Fraljimetry/Fraljiculator/blob/main/Form1.cs
-
 using System.Buffers;                  // ArrayPool
 using System.Drawing.Imaging;          // BitmapData
 using System.Runtime.CompilerServices; // RuntimeHelpers, Unsafe
@@ -295,10 +293,10 @@ public partial class Graph : Form
     {
         static Real seekM(Func<Real, Real, Real> function, Real* ptr, int length)
         {
-            Real _value = Real.NaN;
+            Real value = Real.NaN;
             for (int i = 0; i < length; i++, ptr++)
-            { if (Real.IsNaN(*ptr)) continue; if (Real.IsNaN(_value)) _value = *ptr; else _value = function(*ptr, _value); }
-            return _value;
+            { if (Real.IsNaN(*ptr)) continue; if (Real.IsNaN(value)) value = *ptr; else value = function(*ptr, value); }
+            return value;
         }
         Matrix<Real> outputAtan = Matrix<Real>.Rent(RealComplex.GetArithProg(rows, columns), columns), minMax = GetMatrix(2, rows);
         try
@@ -345,15 +343,15 @@ public partial class Graph : Form
     }
     private unsafe void SetPixel(byte* _ptr, Color color, ref int pixNum)
     { pixNum++; *_ptr = color.B; _ptr++; *_ptr = color.G; _ptr++; *_ptr = color.R; _ptr++; *_ptr = color.A; }
-    private unsafe void RealSpecial(byte* _ptr, Color _zero, Color _pole, Real _value, (Real min, Real max) mM, ref int pixNum)
+    private unsafe void RealSpecial(byte* _ptr, Color _zero, Color _pole, Real value, (Real min, Real max) mM, ref int pixNum)
     {
-        if (_value < Real.Lerp(mM.min, mM.max, size_real)) SetPixel(_ptr, _zero, ref pixNum);
-        if (_value > Real.Lerp(mM.max, mM.min, size_real)) SetPixel(_ptr, _pole, ref pixNum);
+        if (value < Real.Lerp(mM.min, mM.max, size_real)) SetPixel(_ptr, _zero, ref pixNum);
+        if (value > Real.Lerp(mM.max, mM.min, size_real)) SetPixel(_ptr, _pole, ref pixNum);
     }
-    private unsafe void ComplexSpecial(byte* _ptr, Color _zero, Color _pole, Real _value, ref int pixNum)
+    private unsafe void ComplexSpecial(byte* _ptr, Color _zero, Color _pole, Real value, ref int pixNum)
     {
-        if (_value < epsilon) SetPixel(_ptr, _zero, ref pixNum);
-        if (_value > 1 / epsilon) SetPixel(_ptr, _pole, ref pixNum);
+        if (value < epsilon) SetPixel(_ptr, _zero, ref pixNum);
+        if (value > 1 / epsilon) SetPixel(_ptr, _pole, ref pixNum);
     }
     private delegate void PixelLoop(int x, int y, IntPtr pixelPtr, ref int pixNum); // Instead of Action<int, int, IntPtr, ref int>
     private unsafe static void LoopBase(PixelLoop pixelLoop)
@@ -376,31 +374,31 @@ public partial class Graph : Form
     private unsafe void RealLoop(Matrix<Real> output, Color _zero, Color _pole, Func<Real, Color> extractor, (Real, Real) mM)
         => LoopBase((x, y, pixelPtr, ref pixNum) =>
         {
-            Real _value = output[x, y]; var _pixelPtr = (byte*)pixelPtr;
-            if (Real.IsNaN(_value)) return;
-            SetPixel(_pixelPtr, extractor(_value), ref pixNum);
-            if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathR.Atan(_value), mM, ref pixNum);
+            Real value = output[x, y]; var _pixelPtr = (byte*)pixelPtr;
+            if (Real.IsNaN(value)) return;
+            SetPixel(_pixelPtr, extractor(value), ref pixNum);
+            if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathR.Atan(value), mM, ref pixNum);
         });
     private unsafe void ComplexLoop(Matrix<Complex> output, Color _zero, Color _pole, Func<Complex, Color> extractor)
         => LoopBase((x, y, pixelPtr, ref pixNum) =>
         {
-            Complex _value = output[x, y]; var _pixelPtr = (byte*)pixelPtr;
-            if (Real.IsNaN(_value.real) || Real.IsNaN(_value.imaginary)) return;
-            SetPixel(_pixelPtr, extractor(_value), ref pixNum);
-            if (!delete_point) ComplexSpecial(_pixelPtr, _zero, _pole, Complex.Modulus(_value), ref pixNum);
+            Complex value = output[x, y]; var _pixelPtr = (byte*)pixelPtr;
+            if (Real.IsNaN(value.real) || Real.IsNaN(value.imaginary)) return;
+            SetPixel(_pixelPtr, extractor(value), ref pixNum);
+            if (!delete_point) ComplexSpecial(_pixelPtr, _zero, _pole, Complex.Modulus(value), ref pixNum);
         });
-    private static Func<Real, Color> GetColorReal123(int mode) => _value =>
+    private static Func<Real, Color> GetColorReal123(int mode) => value =>
     {
-        Color func23(Color c1, Color c2) => _value < 0 ? Swap(c1, c2) : _value > 0 ? Swap(c2, c1) : Color.Empty;
+        Color func23(Color c1, Color c2) => value < 0 ? Swap(c1, c2) : value > 0 ? Swap(c2, c1) : Color.Empty;
         return mode switch
         {
-            1 => MathR.Abs(_value) < epsilon ? Swap(Color.Black, Color.White) : Color.Empty,
+            1 => MathR.Abs(value) < epsilon ? Swap(Color.Black, Color.White) : Color.Empty,
             2 => func23(Color.White, Color.Black),
             3 => func23(UPPER_GOLD, LOWER_BLUE)
         };
     };
-    private static Func<Real, Color> GetColorReal45(bool mode, (Real min, Real max) mM) => _value => mode ?
-        ObtainColorStrip(_value, mM.min, mM.max) : ObtainColorStrip(_value, mM.min, mM.max, GetShade(LowRatio(_value, stride_real)));
+    private static Func<Real, Color> GetColorReal45(bool mode, (Real min, Real max) mM) => value => mode ?
+        ObtainColorStrip(value, mM.min, mM.max) : ObtainColorStrip(value, mM.min, mM.max, GetShade(LowRatio(value, stride_real)));
     private static Func<Complex, Color> GetColorComplex123(int mode, bool isReIm) => input =>
     {
         var (v1, v2) = Complex.ReIm(isReIm ? input : Complex.Log(input));
@@ -415,11 +413,11 @@ public partial class Graph : Form
             : MathR.Min(MathR.Min(LowDist(v1, s1), LowDist(v2, s2)), MathR.Min(-LowDist(v1, -s1), -LowDist(v2, -s2))) < epsilon;
         return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
     };
-    private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? (c => ObtainColorWheel(c, alpha: 1)) : (_value =>
+    private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? (c => ObtainColorWheel(c, alpha: 1)) : (value =>
     {
-        Complex _valueLog = Complex.Log(_value);
-        Real alpha = (LowRatio(_valueLog.real, mod_stride) + LowRatio(_valueLog.imaginary, arg_stride)) / 2;
-        return ObtainColorWheel(_value, GetShade(alpha));
+        Complex valueLog = Complex.Log(value);
+        Real alpha = (LowRatio(valueLog.real, mod_stride) + LowRatio(valueLog.imaginary, arg_stride)) / 2;
+        return ObtainColorWheel(value, GetShade(alpha));
     });
     private void RealLoop123(Matrix<Real> output, Color _zero, Color _pole, int mode, (Real, Real) mM)
         => RealLoop(output, _zero, _pole, GetColorReal123(mode), mM);
@@ -686,10 +684,10 @@ public partial class Graph : Form
     private static Color ObtainColorWheel(Complex c, Real alpha = 1)
         => ObtainColorBase(ArgRGB(c.real, c.imaginary), alpha, (int)(255 / (1 + decay * Complex.Modulus(shade ? c : Complex.ZERO))));
     private static Color ObtainColorWheelCurve(Real alpha) => ObtainColorBase(alpha * MathR.Tau, 1, 255);
-    private static Color ObtainColorStrip(Real _value, Real min, Real max, Real alpha = 1) // alpha: brightness
+    private static Color ObtainColorStrip(Real value, Real min, Real max, Real alpha = 1) // alpha: brightness
     {
         if (min == max) return Color.Empty; // Necessary
-        Real beta = (MathR.Atan(_value) - min) / (max - min);
+        Real beta = (MathR.Atan(value) - min) / (max - min);
         if (IllegalRatio(alpha) || IllegalRatio(beta)) return Color.Empty; // Necessary
         return beta < (Real)0.5 ? Argb(Frac(Frac(510, beta), alpha), 0, Frac(255, alpha))
             : Argb(Frac(255, alpha), 0, Frac(255 - Frac(510, beta - (Real)0.5), alpha));
@@ -1017,7 +1015,6 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}To enhance both visual appeal and practicality, numerous parameters can be adjusted " +
             $"to generate images for a variety of purposes." +
             $"\r\n\r\n{TAB}Note: Default variable names are case-sensitive, whereas function names are not, unless otherwise stated.";
-
         static string subtitleContent(string subtitle, string content) => $"\r\n\r\n{_SEP}\r\n{TAB}{subtitle}\r\n{_SEP}" + content;
         content += subtitleContent("ELEMENTS",
             $"\r\n\r\n{TAB}+ - * / ^ ( )" +
@@ -1084,7 +1081,6 @@ public partial class Graph : Form
             $"\r\n{TAB}{GetComment("Displays iterations one loop at a time.")}";
         content += subtitleContent("CONSTANTS", $"\r\n\r\n{TAB}pi, e, gamma & ga, i{GetComment("e and i are case-sensitive.")}");
         content += subtitleContent("SHORTCUTS", "\r\n");
-
         static string getShortcuts(string key, int blank, string meaning) => $"\r\n{TAB}[{key}]" + new string('\t', blank) + meaning;
         content += getShortcuts("Control + P", 3, "Graph in Microbox");
         content += getShortcuts("Control + G", 3, "Graph in Macrobox");
@@ -1614,7 +1610,6 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
-
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1635,7 +1630,6 @@ public class MyMessageBox : Form
     private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
     private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
-
     private void SetUpForm(int width, int height)
     {
         FormBorderStyle = FormBorderStyle.None; Size = new(width, height);
@@ -1680,7 +1674,6 @@ public class MyMessageBox : Form
         Graph.ReduceFontSizeByScale(this, ref scale_factor);
         KeyPreview = true; KeyDown += new(Form_KeyDown);
     }
-
     private static void Display(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
     {
         MyMessageBox msgBox = new();
@@ -1727,11 +1720,7 @@ public class MyString
         int _start = start; (start, end) = innerBra(input, start); if (end == -1) end = pairedInnerBra(input, _start);
     } // Performs a backward lookup for matching parentheses; highly sensitive
     public static bool CheckParenthesis(ReadOnlySpan<char> input)
-    {
-        int sum = 0;
-        foreach (char c in input) { if (c == '(') sum++; else if (c == ')') sum--; if (sum < 0) return false; }
-        return sum == 0;
-    }
+    { int sum = 0; foreach (char c in input) { if (c == '(') sum++; else if (c == ')') sum--; if (sum < 0) return false; } return sum == 0; }
     #endregion
 
     #region Replacement
@@ -1827,11 +1816,8 @@ public class RealComplex : MyString
     protected static int CountChars(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck)
     {
         int count = 0, offset = 0;
-        do
-        {
-            int idx = input[offset..].IndexOfAny(charsToCheck); if (idx < 0) break;
-            count++; offset += idx + 1;
-        } while (offset < input.Length); // To avoid slicing past the end
+        do { int idx = input[offset..].IndexOfAny(charsToCheck); if (idx < 0) break; count++; offset += idx + 1; }
+        while (offset < input.Length); // To avoid slicing past the end
         return count;
     }
     public unsafe static int[] GetArithProg(int length, int diff)
@@ -1970,7 +1956,6 @@ public class ReplaceTags : RealComplex
         STEREO = ToS(R_), HOMOTH = ToS(H_), SUM = ToS(S_), PROD = ToS(P_), COC = ToS(K_), PI = ToS(P), _GA = ToS(G);
     public static readonly string IT = ToS(I_), IT1 = String.Concat(MODE_1, IT), IT2 = String.Concat(MODE_2, IT),
         COMP = ToS(J_), COMP1 = String.Concat(MODE_1, COMP), COMP2 = String.Concat(MODE_2, COMP);
-
     private static Dictionary<string, string> Concat(Dictionary<string, string> dic1, Dictionary<string, string> dic2)
         => dic1.Concat(dic2).ToDictionary(pair => pair.Key, pair => pair.Value); // Series functions first, then standard functions
     private static readonly Dictionary<string, string> COMMON_STANDARD = new()
@@ -2043,7 +2028,6 @@ public class ReplaceTags : RealComplex
             { "parametric", _PARAM }, { "Parametric", _PARAM }, { "param", _PARAM }, { "Param", _PARAM }
         }, SERIES_TAIL);
     private static readonly Dictionary<string, string> REAL_COMPLEX = Concat(REAL, COMPLEX);
-
     private static Dictionary<string, string> AddBase(Action<Dictionary<string, string>> action)
     { Dictionary<string, string> _dictionary = []; action(_dictionary); return _dictionary; }
     private static Dictionary<string, string> AddPrefixSuffix(Dictionary<string, string> dictionary) => AddBase(_dictionary =>
@@ -2246,7 +2230,7 @@ public sealed class ComplexSub : RecoverMultiply
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
             action(buffer); if (!buffer.readList) buffer.readList = true; // Precomputes cstMtcs
         });
-        return buffer.Z;
+        return FinalizeMtx(new(buffer.Z));
     } // Meticulously optimized
     private Matrix<Complex> ProcessI2C2(string[] split, Func<string[], (string, Matrix<Real>, Matrix<Real>)> function)
     {
@@ -2255,16 +2239,19 @@ public sealed class ComplexSub : RecoverMultiply
     }
     private Matrix<Complex> Stereographic(string[] split) => ProcessSH(split, Complex.Stereographic);
     private Matrix<Complex> Homothety(string[] split) => ProcessSH(split, Complex.Homothety);
-    private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b => { Plus(b.Obtain(), b.Z); });
-    private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b => { Multiply(b.Obtain(), b.Z); });
-    public Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.Z = b.Obtain(); });
+    private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b =>
+    { MatrixCopy<Complex> value = b.ObtainScratch(); Plus(value.matrix, b.Z); ReleaseMtx(value); });
+    private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b =>
+    { MatrixCopy<Complex> value = b.ObtainScratch(); Multiply(value.matrix, b.Z); ReleaseMtx(value); });
+    public Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b =>
+    { Matrix<Complex> old = b.Z; b.Z = b.OwnScratch(b.ObtainScratch()); if (old.IsPooled()) old.Return(); });
     private Matrix<Complex> Iterate2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessIterate2);
     private Matrix<Complex> Compose2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessCompose2);
     public Matrix<Complex> Compose(string[] split)
     {
-        Matrix<Complex> _value = ObtainValue(split[0]);
-        for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, buffCocs).Obtain();
-        return _value;
+        Matrix<Complex> value = ObtainValue(split[0]);
+        for (int i = 1; i < split.Length; i++) value = ObtainSub(split[i], value, buffCocs).Obtain();
+        return value;
     } // Do not use HandleMtx
     private Matrix<Complex> Cocoon(string[] split)
     {
@@ -2299,22 +2286,22 @@ public sealed class ComplexSub : RecoverMultiply
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
         Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     }); // Sensitive
-    private unsafe void Negate(Matrix<Complex> _value)
+    private unsafe void Negate(Matrix<Complex> value)
     {
         void negate(int p, int col)
         {
-            Complex* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
+            Complex* valuePtr = value.RowPtr(p);
+            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = -*valuePtr;
         }
         if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
     }
-    private unsafe void Invert(Matrix<Complex> _value)
+    private unsafe void Invert(Matrix<Complex> value)
     {
         void invert(int p, int col)
         {
-            Complex* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = ~*_valuePtr;
+            Complex* valuePtr = value.RowPtr(p);
+            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = ~*valuePtr;
         }
         if (rows == 1) { invert(0, columns); return; }
         Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
@@ -2369,12 +2356,12 @@ public sealed class ComplexSub : RecoverMultiply
         if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
     }
-    private unsafe void FuncSub(Matrix<Complex> _value, Func<Complex, Complex> function)
+    private unsafe void FuncSub(Matrix<Complex> value, Func<Complex, Complex> function)
     {
         void funcSub(int p, int col)
         {
-            Complex* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
+            Complex* valuePtr = value.RowPtr(p);
+            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = function(*valuePtr);
         }
         if (rows == 1) { funcSub(0, columns); return; }
         Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
@@ -2384,6 +2371,8 @@ public sealed class ComplexSub : RecoverMultiply
     #region Assembly
     private Matrix<Complex> UninitMtx(bool pooled = false) => pooled ? Matrix<Complex>.Rent(rowOffs, columns) : new(rowOffs, columns);
     private Matrix<Complex> CopyMtx(MatrixCopy<Complex> mc, bool pooled = false) => mc.copy ? Copy(mc.matrix, pooled) : mc.matrix;
+    private Matrix<Complex> OwnScratch(MatrixCopy<Complex> mc)
+    { if (!mc.copy && mc.matrix.IsPooled()) return mc.matrix; return Copy(mc.matrix, true); }
     private static void ReleaseMtx(MatrixCopy<Complex> mc) { if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private Matrix<Complex> FinalizeMtx(MatrixCopy<Complex> mc)
     { if (!mc.matrix.IsPooled()) return mc.matrix; Matrix<Complex> output = Copy(mc.matrix); mc.matrix.Return(); return output; }
@@ -2537,7 +2526,7 @@ public sealed class ComplexSub : RecoverMultiply
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
-    private Matrix<Complex> ObtainCore(string input)
+    private MatrixCopy<Complex> ObtainCoreMtx(string input, bool pooled)
     {
         while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // The number of substitutions is not known in advance
         var (length, start, end, tagL) = PrepareLoop(input);
@@ -2547,8 +2536,11 @@ public sealed class ComplexSub : RecoverMultiply
             braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end), true), ref tagL, true);
             input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
         }
-        return FinalizeMtx(ComputeBraFreePart(input)); // No pooling
+        return ComputeBraFreePart(input, pooled);
     }
+    private Matrix<Complex> ObtainCore(string input) => FinalizeMtx(ObtainCoreMtx(input, false));
+    public MatrixCopy<Complex> ObtainScratch()
+        => !input.AsSpan().ContainsAny(_ZZ_BRA) ? new(Const(Obtain(input), true)) : ObtainCoreMtx(input, true);
     public Matrix<Complex> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRA) ? Const(Obtain(input)) : ObtainCore(input);
     #endregion
@@ -2624,14 +2616,14 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> ProcessMMD(string[] split, Func<Real[], Real> function)
         => HandleMtx(UninitMtx(true), output =>
         {
-            Matrix<Real>[] _value = new Matrix<Real>[split.Length];
-            for (int i = 0; i < split.Length; i++) _value[i] = ObtainValue(split[i]);
+            Matrix<Real>[] value = new Matrix<Real>[split.Length];
+            for (int i = 0; i < split.Length; i++) value[i] = ObtainValue(split[i]);
             void processMMD(int p, int col)
             {
                 Span<Real> array = stackalloc Real[split.Length]; Real* outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, outputPtr++)
                 {
-                    for (int i = 0; i < split.Length; i++) array[i] = _value[i][p, q];
+                    for (int i = 0; i < split.Length; i++) array[i] = value[i][p, q];
                     *outputPtr = function(array.ToArray());
                 }
             }
@@ -2641,8 +2633,8 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, Combination);
     private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, Permutation);
-    private Matrix<Real> Max(string[] split) => ProcessMMD(split, _value => _value.Max());
-    private Matrix<Real> Min(string[] split) => ProcessMMD(split, _value => _value.Min());
+    private Matrix<Real> Max(string[] split) => ProcessMMD(split, value => value.Max());
+    private Matrix<Real> Min(string[] split) => ProcessMMD(split, value => value.Min());
     private Matrix<Real> Distance(string[] split) => ProcessMMD(split, Distance);
     #endregion // Real-specific
 
@@ -2752,7 +2744,7 @@ public sealed class RealSub : RecoverMultiply
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countBra = buffer.countCst = 0;
             action(buffer); if (!buffer.readList) buffer.readList = true; // Precomputes cstMtcs
         });
-        return buffer.X;
+        return FinalizeMtx(new(buffer.X));
     } // Meticulously optimized
     private Matrix<Real> ProcessIC(string[] split, Func<string[], Matrix<Complex>> function)
         => new RealSub(split[^1], function(split[..^1]), rows, columns).Obtain();
@@ -2768,12 +2760,18 @@ public sealed class RealSub : RecoverMultiply
         {
             if (sub) (buffer1.input, buffer2.input) = (ReplaceLoop(split, 1, 4, i.ToString()), ReplaceLoop(split, 0, 4, i.ToString()));
             buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
-            var (temp1, temp2) = (buffer1.Obtain(), buffer2.Obtain()); // Necessary
-            buffer1.X = buffer2.X = temp1; buffer1.Y = buffer2.Y = temp2;
+            Matrix<Real> oldX = buffer1.X, oldY = buffer1.Y;
+            MatrixCopy<Real> result1 = buffer1.ObtainScratch(), result2 = buffer2.ObtainScratch();
+            Matrix<Real> newX = buffer1.OwnScratch(result1), newY = buffer2.OwnScratch(result2);
+            buffer1.X = buffer2.X = newX; buffer1.Y = buffer2.Y = newY;
+            if (oldX.IsPooled()) oldX.Return(); if (oldY.IsPooled()) oldY.Return();
             if (!buffer1.readList) buffer1.readList = buffer2.readList = true; // Precomputes cstMtcs
         });
-        return (split[^1], buffer1.X, buffer1.Y); // buffer2 would work as well
-    }
+        Matrix<Real> outputX = buffer1.X.IsPooled() ? Copy(buffer1.X) : buffer1.X;
+        Matrix<Real> outputY = buffer1.Y.IsPooled() ? Copy(buffer1.Y) : buffer1.Y;
+        if (buffer1.X.IsPooled()) buffer1.X.Return(); if (buffer1.Y.IsPooled()) buffer1.Y.Return();
+        return (split[^1], outputX, outputY); // buffer2 would work as well
+    } // Sensitive
     public (string, Matrix<Real>, Matrix<Real>) ProcessCompose2(string[] split)
     {
         ThrowException(Int32.IsEvenInteger(split.Length));
@@ -2788,18 +2786,21 @@ public sealed class RealSub : RecoverMultiply
     }
     private Matrix<Real> Stereographic(string[] split) => ProcessSH(split, Complex.Stereographic);
     private Matrix<Real> Homothety(string[] split) => ProcessSH(split, Complex.Homothety);
-    private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b => { Plus(b.Obtain(), b.X); });
-    private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b => { Multiply(b.Obtain(), b.X); });
-    private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { b.X = b.Obtain(); });
+    private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b =>
+    { MatrixCopy<Real> value = b.ObtainScratch(); Plus(value.matrix, b.X); ReleaseMtx(value); });
+    private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b =>
+    { MatrixCopy<Real> value = b.ObtainScratch(); Multiply(value.matrix, b.X); ReleaseMtx(value); });
+    private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b =>
+    { Matrix<Real> old = b.X; b.X = b.OwnScratch(b.ObtainScratch()); if (old.IsPooled()) old.Return(); });
     private Matrix<Real> Iterate(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Iterate);
     private Matrix<Real> Compose(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Compose);
     private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
     private Matrix<Real> Compose2(string[] split) => ChooseMode(ProcessCompose2(split));
     private Matrix<Real> Compose1(string[] split)
     {
-        Matrix<Real> _value = ObtainValue(split[0]);
-        for (int i = 1; i < split.Length; i++) _value = ObtainSub(split[i], _value, null, buffCocs).Obtain();
-        return _value;
+        Matrix<Real> value = ObtainValue(split[0]);
+        for (int i = 1; i < split.Length; i++) value = ObtainSub(split[i], value, null, buffCocs).Obtain();
+        return value;
     } // Do not use HandleMtx
     private Matrix<Real> Cocoon(string[] split)
     {
@@ -2833,22 +2834,22 @@ public sealed class RealSub : RecoverMultiply
         void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
         Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
     }); // Sensitive
-    private unsafe void Negate(Matrix<Real> _value)
+    private unsafe void Negate(Matrix<Real> value)
     {
         void negate(int p, int col)
         {
-            Real* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = -*_valuePtr;
+            Real* valuePtr = value.RowPtr(p);
+            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = -*valuePtr;
         }
         if (rows == 1) { negate(0, columns); return; }
         Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
     }
-    private unsafe void Invert(Matrix<Real> _value)
+    private unsafe void Invert(Matrix<Real> value)
     {
         void invert(int p, int col)
         {
-            Real* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = 1 / *_valuePtr;
+            Real* valuePtr = value.RowPtr(p);
+            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = 1 / *valuePtr;
         }
         if (rows == 1) { invert(0, columns); return; }
         Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
@@ -2903,12 +2904,12 @@ public sealed class RealSub : RecoverMultiply
         if (rows == 1) { power(0, columns); return; }
         Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
     }
-    private unsafe void FuncSub(Matrix<Real> _value, Func<Real, Real> function)
+    private unsafe void FuncSub(Matrix<Real> value, Func<Real, Real> function)
     {
         void funcSub(int p, int col)
         {
-            Real* _valuePtr = _value.RowPtr(p);
-            for (int q = 0; q < col; q++, _valuePtr++) *_valuePtr = function(*_valuePtr);
+            Real* valuePtr = value.RowPtr(p);
+            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = function(*valuePtr);
         }
         if (rows == 1) { funcSub(0, columns); return; }
         Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
@@ -2918,6 +2919,8 @@ public sealed class RealSub : RecoverMultiply
     #region Assembly
     private Matrix<Real> UninitMtx(bool pooled = false) => pooled ? Matrix<Real>.Rent(rowOffs, columns) : new(rowOffs, columns);
     private Matrix<Real> CopyMtx(MatrixCopy<Real> mc, bool pooled = false) => mc.copy ? Copy(mc.matrix, pooled) : mc.matrix;
+    private Matrix<Real> OwnScratch(MatrixCopy<Real> mc)
+    { if (!mc.copy && mc.matrix.IsPooled()) return mc.matrix; return Copy(mc.matrix, true); }
     private static void ReleaseMtx(MatrixCopy<Real> mc) { if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private Matrix<Real> FinalizeMtx(MatrixCopy<Real> mc)
     { if (!mc.matrix.IsPooled()) return mc.matrix; Matrix<Real> output = Copy(mc.matrix); mc.matrix.Return(); return output; }
@@ -3085,7 +3088,7 @@ public sealed class RealSub : RecoverMultiply
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
-    private Matrix<Real> ObtainCore(string input)
+    private MatrixCopy<Real> ObtainCoreMtx(string input, bool pooled)
     {
         while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // The number of substitutions is not known in advance
         var (length, start, end, tagL) = PrepareLoop(input);
@@ -3095,8 +3098,11 @@ public sealed class RealSub : RecoverMultiply
             braValues[countBra] = SubCore(input, start, ComputeBraFreePart(BraFreePart(input, start, end), true), ref tagL, true);
             input = ReplaceInput(input, countBra++, ref start, end, ref tagL);
         }
-        return FinalizeMtx(ComputeBraFreePart(input)); // No pooling
+        return ComputeBraFreePart(input, pooled);
     }
+    private Matrix<Real> ObtainCore(string input) => FinalizeMtx(ObtainCoreMtx(input, false));
+    public MatrixCopy<Real> ObtainScratch()
+        => !input.AsSpan().ContainsAny(_XX__YY_BRA) ? new(Const(Obtain(input), true)) : ObtainCoreMtx(input, true);
     public Matrix<Real> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : ObtainCore(input);
     #endregion
@@ -3269,12 +3275,6 @@ public readonly struct Matrix<TEntry>
     public readonly unsafe TEntry* RowPtr(int row = 0) { fixed (TEntry* ptr = &matrix[rowOffs[row]]) { return ptr; } }
 } /// Represents optimized matrices with real or complex entries
 public readonly struct MatrixCopy<TEntry>(Matrix<TEntry> matrix, bool copy = false)
-{
-    public readonly Matrix<TEntry> matrix = matrix;
-    public readonly bool copy = copy;
-} /// Controls whether matrices are copied
+{ public readonly Matrix<TEntry> matrix = matrix; public readonly bool copy = copy; } /// Controls whether matrices are copied
 public readonly struct ConstMatrix<TEntry>(TEntry _const, Matrix<TEntry> matrix)
-{
-    public readonly TEntry _const = _const;
-    public readonly Matrix<TEntry> matrix = matrix;
-} /// Represents reusable constant matrices
+{ public readonly TEntry _const = _const; public readonly Matrix<TEntry> matrix = matrix; } /// Represents reusable constant matrices
