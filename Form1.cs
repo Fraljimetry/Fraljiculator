@@ -301,17 +301,14 @@ public partial class Graph : Form
             return value;
         }
         Matrix<Real> outputAtan = Matrix<Real>.Rent(RealComplex.GetArithProg(rows, columns), columns), minMax = GetMatrix(2, rows);
-        try
+        Parallel.For(0, rows, p =>
         {
-            Parallel.For(0, rows, p =>
-            {
-                Real* destPtr = outputAtan.RowPtr(p), _destPtr = destPtr, srcPtr = output.RowPtr(p);
-                for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = MathR.Atan(*srcPtr);
-                minMax[0, p] = seekM(MathR.Min, _destPtr, columns); minMax[1, p] = seekM(MathR.Max, _destPtr, columns);
-            });
-            return (seekM(MathR.Min, minMax.RowPtr(0), rows), seekM(MathR.Max, minMax.RowPtr(1), rows));
-        }
-        finally { outputAtan.Return(); }
+            Real* destPtr = outputAtan.RowPtr(p), _destPtr = destPtr, srcPtr = output.RowPtr(p);
+            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = MathR.Atan(*srcPtr);
+            minMax[0, p] = seekM(MathR.Min, _destPtr, columns); minMax[1, p] = seekM(MathR.Max, _destPtr, columns);
+        });
+        var result = (seekM(MathR.Min, minMax.RowPtr(0), rows), seekM(MathR.Max, minMax.RowPtr(1), rows));
+        outputAtan.Return(); return result;
     } // Finds the minimum and maximum after applying atan, which bounds infinite values
     private unsafe static (int, int, Matrix<Real>, Matrix<Real>) GetRowColumnCoor()
     {
@@ -1632,6 +1629,7 @@ public class MyMessageBox : Form
     private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
     private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
+
     private void SetUpForm(int width, int height)
     {
         FormBorderStyle = FormBorderStyle.None; Size = new(width, height);
@@ -1676,6 +1674,7 @@ public class MyMessageBox : Form
         Graph.ReduceFontSizeByScale(this, ref scale_factor);
         KeyPreview = true; KeyDown += new(Form_KeyDown);
     }
+
     private static void Display(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
     {
         MyMessageBox msgBox = new();
@@ -2123,7 +2122,7 @@ public sealed class ComplexSub : RecoverMultiply
         : this(input, InitilizeZ(xCoor, yCoor, rows, columns), null, null, rows, columns) { }
     private ComplexSub ObtainSub(ReadOnlySpan<char> input, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs, bool useList = false)
         => new(input, z, Z, buffCocs, rows, columns, useList);
-    private Matrix<Complex> ObtainValue(ReadOnlySpan<char> input) => new ComplexSub(input, z, Z, buffCocs, rows, columns).Obtain();
+    private Matrix<Complex> ObtainPooledValue(ReadOnlySpan<char> input) => ObtainSub(input, Z, buffCocs).OwnScratch();
     private static Complex Obtain(ReadOnlySpan<char> input) => new ComplexSub(input, null, null, null, 1, 1).Obtain(false)[0, 0];
     #endregion
 
@@ -2132,7 +2131,7 @@ public sealed class ComplexSub : RecoverMultiply
         => HandleMtx(Const(Complex.ZERO, true), sum =>
         {
             var (start, end) = ObtainStartEnd(split, 4, 0, 100);
-            Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
+            Matrix<Complex> obtain(int index) => ObtainPooledValue(split[index]);
             Matrix<Complex> a = obtain(0), b = obtain(1), c = obtain(2), initial = obtain(3);
             void hypergeometric(int p, int col)
             {
@@ -2149,12 +2148,13 @@ public sealed class ComplexSub : RecoverMultiply
             }
             if (rows == 1) { hypergeometric(0, columns); return; }
             Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
+            a.Return(); b.Return(); c.Return(); initial.Return();
         });
     private unsafe Matrix<Complex> Gamma(string[] split) // Reference: https://en.wikipedia.org/wiki/Gamma_function
         => HandleMtx(UninitMtx(true), output =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 1, 100);
-            Matrix<Complex> initial = ObtainValue(split[0]);
+            Matrix<Complex> initial = ObtainPooledValue(split[0]);
             void gamma(int p, int col)
             {
                 Complex* initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
@@ -2167,12 +2167,13 @@ public sealed class ComplexSub : RecoverMultiply
             }
             if (rows == 1) { gamma(0, columns); return; }
             Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
+            initial.Return();
         });
     private unsafe Matrix<Complex> Beta(string[] split) // Reference: https://en.wikipedia.org/wiki/Beta_function
         => HandleMtx(UninitMtx(true), output =>
         {
             var (start, end) = ObtainStartEnd(split, 2, 1, 100);
-            Matrix<Complex> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
+            Matrix<Complex> initial1 = ObtainPooledValue(split[0]), initial2 = ObtainPooledValue(split[1]);
             void beta(int p, int col)
             {
                 Complex* initial1Ptr = initial1.RowPtr(p), initial2Ptr = initial2.RowPtr(p), outputPtr = output.RowPtr(p);
@@ -2185,12 +2186,13 @@ public sealed class ComplexSub : RecoverMultiply
             }
             if (rows == 1) { beta(0, columns); return; }
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
+            initial1.Return(); initial2.Return();
         });
     private unsafe Matrix<Complex> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
         => HandleMtx(Const(Complex.ZERO, true), sum =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 0, 50);
-            Matrix<Complex> initial = ObtainValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
+            Matrix<Complex> initial = ObtainPooledValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
             void zeta(int p, int col)
             {
                 Complex* sumPtr = sum.RowPtr(p), initialPtr = initial.RowPtr(p);
@@ -2207,10 +2209,11 @@ public sealed class ComplexSub : RecoverMultiply
             }
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
+            initial.Return();
         });
     private unsafe Matrix<Complex> ProcessSH(string[] split, Func<Complex, Real, Complex, Complex> function)
     {
-        ThrowInvalidLengths(split, [4]); Matrix<Complex> _z = UninitMtx();
+        ThrowInvalidLengths(split, [4]); Matrix<Complex> _z = UninitMtx(true);
         Real obtain(int i) => RealSub.Obtain(split[i]); Real r = obtain(0); Complex ctr = new(obtain(1), obtain(2));
         void processSH(int p, int col)
         {
@@ -2219,7 +2222,8 @@ public sealed class ComplexSub : RecoverMultiply
         }
         if (rows == 1) processSH(0, columns);
         else { Parallel.For(0, rowChk, p => { processSH(strdInit[p], strd); }); if (res != 0) processSH(resInit, res); }
-        return new ComplexSub(split[3], _z, Z, buffCocs, rows, columns).Obtain();
+        Matrix<Complex> output = new ComplexSub(split[3], _z, Z, buffCocs, rows, columns).Obtain();
+        _z.Return(); return output;
     }
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
@@ -2237,37 +2241,41 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> ProcessI2C2(string[] split, Func<string[], (string, Matrix<Real>, Matrix<Real>)> function)
     {
         var (input, xCoor, yCoor) = function(split);
-        return new ComplexSub(input, xCoor, yCoor, rows, columns).Obtain();
+        Matrix<Complex> zCoor = InitilizeZ(xCoor, yCoor, rows, columns, true); // Necessary
+        Matrix<Complex> output = new ComplexSub(input, zCoor, null, null, rows, columns).Obtain();
+        zCoor.Return(); return output;
     }
     private Matrix<Complex> Stereographic(string[] split) => ProcessSH(split, Complex.Stereographic);
     private Matrix<Complex> Homothety(string[] split) => ProcessSH(split, Complex.Homothety);
-    private Matrix<Complex> Sum(string[] split) => ProcessSPI(split, 4, Const(Complex.ZERO), b =>
-    { MatrixCopy<Complex> value = b.ObtainScratch(); Plus(value.matrix, b.Z); ReleaseMtx(value); });
-    private Matrix<Complex> Product(string[] split) => ProcessSPI(split, 4, Const(Complex.ONE), b =>
-    { MatrixCopy<Complex> value = b.ObtainScratch(); Multiply(value.matrix, b.Z); ReleaseMtx(value); });
-    public Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b =>
-    { Matrix<Complex> old = b.Z; b.Z = b.OwnScratch(b.ObtainScratch()); if (old.IsPooled()) old.Return(); });
+    private Matrix<Complex> ProcessSP(string[] split, Complex initial, Action<Matrix<Complex>, Matrix<Complex>> operation)
+        => ProcessSPI(split, 4, Const(initial), b => { PoolOp(b.ObtainScratch(), b.Z, operation); });
+    private Matrix<Complex> Sum(string[] split) => ProcessSP(split, Complex.ZERO, Plus);
+    private Matrix<Complex> Product(string[] split) => ProcessSP(split, Complex.ONE, Multiply);
+    public Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainPooledValue(split[1]), b => { PoolSub(b, ref b.Z); });
     private Matrix<Complex> Iterate2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessIterate2);
     private Matrix<Complex> Compose2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessCompose2);
     public Matrix<Complex> Compose(string[] split)
     {
-        Matrix<Complex> value = ObtainValue(split[0]);
-        for (int i = 1; i < split.Length; i++) value = ObtainSub(split[i], value, buffCocs).Obtain();
-        return value;
+        Matrix<Complex> value = ObtainPooledValue(split[0]);
+        for (int i = 1; i < split.Length; i++) PoolSub(ObtainSub(split[i], value, buffCocs), ref value);
+        return FinalizeMtx(new(value));
     } // Do not use HandleMtx
     private Matrix<Complex> Cocoon(string[] split)
     {
         ComplexSub body = ObtainSub(split[0], Z, new Matrix<Complex>[split.Length - 1]);
-        for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
-        return body.Obtain();
+        for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainPooledValue(split[i]);
+        Matrix<Complex> output = body.Obtain();
+        foreach (var value in body.buffCocs) value.Return();
+        return output;
     } // Used for shallow but complicated compositions
     private Matrix<Complex> RealBlock(string[] split) { ThrowInvalidLengths(split, [1]); return Const(new(RealSub.Obtain(split[0])), true); }
     #endregion
 
     #region Elements
-    public unsafe static Matrix<Complex> InitilizeZ(Matrix<Real> xCoor, Matrix<Real> yCoor, int rows, int columns)
+    public unsafe static Matrix<Complex> InitilizeZ(Matrix<Real> xCoor, Matrix<Real> yCoor, int rows, int columns, bool pooled = false)
     {
-        Matrix<Complex> zCoor = new(GetArithProg(rows, columns), columns);
+        int[] rowOffs = GetArithProg(rows, columns);
+        Matrix<Complex> zCoor = pooled ? Matrix<Complex>.Rent(rowOffs, columns) : new(rowOffs, columns);
         Parallel.For(0, rows, p =>
         {
             Complex* zCoorPtr = zCoor.RowPtr(p); Real* xCoorPtr = xCoor.RowPtr(p), yCoorPtr = yCoor.RowPtr(p);
@@ -2373,11 +2381,12 @@ public sealed class ComplexSub : RecoverMultiply
     #region Assembly
     private Matrix<Complex> UninitMtx(bool pooled = false) => pooled ? Matrix<Complex>.Rent(rowOffs, columns) : new(rowOffs, columns);
     private Matrix<Complex> CopyMtx(MatrixCopy<Complex> mc, bool pooled = false) => mc.copy ? Copy(mc.matrix, pooled) : mc.matrix;
-    private static void ReleaseMtx(MatrixCopy<Complex> mc) { if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private Matrix<Complex> FinalizeMtx(MatrixCopy<Complex> mc)
     { if (!mc.matrix.IsPooled()) return mc.matrix; Matrix<Complex> output = Copy(mc.matrix); mc.matrix.Return(); return output; }
-    private Matrix<Complex> OwnScratch(MatrixCopy<Complex> mc)
-    { if (!mc.copy && mc.matrix.IsPooled()) return mc.matrix; return Copy(mc.matrix, true); }
+    private static void PoolSub(ComplexSub buffer, ref Matrix<Complex> mtx)
+    { Matrix<Complex> _mtx = mtx; mtx = buffer.OwnScratch(); if (_mtx.IsPooled()) _mtx.Return(); }
+    private static void PoolOp(MatrixCopy<Complex> mc, Matrix<Complex> dest, Action<Matrix<Complex>, Matrix<Complex>> operation)
+    { operation(mc.matrix, dest); if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private MatrixCopy<Complex> ConstMtx(Complex _const, bool pooled = false)
     {
         if (!useList) return new(Const(_const, pooled));
@@ -2398,15 +2407,14 @@ public sealed class ComplexSub : RecoverMultiply
         G => HandleSolo(input, ConstMtx(new(GAMMA), pooled)),
         _ => ConstMtx(new(Real.Parse(input)), pooled)
     };
-    private MatrixCopy<Complex> BreakPower(string input, bool pooled)
+    private MatrixCopy<Complex> BreakPower(string input, bool pooled = false)
     {
         string[] chunks = PrepareBreakPower(input, THRESHOLD);
         Matrix<Complex> tower = CopyMtx(PowerCore(chunks[^1], pooled), pooled);
         for (int k = chunks.Length - 2; k >= 0; k--)
         {
             string[] split = SplitByChars(chunks[k], "^"); // Special handling for "^"
-            for (int m = split.Length - 1; m >= 0; m--)
-            { MatrixCopy<Complex> src = Transform(split[m], true); Power(src.matrix, tower); ReleaseMtx(src); }
+            for (int m = split.Length - 1; m >= 0; m--) PoolOp(Transform(split[m], true), tower, Power);
         }
         return new(tower);
     }
@@ -2416,19 +2424,15 @@ public sealed class ComplexSub : RecoverMultiply
         if (brkChk) if (CountChars(input, "^") > THRESHOLD) return BreakPower(input.ToString(), pooled);
         string[] split = SplitByChars(input, "^");
         Matrix<Complex> tower = CopyMtx(Transform(split[^1], pooled), pooled);
-        for (int k = split.Length - 2; k >= 0; k--)
-        { MatrixCopy<Complex> src = Transform(split[k], true); Power(src.matrix, tower); ReleaseMtx(src); }
+        for (int k = split.Length - 2; k >= 0; k--) PoolOp(Transform(split[k], true), tower, Power);
         return new(tower);
     }
-    private MatrixCopy<Complex> BreakMultiplyDivide(string input, bool pooled)
+    private MatrixCopy<Complex> BreakMultiplyDivide(string input, bool pooled = false)
     {
         var (chunks, signs) = PrepareBreakPSMD(input[0] == '/' ? input : String.Concat('*', input), "*/", THRESHOLD);
         Matrix<Complex> product = CopyMtx(MultiplyDivideCore(TrimStartChar(chunks[0], '*'), pooled), pooled);
         for (int j = 1; j < chunks.Length; j++)
-        {
-            MatrixCopy<Complex> src = MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat('/', chunks[j]), true);
-            Multiply(src.matrix, product); ReleaseMtx(src);
-        }
+            PoolOp(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat('/', chunks[j]), true), product, Multiply);
         return new(product);
     }
     private MatrixCopy<Complex> MultiplyDivideCore(ReadOnlySpan<char> input, bool pooled = false)
@@ -2438,22 +2442,15 @@ public sealed class ComplexSub : RecoverMultiply
         var (split, signs) = GetPSMDComponents(input, "*/");
         Matrix<Complex> product = CopyMtx(PowerCore(split[0], pooled), pooled); if (signs[0] == '/') Invert(product);
         for (int j = 1; j < split.Length; j++)
-        {
-            MatrixCopy<Complex> src = PowerCore(split[j], true);
-            Action<Matrix<Complex>, Matrix<Complex>> operation = signs[j] switch { '*' => Multiply, '/' => Divide };
-            operation(src.matrix, product); ReleaseMtx(src);
-        }
+            PoolOp(PowerCore(split[j], true), product, signs[j] switch { '*' => Multiply, '/' => Divide });
         return new(product);
     }
-    private MatrixCopy<Complex> BreakPlusSubtract(string input, bool pooled)
+    private MatrixCopy<Complex> BreakPlusSubtract(string input, bool pooled = false)
     {
         var (chunks, signs) = PrepareBreakPSMD(input[0] == '-' ? input : String.Concat('+', input), "+-", THRESHOLD);
         Matrix<Complex> sum = CopyMtx(PlusSubtractCore(TrimStartChar(chunks[0], '+'), pooled), pooled);
         for (int i = 1; i < chunks.Length; i++)
-        {
-            MatrixCopy<Complex> src = PlusSubtractCore(signs[i - 1] == SUB_CHARS[0] ? chunks[i] : String.Concat('-', chunks[i]), true);
-            Plus(src.matrix, sum); ReleaseMtx(src);
-        }
+            PoolOp(PlusSubtractCore(signs[i - 1] == SUB_CHARS[0] ? chunks[i] : String.Concat('-', chunks[i]), true), sum, Plus);
         return new(sum);
     }
     private MatrixCopy<Complex> PlusSubtractCore(ReadOnlySpan<char> input, bool pooled = false)
@@ -2463,11 +2460,7 @@ public sealed class ComplexSub : RecoverMultiply
         var (split, signs) = GetPSMDComponents(input, "+-");
         Matrix<Complex> sum = CopyMtx(MultiplyDivideCore(split[0], pooled), pooled); if (signs[0] == '-') Negate(sum);
         for (int i = 1; i < split.Length; i++)
-        {
-            MatrixCopy<Complex> src = MultiplyDivideCore(split[i], true);
-            Action<Matrix<Complex>, Matrix<Complex>> operation = signs[i] switch { '+' => Plus, '-' => Subtract };
-            operation(src.matrix, sum); ReleaseMtx(src);
-        }
+            PoolOp(MultiplyDivideCore(split[i], true), sum, signs[i] switch { '+' => Plus, '-' => Subtract });
         return new(sum);
     }
     private MatrixCopy<Complex> ComputeBraFreePart(ReadOnlySpan<char> input, bool pooled = false)
@@ -2528,7 +2521,7 @@ public sealed class ComplexSub : RecoverMultiply
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
-    private MatrixCopy<Complex> ObtainCoreMtx(string input, bool pooled)
+    private MatrixCopy<Complex> ObtainCore(string input, bool pooled = false)
     {
         while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // The number of substitutions is not known in advance
         var (length, start, end, tagL) = PrepareLoop(input);
@@ -2540,11 +2533,12 @@ public sealed class ComplexSub : RecoverMultiply
         }
         return ComputeBraFreePart(input, pooled);
     }
-    private Matrix<Complex> ObtainCore(string input) => FinalizeMtx(ObtainCoreMtx(input, false));
     private MatrixCopy<Complex> ObtainScratch()
-        => !input.AsSpan().ContainsAny(_ZZ_BRA) ? new(Const(Obtain(input), true)) : ObtainCoreMtx(input, true);
+        => !input.AsSpan().ContainsAny(_ZZ_BRA) ? new(Const(Obtain(input), true)) : ObtainCore(input, true);
+    private Matrix<Complex> OwnScratch()
+    { MatrixCopy<Complex> mc = ObtainScratch(); return !mc.copy && mc.matrix.IsPooled() ? mc.matrix : Copy(mc.matrix, true); }
     public Matrix<Complex> Obtain(bool checkVar = true)
-        => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRA) ? Const(Obtain(input)) : ObtainCore(input);
+        => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRA) ? Const(Obtain(input)) : FinalizeMtx(ObtainCore(input));
     #endregion
 } /// Computes complex-variable expressions
 public sealed class RealSub : RecoverMultiply
@@ -2581,7 +2575,7 @@ public sealed class RealSub : RecoverMultiply
         : this(input, InitializeXY(zCoor, rows, columns), rows, columns) { }
     private RealSub ObtainSub(ReadOnlySpan<char> input, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs, bool useList = false)
         => new(input, x, y, X, Y, buffCocs, rows, columns, useList);
-    private Matrix<Real> ObtainValue(ReadOnlySpan<char> input) => new RealSub(input, x, y, X, Y, buffCocs, rows, columns).Obtain();
+    private Matrix<Real> ObtainPooledValue(ReadOnlySpan<char> input) => ObtainSub(input, X, Y, buffCocs).OwnScratch();
     public static Real Obtain(ReadOnlySpan<char> input, Real? x = null)
         => new RealSub(input, x != null ? new((Real)x) : null, null, null, null, null, 1, 1).Obtain(false)[0, 0];
     public static int ToInt(ReadOnlySpan<char> input) => (int)Obtain(input); // Often used with RealComplex.CheckFor
@@ -2606,7 +2600,7 @@ public sealed class RealSub : RecoverMultiply
         => HandleMtx(UninitMtx(true), output =>
         {
             ThrowInvalidLengths(split, [2]);
-            Matrix<Real> input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
+            Matrix<Real> input1 = ObtainPooledValue(split[0]), input2 = ObtainPooledValue(split[1]);
             void processMCP(int p, int col)
             {
                 Real* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
@@ -2614,23 +2608,25 @@ public sealed class RealSub : RecoverMultiply
             }
             if (rows == 1) { processMCP(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
+            input1.Return(); input2.Return();
         });
     private unsafe Matrix<Real> ProcessMMD(string[] split, Func<Real[], Real> function)
         => HandleMtx(UninitMtx(true), output =>
         {
             Matrix<Real>[] value = new Matrix<Real>[split.Length];
-            for (int i = 0; i < split.Length; i++) value[i] = ObtainValue(split[i]);
+            for (int i = 0; i < split.Length; i++) value[i] = ObtainPooledValue(split[i]);
             void processMMD(int p, int col)
             {
-                Span<Real> array = stackalloc Real[split.Length]; Real* outputPtr = output.RowPtr(p);
+                Real[] array = new Real[split.Length]; Real* outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, outputPtr++)
                 {
                     for (int i = 0; i < split.Length; i++) array[i] = value[i][p, q];
-                    *outputPtr = function(array.ToArray());
+                    *outputPtr = function(array);
                 }
             }
             if (rows == 1) { processMMD(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMMD(strdInit[p], strd); }); if (res != 0) processMMD(resInit, res);
+            foreach (var item in value) item.Return();
         });
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, Combination);
@@ -2645,7 +2641,7 @@ public sealed class RealSub : RecoverMultiply
         => HandleMtx(Const(0, true), sum =>
         {
             var (start, end) = ObtainStartEnd(split, 4, 0, 100);
-            Matrix<Real> obtain(int index) => ObtainValue(split[index]);
+            Matrix<Real> obtain(int index) => ObtainPooledValue(split[index]);
             Matrix<Real> a = obtain(0), b = obtain(1), c = obtain(2), initial = obtain(3);
             void hypergeometric(int p, int col)
             {
@@ -2662,12 +2658,13 @@ public sealed class RealSub : RecoverMultiply
             }
             if (rows == 1) { hypergeometric(0, columns); return; }
             Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
+            a.Return(); b.Return(); c.Return(); initial.Return();
         });
     private unsafe Matrix<Real> Gamma(string[] split) // Reference: https://en.wikipedia.org/wiki/Gamma_function
         => HandleMtx(UninitMtx(true), output =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 1, 100);
-            Matrix<Real> initial = ObtainValue(split[0]);
+            Matrix<Real> initial = ObtainPooledValue(split[0]);
             void gamma(int p, int col)
             {
                 Real* initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
@@ -2680,12 +2677,13 @@ public sealed class RealSub : RecoverMultiply
             }
             if (rows == 1) { gamma(0, columns); return; }
             Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
+            initial.Return();
         });
     private unsafe Matrix<Real> Beta(string[] split) // Reference: https://en.wikipedia.org/wiki/Beta_function
         => HandleMtx(UninitMtx(true), output =>
         {
             var (start, end) = ObtainStartEnd(split, 2, 1, 100);
-            Matrix<Real> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
+            Matrix<Real> initial1 = ObtainPooledValue(split[0]), initial2 = ObtainPooledValue(split[1]);
             void beta(int p, int col)
             {
                 Real* initial1Ptr = initial1.RowPtr(p), initial2Ptr = initial2.RowPtr(p), outputPtr = output.RowPtr(p);
@@ -2698,12 +2696,13 @@ public sealed class RealSub : RecoverMultiply
             }
             if (rows == 1) { beta(0, columns); return; }
             Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
+            initial1.Return(); initial2.Return();
         });
     private unsafe Matrix<Real> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
         => HandleMtx(Const(0, true), sum =>
         {
             var (start, end) = ObtainStartEnd(split, 1, 0, 50);
-            Matrix<Real> initial = ObtainValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
+            Matrix<Real> initial = ObtainPooledValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
             void zeta(int p, int col)
             {
                 Real* sumPtr = sum.RowPtr(p), initialPtr = initial.RowPtr(p);
@@ -2720,10 +2719,11 @@ public sealed class RealSub : RecoverMultiply
             }
             if (rows == 1) { zeta(0, columns); return; }
             Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
+            initial.Return();
         });
     private unsafe Matrix<Real> ProcessSH(string[] split, Func<Complex, Real, Complex, Complex> function)
     {
-        ThrowInvalidLengths(split, [4]); Matrix<Real> _x = UninitMtx(), _y = UninitMtx();
+        ThrowInvalidLengths(split, [4]); Matrix<Real> _x = UninitMtx(true), _y = UninitMtx(true);
         Real obtain(int i) => Obtain(split[i]); Real r = obtain(0); Complex ctr = new(obtain(1), obtain(2));
         void processSH(int p, int col)
         {
@@ -2733,7 +2733,8 @@ public sealed class RealSub : RecoverMultiply
         }
         if (rows == 1) processSH(0, columns);
         else { Parallel.For(0, rowChk, p => { processSH(strdInit[p], strd); }); if (res != 0) processSH(resInit, res); }
-        return new RealSub(split[3], _x, _y, X, Y, buffCocs, rows, columns).Obtain();
+        Matrix<Real> output = new RealSub(split[3], _x, _y, X, Y, buffCocs, rows, columns).Obtain();
+        _x.Return(); _y.Return(); return output;
     }
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
@@ -2749,13 +2750,17 @@ public sealed class RealSub : RecoverMultiply
         return FinalizeMtx(new(buffer.X));
     } // Meticulously optimized
     private Matrix<Real> ProcessIC(string[] split, Func<string[], Matrix<Complex>> function)
-        => new RealSub(split[^1], function(split[..^1]), rows, columns).Obtain();
+    {
+        var (xCoor, yCoor) = InitializeXY(function(split[..^1]), rows, columns, true);
+        Matrix<Real> output = new RealSub(split[^1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
+        xCoor.Return(); yCoor.Return(); return output;
+    }
     public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split)
     {
         ThrowInvalidLengths(split, [8, 6]); bool sub = split.Length == 8;
         string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
-        RealSub obtain(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i],
-            ObtainValue(split[2]), ObtainValue(split[3]), buffCocs, true);
+        Matrix<Real> initialX = ObtainPooledValue(split[2]), initialY = ObtainPooledValue(split[3]);
+        RealSub obtain(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i], initialX, initialY, buffCocs, true);
         if (sub) (split[0], split[1]) = (replaceLoop(0), replaceLoop(1)); var (buffer1, buffer2) = (obtain(0), obtain(1));
 
         CheckFor(sub ? ToInt(split[5]) : 1, ToInt(split[sub ? 6 : 4]), i =>
@@ -2763,57 +2768,60 @@ public sealed class RealSub : RecoverMultiply
             if (sub) (buffer1.input, buffer2.input) = (ReplaceLoop(split, 1, 4, i.ToString()), ReplaceLoop(split, 0, 4, i.ToString()));
             buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
             var (oldX, oldY) = (buffer1.X, buffer1.Y);
-            var (newX, newY) = (buffer1.OwnScratch(buffer1.ObtainScratch()), buffer2.OwnScratch(buffer2.ObtainScratch())); // Necessary
+            var (newX, newY) = (buffer1.OwnScratch(), buffer2.OwnScratch());
             buffer1.X = buffer2.X = newX; buffer1.Y = buffer2.Y = newY;
             if (oldX.IsPooled()) oldX.Return(); if (oldY.IsPooled()) oldY.Return();
             if (!buffer1.readList) buffer1.readList = buffer2.readList = true; // Precomputes cstMtcs
         });
-        var (outputX, outputY) = (buffer1.X.IsPooled() ? Copy(buffer1.X) : buffer1.X, buffer1.Y.IsPooled() ? Copy(buffer1.Y) : buffer1.Y);
-        if (buffer1.X.IsPooled()) buffer1.X.Return(); if (buffer1.Y.IsPooled()) buffer1.Y.Return();
-        return (split[^1], outputX, outputY); // buffer2 would work as well
-    } // Sensitive
+        return (split[^1], FinalizeMtx(new(buffer1.X)), FinalizeMtx(new(buffer1.Y))); // buffer2 would work as well
+    }
     public (string, Matrix<Real>, Matrix<Real>) ProcessCompose2(string[] split)
     {
         ThrowException(Int32.IsEvenInteger(split.Length));
-        var (value1, value2) = (ObtainValue(split[0]), ObtainValue(split[1]));
+        var (value1, value2) = (ObtainPooledValue(split[0]), ObtainPooledValue(split[1]));
         for (int i = 0, j = 2; i < split.Length / 2 - 1; i++)
         {
-            var (temp1, temp2) = (value1, value2); // Necessary
-            Matrix<Real> obtainValue() => ObtainSub(split[j++], temp1, temp2, buffCocs).Obtain();
-            value1 = obtainValue(); value2 = obtainValue(); // Even and odd terms, respectively
+            var (old1, old2) = (value1, value2);
+            var (buffer1, buffer2) = (ObtainSub(split[j++], old1, old2, buffCocs), ObtainSub(split[j++], old1, old2, buffCocs));
+            var (new1, new2) = (buffer1.OwnScratch(), buffer2.OwnScratch());
+            (value1, value2) = (new1, new2);
+            if (old1.IsPooled()) old1.Return(); if (old2.IsPooled()) old2.Return();
         }
-        return (split[^1], value1, value2);
+        return (split[^1], FinalizeMtx(new(value1)), FinalizeMtx(new(value2)));
     }
     private Matrix<Real> Stereographic(string[] split) => ProcessSH(split, Complex.Stereographic);
     private Matrix<Real> Homothety(string[] split) => ProcessSH(split, Complex.Homothety);
-    private Matrix<Real> Sum(string[] split) => ProcessSPI(split, 4, Const(0), b =>
-    { MatrixCopy<Real> value = b.ObtainScratch(); Plus(value.matrix, b.X); ReleaseMtx(value); });
-    private Matrix<Real> Product(string[] split) => ProcessSPI(split, 4, Const(1), b =>
-    { MatrixCopy<Real> value = b.ObtainScratch(); Multiply(value.matrix, b.X); ReleaseMtx(value); });
-    private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b =>
-    { Matrix<Real> old = b.X; b.X = b.OwnScratch(b.ObtainScratch()); if (old.IsPooled()) old.Return(); });
+    private Matrix<Real> ProcessSP(string[] split, Real initial, Action<Matrix<Real>, Matrix<Real>> operation)
+        => ProcessSPI(split, 4, Const(initial), b => { PoolOp(b.ObtainScratch(), b.X, operation); });
+    private Matrix<Real> Sum(string[] split) => ProcessSP(split, 0, Plus);
+    private Matrix<Real> Product(string[] split) => ProcessSP(split, 1, Multiply);
+    private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainPooledValue(split[1]), b => { PoolSub(b, ref b.X); });
     private Matrix<Real> Iterate(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Iterate);
     private Matrix<Real> Compose(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Compose);
     private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
     private Matrix<Real> Compose2(string[] split) => ChooseMode(ProcessCompose2(split));
     private Matrix<Real> Compose1(string[] split)
     {
-        Matrix<Real> value = ObtainValue(split[0]);
-        for (int i = 1; i < split.Length; i++) value = ObtainSub(split[i], value, null, buffCocs).Obtain();
-        return value;
+        Matrix<Real> value = ObtainPooledValue(split[0]);
+        for (int i = 1; i < split.Length; i++) PoolSub(ObtainSub(split[i], value, null, buffCocs), ref value);
+        return FinalizeMtx(new(value));
     } // Do not use HandleMtx
     private Matrix<Real> Cocoon(string[] split)
     {
         RealSub body = ObtainSub(split[0], X, Y, new Matrix<Real>[split.Length - 1]);
-        for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainValue(split[i]);
-        return body.Obtain();
+        for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainPooledValue(split[i]);
+        Matrix<Real> output = body.Obtain();
+        foreach (var value in body.buffCocs) value.Return();
+        return output;
     } // Used for shallow but complicated compositions
     #endregion
 
     #region Elements
-    public unsafe static (Matrix<Real>, Matrix<Real>) InitializeXY(Matrix<Complex> zCoor, int rows, int columns)
+    public unsafe static (Matrix<Real>, Matrix<Real>) InitializeXY(Matrix<Complex> zCoor, int rows, int columns, bool pooled = false)
     {
-        Matrix<Real> xCoor = new(GetArithProg(rows, columns), columns), yCoor = new(GetArithProg(rows, columns), columns);
+        int[] rowOffs = GetArithProg(rows, columns);
+        Matrix<Real> xCoor = pooled ? Matrix<Real>.Rent(rowOffs, columns) : new(rowOffs, columns);
+        Matrix<Real> yCoor = pooled ? Matrix<Real>.Rent(rowOffs, columns) : new(rowOffs, columns);
         Parallel.For(0, rows, p =>
         {
             Real* xCoorPtr = xCoor.RowPtr(p), yCoorPtr = yCoor.RowPtr(p); Complex* zCoorPtr = zCoor.RowPtr(p);
@@ -2919,11 +2927,12 @@ public sealed class RealSub : RecoverMultiply
     #region Assembly
     private Matrix<Real> UninitMtx(bool pooled = false) => pooled ? Matrix<Real>.Rent(rowOffs, columns) : new(rowOffs, columns);
     private Matrix<Real> CopyMtx(MatrixCopy<Real> mc, bool pooled = false) => mc.copy ? Copy(mc.matrix, pooled) : mc.matrix;
-    private static void ReleaseMtx(MatrixCopy<Real> mc) { if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private Matrix<Real> FinalizeMtx(MatrixCopy<Real> mc)
     { if (!mc.matrix.IsPooled()) return mc.matrix; Matrix<Real> output = Copy(mc.matrix); mc.matrix.Return(); return output; }
-    private Matrix<Real> OwnScratch(MatrixCopy<Real> mc)
-    { if (!mc.copy && mc.matrix.IsPooled()) return mc.matrix; return Copy(mc.matrix, true); }
+    private static void PoolSub(RealSub buffer, ref Matrix<Real> mtx)
+    { Matrix<Real> _mtx = mtx; mtx = buffer.OwnScratch(); if (_mtx.IsPooled()) _mtx.Return(); }
+    private static void PoolOp(MatrixCopy<Real> mc, Matrix<Real> dest, Action<Matrix<Real>, Matrix<Real>> operation)
+    { operation(mc.matrix, dest); if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private MatrixCopy<Real> ConstMtx(Real _const, bool pooled = false)
     {
         if (!useList) return new(Const(_const, pooled));
@@ -2945,15 +2954,14 @@ public sealed class RealSub : RecoverMultiply
         G => HandleSolo(input, ConstMtx(GAMMA, pooled)),
         _ => ConstMtx(Real.Parse(input), pooled)
     };
-    private MatrixCopy<Real> BreakPower(string input, bool pooled)
+    private MatrixCopy<Real> BreakPower(string input, bool pooled = false)
     {
         string[] chunks = PrepareBreakPower(input, THRESHOLD);
         Matrix<Real> tower = CopyMtx(PowerCore(chunks[^1], pooled), pooled);
         for (int k = chunks.Length - 2; k >= 0; k--)
         {
             string[] split = SplitByChars(chunks[k], "^"); // Special handling for "^"
-            for (int m = split.Length - 1; m >= 0; m--)
-            { MatrixCopy<Real> src = Transform(split[m], true); Power(src.matrix, tower); ReleaseMtx(src); }
+            for (int m = split.Length - 1; m >= 0; m--) PoolOp(Transform(split[m], true), tower, Power);
         }
         return new(tower);
     }
@@ -2963,19 +2971,15 @@ public sealed class RealSub : RecoverMultiply
         if (brkChk) if (CountChars(input, "^") > THRESHOLD) return BreakPower(input.ToString(), pooled);
         string[] split = SplitByChars(input, "^");
         Matrix<Real> tower = CopyMtx(Transform(split[^1], pooled), pooled);
-        for (int k = split.Length - 2; k >= 0; k--)
-        { MatrixCopy<Real> src = Transform(split[k], true); Power(src.matrix, tower); ReleaseMtx(src); }
+        for (int k = split.Length - 2; k >= 0; k--) PoolOp(Transform(split[k], true), tower, Power);
         return new(tower);
     }
-    private MatrixCopy<Real> BreakMultiplyDivide(string input, bool pooled)
+    private MatrixCopy<Real> BreakMultiplyDivide(string input, bool pooled = false)
     {
         var (chunks, signs) = PrepareBreakPSMD(input[0] == '/' ? input : String.Concat('*', input), "*/", THRESHOLD);
         Matrix<Real> product = CopyMtx(MultiplyDivideCore(TrimStartChar(chunks[0], '*'), pooled), pooled);
         for (int j = 1; j < chunks.Length; j++)
-        {
-            MatrixCopy<Real> src = MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat('/', chunks[j]), true);
-            Multiply(src.matrix, product); ReleaseMtx(src);
-        }
+            PoolOp(MultiplyDivideCore(signs[j - 1] == SUB_CHARS[0] ? chunks[j] : String.Concat('/', chunks[j]), true), product, Multiply);
         return new(product);
     }
     private MatrixCopy<Real> MultiplyDivideCore(ReadOnlySpan<char> input, bool pooled = false)
@@ -2985,22 +2989,15 @@ public sealed class RealSub : RecoverMultiply
         var (split, signs) = GetPSMDComponents(input, "*/");
         Matrix<Real> product = CopyMtx(PowerCore(split[0], pooled), pooled); if (signs[0] == '/') Invert(product);
         for (int j = 1; j < split.Length; j++)
-        {
-            MatrixCopy<Real> src = PowerCore(split[j], true);
-            Action<Matrix<Real>, Matrix<Real>> operation = signs[j] switch { '*' => Multiply, '/' => Divide };
-            operation(src.matrix, product); ReleaseMtx(src);
-        }
+            PoolOp(PowerCore(split[j], true), product, signs[j] switch { '*' => Multiply, '/' => Divide });
         return new(product);
     }
-    private MatrixCopy<Real> BreakPlusSubtract(string input, bool pooled)
+    private MatrixCopy<Real> BreakPlusSubtract(string input, bool pooled = false)
     {
         var (chunks, signs) = PrepareBreakPSMD(input[0] == '-' ? input : String.Concat('+', input), "+-", THRESHOLD);
         Matrix<Real> sum = CopyMtx(PlusSubtractCore(TrimStartChar(chunks[0], '+'), pooled), pooled);
         for (int i = 1; i < chunks.Length; i++)
-        {
-            MatrixCopy<Real> src = PlusSubtractCore(signs[i - 1] == SUB_CHARS[0] ? chunks[i] : String.Concat('-', chunks[i]), true);
-            Plus(src.matrix, sum); ReleaseMtx(src);
-        }
+            PoolOp(PlusSubtractCore(signs[i - 1] == SUB_CHARS[0] ? chunks[i] : String.Concat('-', chunks[i]), true), sum, Plus);
         return new(sum);
     }
     private MatrixCopy<Real> PlusSubtractCore(ReadOnlySpan<char> input, bool pooled = false)
@@ -3010,11 +3007,7 @@ public sealed class RealSub : RecoverMultiply
         var (split, signs) = GetPSMDComponents(input, "+-");
         Matrix<Real> sum = CopyMtx(MultiplyDivideCore(split[0], pooled), pooled); if (signs[0] == '-') Negate(sum);
         for (int i = 1; i < split.Length; i++)
-        {
-            MatrixCopy<Real> src = MultiplyDivideCore(split[i], true);
-            Action<Matrix<Real>, Matrix<Real>> operation = signs[i] switch { '+' => Plus, '-' => Subtract };
-            operation(src.matrix, sum); ReleaseMtx(src);
-        }
+            PoolOp(MultiplyDivideCore(split[i], true), sum, signs[i] switch { '+' => Plus, '-' => Subtract });
         return new(sum);
     }
     private MatrixCopy<Real> ComputeBraFreePart(ReadOnlySpan<char> input, bool pooled = false)
@@ -3088,7 +3081,7 @@ public sealed class RealSub : RecoverMultiply
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
     }
-    private MatrixCopy<Real> ObtainCoreMtx(string input, bool pooled)
+    private MatrixCopy<Real> ObtainCore(string input, bool pooled = false)
     {
         while (input.Contains(SERIES_TAIL)) input = SeriesSub(input); // The number of substitutions is not known in advance
         var (length, start, end, tagL) = PrepareLoop(input);
@@ -3100,11 +3093,12 @@ public sealed class RealSub : RecoverMultiply
         }
         return ComputeBraFreePart(input, pooled);
     }
-    private Matrix<Real> ObtainCore(string input) => FinalizeMtx(ObtainCoreMtx(input, false));
     private MatrixCopy<Real> ObtainScratch()
-        => !input.AsSpan().ContainsAny(_XX__YY_BRA) ? new(Const(Obtain(input), true)) : ObtainCoreMtx(input, true);
+        => !input.AsSpan().ContainsAny(_XX__YY_BRA) ? new(Const(Obtain(input), true)) : ObtainCore(input, true);
+    private Matrix<Real> OwnScratch()
+    { MatrixCopy<Real> mc = ObtainScratch(); return !mc.copy && mc.matrix.IsPooled() ? mc.matrix : Copy(mc.matrix, true); }
     public Matrix<Real> Obtain(bool checkVar = true)
-        => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : ObtainCore(input);
+        => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : FinalizeMtx(ObtainCore(input));
     #endregion
 } /// Computes real-variable expressions
 
@@ -3275,6 +3269,12 @@ public readonly struct Matrix<TEntry>
     public readonly unsafe TEntry* RowPtr(int row = 0) { fixed (TEntry* ptr = &matrix[rowOffs[row]]) { return ptr; } }
 } /// Represents optimized matrices with real or complex entries
 public readonly struct MatrixCopy<TEntry>(Matrix<TEntry> matrix, bool copy = false)
-{ public readonly Matrix<TEntry> matrix = matrix; public readonly bool copy = copy; } /// Controls whether matrices are copied
+{
+    public readonly Matrix<TEntry> matrix = matrix;
+    public readonly bool copy = copy;
+} /// Controls whether matrices are copied
 public readonly struct ConstMatrix<TEntry>(TEntry _const, Matrix<TEntry> matrix)
-{ public readonly TEntry _const = _const; public readonly Matrix<TEntry> matrix = matrix; } /// Represents reusable constant matrices
+{
+    public readonly TEntry _const = _const;
+    public readonly Matrix<TEntry> matrix = matrix;
+} /// Represents reusable constant matrices
