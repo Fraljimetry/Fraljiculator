@@ -2266,7 +2266,7 @@ public sealed class ComplexSub : RecoverMultiply
         ComplexSub body = ObtainSub(split[0], Z, new Matrix<Complex>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainPooledValue(split[i]);
         Matrix<Complex> output = body.Obtain();
-        foreach (var coc in body.buffCocs) coc.Return();
+        foreach (var buffCoc in body.buffCocs) buffCoc.Return();
         return output;
     } // Used for shallow but complicated compositions
     private Matrix<Complex> RealBlock(string[] split) { ThrowInvalidLengths(split, [1]); return Const(new(RealSub.Obtain(split[0])), true); }
@@ -2811,7 +2811,7 @@ public sealed class RealSub : RecoverMultiply
         RealSub body = ObtainSub(split[0], X, Y, new Matrix<Real>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainPooledValue(split[i]);
         Matrix<Real> output = body.Obtain();
-        foreach (var coc in body.buffCocs) coc.Return();
+        foreach (var buffCoc in body.buffCocs) buffCoc.Return();
         return output;
     } // Used for shallow but complicated compositions
     #endregion
