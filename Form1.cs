@@ -1609,6 +1609,7 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
+
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -2122,7 +2123,7 @@ public sealed class ComplexSub : RecoverMultiply
         : this(input, InitilizeZ(xCoor, yCoor, rows, columns), null, null, rows, columns) { }
     private ComplexSub ObtainSub(ReadOnlySpan<char> input, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs, bool useList = false)
         => new(input, z, Z, buffCocs, rows, columns, useList);
-    private Matrix<Complex> ObtainPooledValue(ReadOnlySpan<char> input) => ObtainSub(input, Z, buffCocs).OwnScratch();
+    private Matrix<Complex> ObtainPooledValue(ReadOnlySpan<char> input) => ObtainSub(input, Z, buffCocs).ObtainOwnScratch();
     private static Complex Obtain(ReadOnlySpan<char> input) => new ComplexSub(input, null, null, null, 1, 1).Obtain(false)[0, 0];
     #endregion
 
@@ -2265,7 +2266,7 @@ public sealed class ComplexSub : RecoverMultiply
         ComplexSub body = ObtainSub(split[0], Z, new Matrix<Complex>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainPooledValue(split[i]);
         Matrix<Complex> output = body.Obtain();
-        foreach (var value in body.buffCocs) value.Return();
+        foreach (var coc in body.buffCocs) coc.Return();
         return output;
     } // Used for shallow but complicated compositions
     private Matrix<Complex> RealBlock(string[] split) { ThrowInvalidLengths(split, [1]); return Const(new(RealSub.Obtain(split[0])), true); }
@@ -2384,7 +2385,7 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> FinalizeMtx(MatrixCopy<Complex> mc)
     { if (!mc.matrix.IsPooled()) return mc.matrix; Matrix<Complex> output = Copy(mc.matrix); mc.matrix.Return(); return output; }
     private static void PoolSub(ComplexSub buffer, ref Matrix<Complex> mtx)
-    { Matrix<Complex> _mtx = mtx; mtx = buffer.OwnScratch(); if (_mtx.IsPooled()) _mtx.Return(); }
+    { Matrix<Complex> _mtx = mtx; mtx = buffer.ObtainOwnScratch(); if (_mtx.IsPooled()) _mtx.Return(); }
     private static void PoolOp(MatrixCopy<Complex> mc, Matrix<Complex> dest, Action<Matrix<Complex>, Matrix<Complex>> operation)
     { operation(mc.matrix, dest); if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private MatrixCopy<Complex> ConstMtx(Complex _const, bool pooled = false)
@@ -2535,7 +2536,7 @@ public sealed class ComplexSub : RecoverMultiply
     }
     private MatrixCopy<Complex> ObtainScratch()
         => !input.AsSpan().ContainsAny(_ZZ_BRA) ? new(Const(Obtain(input), true)) : ObtainCore(input, true);
-    private Matrix<Complex> OwnScratch()
+    private Matrix<Complex> ObtainOwnScratch()
     { MatrixCopy<Complex> mc = ObtainScratch(); return !mc.copy && mc.matrix.IsPooled() ? mc.matrix : Copy(mc.matrix, true); }
     public Matrix<Complex> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRA) ? Const(Obtain(input)) : FinalizeMtx(ObtainCore(input));
@@ -2575,7 +2576,7 @@ public sealed class RealSub : RecoverMultiply
         : this(input, InitializeXY(zCoor, rows, columns), rows, columns) { }
     private RealSub ObtainSub(ReadOnlySpan<char> input, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs, bool useList = false)
         => new(input, x, y, X, Y, buffCocs, rows, columns, useList);
-    private Matrix<Real> ObtainPooledValue(ReadOnlySpan<char> input) => ObtainSub(input, X, Y, buffCocs).OwnScratch();
+    private Matrix<Real> ObtainPooledValue(ReadOnlySpan<char> input) => ObtainSub(input, X, Y, buffCocs).ObtainOwnScratch();
     public static Real Obtain(ReadOnlySpan<char> input, Real? x = null)
         => new RealSub(input, x != null ? new((Real)x) : null, null, null, null, null, 1, 1).Obtain(false)[0, 0];
     public static int ToInt(ReadOnlySpan<char> input) => (int)Obtain(input); // Often used with RealComplex.CheckFor
@@ -2613,26 +2614,26 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> ProcessMMD(string[] split, Func<Real[], Real> function)
         => HandleMtx(UninitMtx(true), output =>
         {
-            Matrix<Real>[] value = new Matrix<Real>[split.Length];
-            for (int i = 0; i < split.Length; i++) value[i] = ObtainPooledValue(split[i]);
+            Matrix<Real>[] inputs = new Matrix<Real>[split.Length];
+            for (int i = 0; i < split.Length; i++) inputs[i] = ObtainPooledValue(split[i]);
             void processMMD(int p, int col)
             {
                 Real[] array = new Real[split.Length]; Real* outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, outputPtr++)
                 {
-                    for (int i = 0; i < split.Length; i++) array[i] = value[i][p, q];
+                    for (int i = 0; i < split.Length; i++) array[i] = inputs[i][p, q];
                     *outputPtr = function(array);
                 }
             }
             if (rows == 1) { processMMD(0, columns); return; }
             Parallel.For(0, rowChk, p => { processMMD(strdInit[p], strd); }); if (res != 0) processMMD(resInit, res);
-            foreach (var item in value) item.Return();
+            foreach (var input in inputs) input.Return();
         });
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, Combination);
     private Matrix<Real> Permutation(string[] split) => ProcessMCP(split, Permutation);
-    private Matrix<Real> Max(string[] split) => ProcessMMD(split, value => value.Max());
-    private Matrix<Real> Min(string[] split) => ProcessMMD(split, value => value.Min());
+    private Matrix<Real> Max(string[] split) => ProcessMMD(split, array => array.Max());
+    private Matrix<Real> Min(string[] split) => ProcessMMD(split, array => array.Min());
     private Matrix<Real> Distance(string[] split) => ProcessMMD(split, Distance);
     #endregion // Real-specific
 
@@ -2760,15 +2761,15 @@ public sealed class RealSub : RecoverMultiply
         ThrowInvalidLengths(split, [8, 6]); bool sub = split.Length == 8;
         string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
         Matrix<Real> initialX = ObtainPooledValue(split[2]), initialY = ObtainPooledValue(split[3]);
-        RealSub obtain(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i], initialX, initialY, buffCocs, true);
-        if (sub) (split[0], split[1]) = (replaceLoop(0), replaceLoop(1)); var (buffer1, buffer2) = (obtain(0), obtain(1));
+        RealSub obtainSub(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i], initialX, initialY, buffCocs, true);
+        if (sub) (split[0], split[1]) = (replaceLoop(0), replaceLoop(1)); var (buffer1, buffer2) = (obtainSub(0), obtainSub(1));
 
         CheckFor(sub ? ToInt(split[5]) : 1, ToInt(split[sub ? 6 : 4]), i =>
         {
             if (sub) (buffer1.input, buffer2.input) = (ReplaceLoop(split, 1, 4, i.ToString()), ReplaceLoop(split, 0, 4, i.ToString()));
             buffer1.countBra = buffer1.countCst = buffer2.countBra = buffer2.countCst = 0;
             var (oldX, oldY) = (buffer1.X, buffer1.Y);
-            var (newX, newY) = (buffer1.OwnScratch(), buffer2.OwnScratch());
+            var (newX, newY) = (buffer1.ObtainOwnScratch(), buffer2.ObtainOwnScratch()); // Necessary
             buffer1.X = buffer2.X = newX; buffer1.Y = buffer2.Y = newY;
             if (oldX.IsPooled()) oldX.Return(); if (oldY.IsPooled()) oldY.Return();
             if (!buffer1.readList) buffer1.readList = buffer2.readList = true; // Precomputes cstMtcs
@@ -2782,9 +2783,8 @@ public sealed class RealSub : RecoverMultiply
         for (int i = 0, j = 2; i < split.Length / 2 - 1; i++)
         {
             var (old1, old2) = (value1, value2);
-            var (buffer1, buffer2) = (ObtainSub(split[j++], old1, old2, buffCocs), ObtainSub(split[j++], old1, old2, buffCocs));
-            var (new1, new2) = (buffer1.OwnScratch(), buffer2.OwnScratch());
-            (value1, value2) = (new1, new2);
+            value1 = ObtainSub(split[j++], old1, old2, buffCocs).ObtainOwnScratch();
+            value2 = ObtainSub(split[j++], old1, old2, buffCocs).ObtainOwnScratch();
             if (old1.IsPooled()) old1.Return(); if (old2.IsPooled()) old2.Return();
         }
         return (split[^1], FinalizeMtx(new(value1)), FinalizeMtx(new(value2)));
@@ -2811,7 +2811,7 @@ public sealed class RealSub : RecoverMultiply
         RealSub body = ObtainSub(split[0], X, Y, new Matrix<Real>[split.Length - 1]);
         for (int i = 1; i < split.Length; i++) body.buffCocs[i - 1] = ObtainPooledValue(split[i]);
         Matrix<Real> output = body.Obtain();
-        foreach (var value in body.buffCocs) value.Return();
+        foreach (var coc in body.buffCocs) coc.Return();
         return output;
     } // Used for shallow but complicated compositions
     #endregion
@@ -2930,7 +2930,7 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> FinalizeMtx(MatrixCopy<Real> mc)
     { if (!mc.matrix.IsPooled()) return mc.matrix; Matrix<Real> output = Copy(mc.matrix); mc.matrix.Return(); return output; }
     private static void PoolSub(RealSub buffer, ref Matrix<Real> mtx)
-    { Matrix<Real> _mtx = mtx; mtx = buffer.OwnScratch(); if (_mtx.IsPooled()) _mtx.Return(); }
+    { Matrix<Real> _mtx = mtx; mtx = buffer.ObtainOwnScratch(); if (_mtx.IsPooled()) _mtx.Return(); }
     private static void PoolOp(MatrixCopy<Real> mc, Matrix<Real> dest, Action<Matrix<Real>, Matrix<Real>> operation)
     { operation(mc.matrix, dest); if (!mc.copy && mc.matrix.IsPooled()) mc.matrix.Return(); }
     private MatrixCopy<Real> ConstMtx(Real _const, bool pooled = false)
@@ -3095,7 +3095,7 @@ public sealed class RealSub : RecoverMultiply
     }
     private MatrixCopy<Real> ObtainScratch()
         => !input.AsSpan().ContainsAny(_XX__YY_BRA) ? new(Const(Obtain(input), true)) : ObtainCore(input, true);
-    private Matrix<Real> OwnScratch()
+    private Matrix<Real> ObtainOwnScratch()
     { MatrixCopy<Real> mc = ObtainScratch(); return !mc.copy && mc.matrix.IsPooled() ? mc.matrix : Copy(mc.matrix, true); }
     public Matrix<Real> Obtain(bool checkVar = true)
         => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : FinalizeMtx(ObtainCore(input));
