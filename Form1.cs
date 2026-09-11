@@ -1022,7 +1022,7 @@ public partial class Graph : Form
             $"\r\n{TAB}Arsinh & Asinh, Arcosh & Acosh, Artanh & Atanh," +
             $"\r\n\r\n{TAB}Abs, Log & Ln, Exp, Sqrt{TAB}(f(x,y) & f(z))" +
             $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), Ei(f(z)){GetComment("Ei(z) := Exp(2πiz).")}") +
-            $"\r\n\r\n{TAB}Blaschke(f(z), g(z)){GetComment("Blaschke(z, w) := (z-w)/(1-Conj(w)z).")}" +
+            $"\r\n\r\n{TAB}Blaschke & Bla(f(z), g(z)){GetComment("Blaschke(z, w) := (z-w)/(1-Conj(w)z).")}" +
             $"\r\n\r\n{TAB}Real(...)" +
             $"{TAB}{GetComment("Variable-free real blocks in complex expressions.")}";
         content += subtitleContent("COMBINATORICS",
