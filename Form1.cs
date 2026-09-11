@@ -950,9 +950,9 @@ public partial class Graph : Form
         void restoreDefault(object sender, KeyEventArgs e)
         {
             RecoverInput(); ComboColoring.SelectedIndex = 4; ComboContour.SelectedIndex = 1;
-            CheckBox[] checkFalse = [CheckAuto, CheckSwap, CheckPoints, CheckShade, CheckRetain];
+            CheckBox[] checkFalse = [CheckAuto, CheckSwap, CheckPoints, CheckShade, CheckRetain, CheckEdit];
             foreach (var cbx in checkFalse) cbx.Checked = false;
-            CheckBox[] checkTrue = [CheckEdit, CheckComplex, CheckCoor];
+            CheckBox[] checkTrue = [CheckComplex, CheckCoor];
             foreach (var cbx in checkTrue) cbx.Checked = true;
         }
         Action? shortcutHandler = e.KeyCode switch
