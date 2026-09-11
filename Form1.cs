@@ -3242,7 +3242,7 @@ public readonly struct Complex(Real real, Real imaginary = 0) // Manually inline
     public static Complex Homothety(Complex pt, Real r, Complex ctr) => (pt - ctr) / r + ctr;
     #endregion
 } /// Represents optimized complex numbers with Real components
-internal sealed class MatrixPoolLease<TEntry>(int length)
+public sealed class MatrixPoolLease<TEntry>(int length)
 {
     public readonly TEntry[] array = ArrayPool<TEntry>.Shared.Rent(length);
     private int returned; // To make the lease double-return safe
