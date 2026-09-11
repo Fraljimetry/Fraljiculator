@@ -1022,6 +1022,7 @@ public partial class Graph : Form
             $"\r\n{TAB}Arsinh & Asinh, Arcosh & Acosh, Artanh & Atanh," +
             $"\r\n\r\n{TAB}Abs, Log & Ln, Exp, Sqrt{TAB}(f(x,y) & f(z))" +
             $"\r\n\r\n{TAB}Conjugate & Conj(f(z)), Ei(f(z)){GetComment("Ei(z) := Exp(2πiz).")}") +
+            $"\r\n\r\n{TAB}Blaschke(f(z), g(z)){GetComment("Blaschke(z, w) := (z-w)/(1-Conj(w)z).")}" +
             $"\r\n\r\n{TAB}Real(...)" +
             $"{TAB}{GetComment("Variable-free real blocks in complex expressions.")}";
         content += subtitleContent("COMBINATORICS",
@@ -1812,6 +1813,14 @@ public class RealComplex : MyString
         _S = 's', S_ = 'S', SP = '#', _T = 't', TILDE = '~', _X = 'x', X_ = 'X', _Y = 'y', Y_ = 'Y', _Z = 'z', Z_ = 'Z', _Z_ = 'ζ';
     public static readonly string SUBS = "σ", ITLOOP = "ι", LOOP = "λ", _FUNC = "φ", _POLAR = "ψ", _PARAM = "ρ";
 
+    protected uint colBytes, strdBytes, resBytes; // Chunk sizes in bytes
+    protected int rows, columns, rowChk, strd, res, resInit; // Chunk lengths
+    protected int[] rowOffs, strdInit; // For row extraction
+    protected bool useList, brkChk; // useList: whether to use cstMtcs; brkChk: whether to split processing into chunks
+    protected int countBra, countCst; // countBra: parentheses, countCst: constants
+    protected bool readList; // Indicates whether cstMtcs is being read or written
+    protected string input;
+
     protected static int CountChars(ReadOnlySpan<char> input, ReadOnlySpan<char> charsToCheck)
     {
         int count = 0, offset = 0;
@@ -1835,6 +1844,16 @@ public class RealComplex : MyString
         int _colBytes = columns * Unsafe.SizeOf<TEntry>(); uint getBytes(int times) => (uint)(_colBytes * times);
         colBytes = getBytes(1); strdBytes = getBytes(step); resBytes = getBytes(res);
     } // Fields for optimization
+    protected void ProcessChunks(Action<int, int> action)
+    {
+        if (rows == 1) { action(0, columns); return; }
+        else { Parallel.For(0, rowChk, p => action(strdInit[p], strd)); if (res != 0) action(resInit, res); }
+    }
+    protected void ProcessCopyConst(Action<int, uint> action, bool isCopy)
+    {
+        if (rows == 1) { if (isCopy) action(0, colBytes); return; }
+        else { Parallel.For(isCopy ? 0 : 1, rowChk, p => { action(strdInit[p], strdBytes); }); if (res != 0) action(resInit, resBytes); }
+    }
     protected unsafe static (Real[], Real[], Real[]) GetSeqsForZeta(int start, int end)
     {
         int length = end - start + 1;
@@ -1905,8 +1924,8 @@ public class RealComplex : MyString
 public class ReplaceTags : RealComplex
 {
     public static readonly string[] FUNCTIONS =
-        [ "floor", "ceiling", "round", "sign", "factorial", "mod", "nCr", "nPr", "max", "min", "distance", "conjugate", "ei", "real",
-            "abs", "log", "exp", "sqrt", "arsinh", "arcosh", "artanh", "arcsin", "arccos", "arctan",
+        [ "floor", "ceiling", "round", "sign", "factorial", "mod", "nCr", "nPr", "max", "min", "distance", "conjugate", "ei",
+            "blaschke", "real", "abs", "log", "exp", "sqrt", "arsinh", "arcosh", "artanh", "arcsin", "arccos", "arctan",
             "sinh", "cosh", "tanh", "sin", "cos", "tan" ];
     public static readonly string[] SPECIALS =
         [ "hypergeometric", "gamma", "beta", "zeta", "stereographic", "homothety", "sum", "product", "iterate", "iterate1", "iterate2",
@@ -1948,7 +1967,7 @@ public class ReplaceTags : RealComplex
     private static string ToS(char c) => c.ToString();
     public static readonly string FLOOR = ToS(_F), CEIL = ToS(_C), ROUND = ToS(_R), SGN = ToS(_S), FACT = ToS(_F_),
         MOD = ToS(M_), NCR = ToS(C_), NPR = ToS(A_), _MAX = ToS(MAX), _MIN = ToS(MIN), DIST = ToS(D_);
-    public static readonly string CONJ = ToS(J_), EI = EXP = ToS(E_), _REAL = ToS(R_);
+    public static readonly string CONJ = ToS(J_), EI = EXP = ToS(E_), BLA = ToS(B_), _REAL = ToS(R_);
     public static readonly string ABS = ToS(_A), LOG = ToS(_L), EXP = ToS(E_), SQRT = ToS(_Q);
     public static readonly string SIN = ToS(_S), COS = ToS(_C), TAN = ToS(_T),
         AS = String.Concat(_A, SIN), AC = String.Concat(_A, COS), AT = String.Concat(_A, TAN),
@@ -1979,7 +1998,7 @@ public class ReplaceTags : RealComplex
             { "cos", COS }, { "Cos", COS },
             { "tan", TAN }, { "Tan", TAN }
         };
-    private static readonly Dictionary<string, string> COMMON_SERIES = AddSuffix(new()
+    private static readonly Dictionary<string, string> COMMON_SERIES = AddSuffix(SERIES_TAIL, new()
         {
             { "hypergeometric", HYPGEO }, { "Hypergeometric", HYPGEO }, { "hypgeo", HYPGEO }, { "Hypgeo", HYPGEO },
             { "gamma", GA }, { "Gamma", GA }, { "ga", GA }, { "Ga", GA },
@@ -1994,33 +2013,33 @@ public class ReplaceTags : RealComplex
             { "iterate2", IT2 }, { "Iterate2", IT2 },
             { "compose2", COMP2 }, { "Compose2", COMP2 }, { "comp2", COMP2 }, { "Comp2", COMP2 },
             { "cocoon", COC}, { "Cocoon", COC}, { "coc", COC}, { "Coc", COC}
-        }, SERIES_TAIL);
+        });
     private static readonly Dictionary<string, string> COMMON = Concat(COMMON_SERIES, COMMON_STANDARD);
-    private static readonly Dictionary<string, string> REAL_STANDARD = AddSuffix(new()
+    private static readonly Dictionary<string, string> REAL_STANDARD = AddSuffix(REAL_TAIL, new()
         {
             { "floor", FLOOR }, { "Floor", FLOOR },
             { "ceiling", CEIL }, { "Ceiling", CEIL }, { "ceil", CEIL }, { "Ceil", CEIL },
             { "round", ROUND }, { "Round", ROUND },
             { "sign", SGN }, { "Sign", SGN }, { "sgn", SGN }, { "Sgn", SGN },
             { "factorial", FACT }, { "Factorial", FACT }, { "fact", FACT }, { "Fact", FACT }
-        }, REAL_TAIL);
-    private static readonly Dictionary<string, string> REAL_SERIES = AddSuffix(AddSuffix(new()
+        });
+    private static readonly Dictionary<string, string> REAL_SERIES = AddSuffix(SERIES_TAIL, AddSuffix(REAL_TAIL, new()
         {
             { "mod", MOD }, { "Mod", MOD }, { "nCr", NCR }, { "nPr", NPR },
             { "max", _MAX }, { "Max", _MAX }, { "min", _MIN }, { "Min", _MIN },
             { "distance", DIST}, { "Distance", DIST}, { "dist", DIST}, { "Dist", DIST},
             { "iterate1", IT1 }, { "Iterate1", IT1 },
             { "compose1", COMP1 }, { "Compose1", COMP1 }, { "comp1", COMP1 }, { "Comp1", COMP1 }
-        }, REAL_TAIL), SERIES_TAIL);
+        }));
     private static readonly Dictionary<string, string> REAL = Concat(REAL_SERIES, REAL_STANDARD);
-    private static readonly Dictionary<string, string> COMPLEX_STANDARD = AddSuffix(new()
-        { { "conjugate", CONJ }, { "Conjugate", CONJ }, { "conj", CONJ }, { "Conj", CONJ }, { "ei", EI }, { "Ei", EI } }, COMPLEX_TAIL);
-    private static readonly Dictionary<string, string> COMPLEX_SERIES = AddSuffix(AddSuffix(new()
-        { { "real", _REAL }, { "Real", _REAL } }, COMPLEX_TAIL), SERIES_TAIL);
+    private static readonly Dictionary<string, string> COMPLEX_STANDARD = AddSuffix(COMPLEX_TAIL, new()
+        { { "conjugate", CONJ }, { "Conjugate", CONJ }, { "conj", CONJ }, { "Conj", CONJ }, { "ei", EI }, { "Ei", EI } });
+    private static readonly Dictionary<string, string> COMPLEX_SERIES = AddSuffix(SERIES_TAIL, AddSuffix(COMPLEX_TAIL, new()
+        { { "blaschke", BLA}, { "Blaschke", BLA}, { "bla", BLA}, { "Bla", BLA}, { "real", _REAL }, { "Real", _REAL } }));
     private static readonly Dictionary<string, string> COMPLEX = Concat(COMPLEX_SERIES, COMPLEX_STANDARD);
     private static readonly Dictionary<string, string> CONSTANTS = new()
         { { "pi", PI }, { "Pi", PI }, { "gamma", _GA }, { "Gamma", _GA }, { "ga", _GA }, { "Ga", _GA } };
-    private static readonly Dictionary<string, string> TAGS = AddSuffix(new()
+    private static readonly Dictionary<string, string> TAGS = AddSuffix(SERIES_TAIL, new()
         {
             { "substitute", SUBS}, { "Substitute", SUBS}, { "subs", SUBS}, { "Subs", SUBS},
             { "iterateLoop", ITLOOP }, { "IterateLoop", ITLOOP }, { "itLoop", ITLOOP }, { "ItLoop", ITLOOP }, // Must precede "loop"
@@ -2028,13 +2047,13 @@ public class ReplaceTags : RealComplex
             { "function", _FUNC }, { "Function", _FUNC }, { "func", _FUNC }, { "Func", _FUNC },
             { "polar", _POLAR }, { "Polar", _POLAR },
             { "parametric", _PARAM }, { "Parametric", _PARAM }, { "param", _PARAM }, { "Param", _PARAM }
-        }, SERIES_TAIL);
+        });
     private static readonly Dictionary<string, string> REAL_COMPLEX = Concat(REAL, COMPLEX);
     private static Dictionary<string, string> AddBase(Action<Dictionary<string, string>> action)
     { Dictionary<string, string> _dictionary = []; action(_dictionary); return _dictionary; }
     private static Dictionary<string, string> AddPrefixSuffix(Dictionary<string, string> dictionary) => AddBase(_dictionary =>
     { foreach (var kvp in dictionary) _dictionary[String.Concat(kvp.Key, '(')] = String.Concat(FUNC_HEAD, kvp.Value, '('); });
-    private static Dictionary<string, string> AddSuffix(Dictionary<string, string> dictionary, char suffix) => AddBase(_dictionary =>
+    private static Dictionary<string, string> AddSuffix(char suffix, Dictionary<string, string> dictionary) => AddBase(_dictionary =>
     { foreach (var kvp in dictionary) _dictionary[kvp.Key] = String.Concat(kvp.Value, suffix); });
     private static string ReplaceBase(string input, Dictionary<string, string> dictionary)
     { foreach (var kvp in dictionary) input = input.Replace(kvp.Key, kvp.Value); return input; }
@@ -2095,18 +2114,10 @@ public class RecoverMultiply : ReplaceTags
 public sealed class ComplexSub : RecoverMultiply
 {
     #region Fields & Constructors
-    private readonly uint colBytes, strdBytes, resBytes; // Chunk sizes in bytes
-    private readonly int rows, columns, rowChk, strd, res, resInit; // Chunk lengths
-    private readonly int[] rowOffs, strdInit; // For row extraction
-    private readonly bool useList, brkChk; // useList: whether to use cstMtcs; brkChk: whether to split processing into chunks
     private readonly Matrix<Complex> z;
     private readonly Matrix<Complex>[] buffCocs; // Precomputes repeatedly used blocks
     private readonly MatrixCopy<Complex>[] braValues; // Stores values for matching pairs of parentheses
     private readonly List<ConstMatrix<Complex>> cstMtcs = []; // Stores reusable constant matrices
-
-    private int countBra, countCst; // countBra: parentheses, countCst: constants
-    private bool readList; // Indicates whether cstMtcs is being read or written
-    private string input;
     private Matrix<Complex> Z; // For substitution
 
     public ComplexSub(ReadOnlySpan<char> input, Matrix<Complex>? z, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs,
@@ -2128,13 +2139,26 @@ public sealed class ComplexSub : RecoverMultiply
     #endregion
 
     #region Calculations
+    private unsafe Matrix<Complex> Blaschke(string[] split) // Reference: https://en.wikipedia.org/wiki/Blaschke_product
+        => HandleMtx(UninitMtx(true), output =>
+        {
+            ThrowInvalidLengths(split, [2]);
+            Matrix<Complex> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
+            ProcessChunks((p, col) =>
+            {
+                Complex* outputPtr = output.RowPtr(p), init1Ptr = initial1.RowPtr(p), init2Ptr = initial2.RowPtr(p);
+                for (int q = 0; q < col; q++, outputPtr++, init1Ptr++, init2Ptr++)
+                    *outputPtr = (*init1Ptr - *init2Ptr) / (1 - Complex.Conjugate(*init2Ptr) * *init1Ptr);
+            });
+            initial1.Return(); initial2.Return();
+        });
     private unsafe Matrix<Complex> Hypergeometric(string[] split) // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
         => HandleMtx(Const(Complex.ZERO, true), sum =>
         {
             var (start, end) = ObtainStartEnd(split, 4, 0, 100);
             Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
             Matrix<Complex> a = obtain(0), b = obtain(1), c = obtain(2), initial = obtain(3);
-            void hypergeometric(int p, int col)
+            ProcessChunks((p, col) =>
             {
                 Complex* sumPtr = sum.RowPtr(p), aPtr = a.RowPtr(p), bPtr = b.RowPtr(p), cPtr = c.RowPtr(p), initialPtr = initial.RowPtr(p);
                 for (int q = 0; q < col; q++, sumPtr++, aPtr++, bPtr++, cPtr++, initialPtr++)
@@ -2146,9 +2170,7 @@ public sealed class ComplexSub : RecoverMultiply
                         *sumPtr += product;
                     }
                 }
-            }
-            if (rows == 1) { hypergeometric(0, columns); return; }
-            Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
+            });
             a.Return(); b.Return(); c.Return(); initial.Return();
         });
     private unsafe Matrix<Complex> Gamma(string[] split) // Reference: https://en.wikipedia.org/wiki/Gamma_function
@@ -2156,18 +2178,16 @@ public sealed class ComplexSub : RecoverMultiply
         {
             var (start, end) = ObtainStartEnd(split, 1, 1, 100);
             Matrix<Complex> initial = ObtainValue(split[0]);
-            void gamma(int p, int col)
+            ProcessChunks((p, col) =>
             {
-                Complex* initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
-                for (int q = 0; q < col; q++, initialPtr++, outputPtr++)
+                Complex* outputPtr = output.RowPtr(p), initialPtr = initial.RowPtr(p);
+                for (int q = 0; q < col; q++, outputPtr++, initialPtr++)
                 {
                     Complex product = Complex.ONE, temp;
                     for (int i = start; i <= end; i++) { temp = *initialPtr / i; product *= Complex.Exp(temp) / (1 + temp); }
                     *outputPtr = product * Complex.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
-            }
-            if (rows == 1) { gamma(0, columns); return; }
-            Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
+            });
             initial.Return();
         });
     private unsafe Matrix<Complex> Beta(string[] split) // Reference: https://en.wikipedia.org/wiki/Beta_function
@@ -2175,18 +2195,16 @@ public sealed class ComplexSub : RecoverMultiply
         {
             var (start, end) = ObtainStartEnd(split, 2, 1, 100);
             Matrix<Complex> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
-            void beta(int p, int col)
+            ProcessChunks((p, col) =>
             {
-                Complex* initial1Ptr = initial1.RowPtr(p), initial2Ptr = initial2.RowPtr(p), outputPtr = output.RowPtr(p);
-                for (int q = 0; q < col; q++, initial1Ptr++, initial2Ptr++, outputPtr++)
+                Complex* outputPtr = output.RowPtr(p), init1Ptr = initial1.RowPtr(p), init2Ptr = initial2.RowPtr(p);
+                for (int q = 0; q < col; q++, outputPtr++, init1Ptr++, init2Ptr++)
                 {
-                    Complex product = Complex.ONE, initSum = *initial1Ptr + *initial2Ptr, initProd = *initial1Ptr * *initial2Ptr;
+                    Complex product = Complex.ONE, initSum = *init1Ptr + *init2Ptr, initProd = *init1Ptr * *init2Ptr;
                     for (int i = start; i <= end; i++) product *= 1 + initProd / (i + initSum) / i;
                     *outputPtr = initSum / initProd / product;
                 }
-            }
-            if (rows == 1) { beta(0, columns); return; }
-            Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
+            });
             initial1.Return(); initial2.Return();
         });
     private unsafe Matrix<Complex> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2194,7 +2212,7 @@ public sealed class ComplexSub : RecoverMultiply
         {
             var (start, end) = ObtainStartEnd(split, 1, 0, 50);
             Matrix<Complex> initial = ObtainValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
-            void zeta(int p, int col)
+            ProcessChunks((p, col) =>
             {
                 Complex* sumPtr = sum.RowPtr(p), initialPtr = initial.RowPtr(p);
                 for (int q = 0; q < col; q++, sumPtr++, initialPtr++)
@@ -2207,22 +2225,18 @@ public sealed class ComplexSub : RecoverMultiply
                     }
                     *sumPtr /= 1 - Complex.Exp((1 + initNeg) * LOG2);
                 }
-            }
-            if (rows == 1) { zeta(0, columns); return; }
-            Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
+            });
             initial.Return();
         });
     private unsafe Matrix<Complex> ProcessSH(string[] split, Func<Complex, Real, Complex, Complex> function)
     {
         ThrowInvalidLengths(split, [4]); Matrix<Complex> _z = UninitMtx(true);
         Real obtain(int i) => RealSub.Obtain(split[i]); Real r = obtain(0); Complex ctr = new(obtain(1), obtain(2));
-        void processSH(int p, int col)
+        ProcessChunks((p, col) =>
         {
             Complex* zPtr = z.RowPtr(p), _zPtr = _z.RowPtr(p);
             for (int q = 0; q < col; q++, zPtr++, _zPtr++) *_zPtr = function(*zPtr, r, ctr);
-        }
-        if (rows == 1) processSH(0, columns);
-        else { Parallel.For(0, rowChk, p => { processSH(strdInit[p], strd); }); if (res != 0) processSH(resInit, res); }
+        });
         Matrix<Complex> output = new ComplexSub(split[3], _z, Z, buffCocs, rows, columns).ObtainOwnScratch();
         _z.Return(); return output;
     }
@@ -2285,98 +2299,53 @@ public sealed class ComplexSub : RecoverMultiply
         return zCoor;
     } // Cannot use HandleMtx in a static method
     private unsafe Matrix<Complex> Copy(Matrix<Complex> src, bool pooled = false) => HandleMtx(UninitMtx(pooled), dest =>
-    {
-        void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
-        if (rows == 1) { copy(0, colBytes); return; }
-        Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
-    });
+        ProcessCopyConst((p, colBytes) => { Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes); }, true));
     private unsafe Matrix<Complex> Const(Complex _const, bool pooled = false) => HandleMtx(UninitMtx(pooled), output =>
     {
         Complex* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
-        for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const; if (rows == 1) return;
-        void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
-        Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
+        for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const;
+        ProcessCopyConst((p, colBytes) => { Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes); }, false);
     }); // Sensitive
-    private unsafe void Negate(Matrix<Complex> value)
+    private unsafe void Negate(Matrix<Complex> value) => ProcessChunks((p, col) =>
     {
-        void negate(int p, int col)
-        {
-            Complex* valuePtr = value.RowPtr(p);
-            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = -*valuePtr;
-        }
-        if (rows == 1) { negate(0, columns); return; }
-        Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
-    }
-    private unsafe void Invert(Matrix<Complex> value)
+        Complex* valuePtr = value.RowPtr(p);
+        for (int q = 0; q < col; q++, valuePtr++) *valuePtr = -*valuePtr;
+    });
+    private unsafe void Invert(Matrix<Complex> value) => ProcessChunks((p, col) =>
     {
-        void invert(int p, int col)
-        {
-            Complex* valuePtr = value.RowPtr(p);
-            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = ~*valuePtr;
-        }
-        if (rows == 1) { invert(0, columns); return; }
-        Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
-    }
-    private unsafe void Plus(Matrix<Complex> src, Matrix<Complex> dest)
+        Complex* valuePtr = value.RowPtr(p);
+        for (int q = 0; q < col; q++, valuePtr++) *valuePtr = ~*valuePtr;
+    });
+    private unsafe void Plus(Matrix<Complex> src, Matrix<Complex> dest) => ProcessChunks((p, col) =>
     {
-        void plus(int p, int col)
-        {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
-        }
-        if (rows == 1) { plus(0, columns); return; }
-        Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
-    }
-    private unsafe void Subtract(Matrix<Complex> src, Matrix<Complex> dest)
+        Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
+    });
+    private unsafe void Subtract(Matrix<Complex> src, Matrix<Complex> dest) => ProcessChunks((p, col) =>
     {
-        void subtract(int p, int col)
-        {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
-        }
-        if (rows == 1) { subtract(0, columns); return; }
-        Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
-    }
-    private unsafe void Multiply(Matrix<Complex> src, Matrix<Complex> dest)
+        Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
+    });
+    private unsafe void Multiply(Matrix<Complex> src, Matrix<Complex> dest) => ProcessChunks((p, col) =>
     {
-        void multiply(int p, int col)
-        {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
-        }
-        if (rows == 1) { multiply(0, columns); return; }
-        Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
-    }
-    private unsafe void Divide(Matrix<Complex> src, Matrix<Complex> dest)
+        Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
+    });
+    private unsafe void Divide(Matrix<Complex> src, Matrix<Complex> dest) => ProcessChunks((p, col) =>
     {
-        void divide(int p, int col)
-        {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
-        }
-        if (rows == 1) { divide(0, columns); return; }
-        Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
-    }
-    private unsafe void Power(Matrix<Complex> src, Matrix<Complex> dest)
+        Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
+    });
+    private unsafe void Power(Matrix<Complex> src, Matrix<Complex> dest) => ProcessChunks((p, col) =>
     {
-        void power(int p, int col)
-        {
-            Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = Complex.Pow(*srcPtr, *destPtr);
-        }
-        if (rows == 1) { power(0, columns); return; }
-        Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
-    }
-    private unsafe void FuncSub(Matrix<Complex> value, Func<Complex, Complex> function)
+        Complex* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = Complex.Pow(*srcPtr, *destPtr);
+    });
+    private unsafe void FuncSub(Matrix<Complex> value, Func<Complex, Complex> function) => ProcessChunks((p, col) =>
     {
-        void funcSub(int p, int col)
-        {
-            Complex* valuePtr = value.RowPtr(p);
-            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = function(*valuePtr);
-        }
-        if (rows == 1) { funcSub(0, columns); return; }
-        Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
-    }
+        Complex* valuePtr = value.RowPtr(p);
+        for (int q = 0; q < col; q++, valuePtr++) *valuePtr = function(*valuePtr);
+    });
     #endregion
 
     #region Assembly
@@ -2517,7 +2486,11 @@ public sealed class ComplexSub : RecoverMultiply
             I_ => input[idx - 2] switch { TILDE => handleSub(Iterate, 2), MODE_2 => handleSub(Iterate2, 3) },
             J_ => input[idx - 2] switch { TILDE => handleSub(Compose, 2), MODE_2 => handleSub(Compose2, 3) },
             K_ => handleSub(Cocoon, 2),
-            SP => handleSub(RealBlock, 3) // Complex-specific
+            SP => input[idx - 2] switch
+            {
+                B_ => handleSub(Blaschke, 3),
+                R_ => handleSub(RealBlock, 3)
+            } // Complex-specific
         };
         braValues[countBra] = new(braFunc(split)); // No need to copy
         return ReplaceInput(input, countBra++, idx - tagL, end);
@@ -2545,18 +2518,10 @@ public sealed class ComplexSub : RecoverMultiply
 public sealed class RealSub : RecoverMultiply
 {
     #region Fields & Constructors
-    private readonly uint colBytes, strdBytes, resBytes; // Chunk sizes in bytes
-    private readonly int rows, columns, rowChk, strd, res, resInit; // Chunk lengths
-    private readonly int[] rowOffs, strdInit; // For row extraction
-    private readonly bool useList, brkChk; // useList: whether to use cstMtcs; brkChk: whether to split processing into chunks
     private readonly Matrix<Real> x, y;
     private readonly Matrix<Real>[] buffCocs; // Precomputes repeatedly used blocks
     private readonly MatrixCopy<Real>[] braValues; // Stores values for matching pairs of parentheses
     private readonly List<ConstMatrix<Real>> cstMtcs = []; // Stores reusable constant matrices
-
-    private int countBra, countCst; // countBra: parentheses, countCst: constants
-    private bool readList; // Indicates whether cstMtcs is being read or written
-    private string input;
     private Matrix<Real> X, Y; // For substitution
 
     public RealSub(ReadOnlySpan<char> input, Matrix<Real>? x, Matrix<Real>? y, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs,
@@ -2601,33 +2566,29 @@ public sealed class RealSub : RecoverMultiply
         => HandleMtx(UninitMtx(true), output =>
         {
             ThrowInvalidLengths(split, [2]);
-            Matrix<Real> input1 = ObtainValue(split[0]), input2 = ObtainValue(split[1]);
-            void processMCP(int p, int col)
+            Matrix<Real> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
+            ProcessChunks((p, col) =>
             {
-                Real* input1Ptr = input1.RowPtr(p), input2Ptr = input2.RowPtr(p), outputPtr = output.RowPtr(p);
-                for (int q = 0; q < col; q++, outputPtr++, input1Ptr++, input2Ptr++) *outputPtr = function(*input1Ptr, *input2Ptr);
-            }
-            if (rows == 1) { processMCP(0, columns); return; }
-            Parallel.For(0, rowChk, p => { processMCP(strdInit[p], strd); }); if (res != 0) processMCP(resInit, res);
-            input1.Return(); input2.Return();
+                Real* outputPtr = output.RowPtr(p), init1Ptr = initial1.RowPtr(p), init2Ptr = initial2.RowPtr(p);
+                for (int q = 0; q < col; q++, outputPtr++, init1Ptr++, init2Ptr++) *outputPtr = function(*init1Ptr, *init2Ptr);
+            });
+            initial1.Return(); initial2.Return();
         });
     private unsafe Matrix<Real> ProcessMMD(string[] split, Func<Real[], Real> function)
         => HandleMtx(UninitMtx(true), output =>
         {
-            Matrix<Real>[] inputs = new Matrix<Real>[split.Length];
-            for (int i = 0; i < split.Length; i++) inputs[i] = ObtainValue(split[i]);
-            void processMMD(int p, int col)
+            Matrix<Real>[] initials = new Matrix<Real>[split.Length];
+            for (int i = 0; i < split.Length; i++) initials[i] = ObtainValue(split[i]);
+            ProcessChunks((p, col) =>
             {
                 Real[] array = new Real[split.Length]; Real* outputPtr = output.RowPtr(p);
                 for (int q = 0; q < col; q++, outputPtr++)
                 {
-                    for (int i = 0; i < split.Length; i++) array[i] = inputs[i][p, q];
+                    for (int i = 0; i < split.Length; i++) array[i] = initials[i][p, q];
                     *outputPtr = function(array);
                 }
-            }
-            if (rows == 1) { processMMD(0, columns); return; }
-            Parallel.For(0, rowChk, p => { processMMD(strdInit[p], strd); }); if (res != 0) processMMD(resInit, res);
-            foreach (var input in inputs) input.Return();
+            });
+            foreach (var initial in initials) initial.Return();
         });
     private Matrix<Real> Mod(string[] split) => ProcessMCP(split, Mod);
     private Matrix<Real> Combination(string[] split) => ProcessMCP(split, Combination);
@@ -2644,7 +2605,7 @@ public sealed class RealSub : RecoverMultiply
             var (start, end) = ObtainStartEnd(split, 4, 0, 100);
             Matrix<Real> obtain(int index) => ObtainValue(split[index]);
             Matrix<Real> a = obtain(0), b = obtain(1), c = obtain(2), initial = obtain(3);
-            void hypergeometric(int p, int col)
+            ProcessChunks((p, col) =>
             {
                 Real* sumPtr = sum.RowPtr(p), aPtr = a.RowPtr(p), bPtr = b.RowPtr(p), cPtr = c.RowPtr(p), initialPtr = initial.RowPtr(p);
                 for (int q = 0; q < col; q++, sumPtr++, aPtr++, bPtr++, cPtr++, initialPtr++)
@@ -2656,9 +2617,7 @@ public sealed class RealSub : RecoverMultiply
                         *sumPtr += product;
                     }
                 }
-            }
-            if (rows == 1) { hypergeometric(0, columns); return; }
-            Parallel.For(0, rowChk, p => { hypergeometric(strdInit[p], strd); }); if (res != 0) hypergeometric(resInit, res);
+            });
             a.Return(); b.Return(); c.Return(); initial.Return();
         });
     private unsafe Matrix<Real> Gamma(string[] split) // Reference: https://en.wikipedia.org/wiki/Gamma_function
@@ -2666,18 +2625,16 @@ public sealed class RealSub : RecoverMultiply
         {
             var (start, end) = ObtainStartEnd(split, 1, 1, 100);
             Matrix<Real> initial = ObtainValue(split[0]);
-            void gamma(int p, int col)
+            ProcessChunks((p, col) =>
             {
-                Real* initialPtr = initial.RowPtr(p), outputPtr = output.RowPtr(p);
-                for (int q = 0; q < col; q++, initialPtr++, outputPtr++)
+                Real* outputPtr = output.RowPtr(p), initialPtr = initial.RowPtr(p);
+                for (int q = 0; q < col; q++, outputPtr++, initialPtr++)
                 {
                     Real product = 1, temp;
                     for (int i = start; i <= end; i++) { temp = *initialPtr / i; product *= MathR.Exp(temp) / (1 + temp); }
                     *outputPtr = product * MathR.Exp(-*initialPtr * GAMMA) / *initialPtr;
                 }
-            }
-            if (rows == 1) { gamma(0, columns); return; }
-            Parallel.For(0, rowChk, p => { gamma(strdInit[p], strd); }); if (res != 0) gamma(resInit, res);
+            });
             initial.Return();
         });
     private unsafe Matrix<Real> Beta(string[] split) // Reference: https://en.wikipedia.org/wiki/Beta_function
@@ -2685,18 +2642,16 @@ public sealed class RealSub : RecoverMultiply
         {
             var (start, end) = ObtainStartEnd(split, 2, 1, 100);
             Matrix<Real> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
-            void beta(int p, int col)
+            ProcessChunks((p, col) =>
             {
-                Real* initial1Ptr = initial1.RowPtr(p), initial2Ptr = initial2.RowPtr(p), outputPtr = output.RowPtr(p);
-                for (int q = 0; q < col; q++, initial1Ptr++, initial2Ptr++, outputPtr++)
+                Real* outputPtr = output.RowPtr(p), init1Ptr = initial1.RowPtr(p), init2Ptr = initial2.RowPtr(p);
+                for (int q = 0; q < col; q++, outputPtr++, init1Ptr++, init2Ptr++)
                 {
-                    Real product = 1, initSum = *initial1Ptr + *initial2Ptr, initProd = *initial1Ptr * *initial2Ptr;
+                    Real product = 1, initSum = *init1Ptr + *init2Ptr, initProd = *init1Ptr * *init2Ptr;
                     for (int i = start; i <= end; i++) product *= 1 + initProd / (i + initSum) / i;
                     *outputPtr = initSum / initProd / product;
                 }
-            }
-            if (rows == 1) { beta(0, columns); return; }
-            Parallel.For(0, rowChk, p => { beta(strdInit[p], strd); }); if (res != 0) beta(resInit, res);
+            });
             initial1.Return(); initial2.Return();
         });
     private unsafe Matrix<Real> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
@@ -2704,7 +2659,7 @@ public sealed class RealSub : RecoverMultiply
         {
             var (start, end) = ObtainStartEnd(split, 1, 0, 50);
             Matrix<Real> initial = ObtainValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
-            void zeta(int p, int col)
+            ProcessChunks((p, col) =>
             {
                 Real* sumPtr = sum.RowPtr(p), initialPtr = initial.RowPtr(p);
                 for (int q = 0; q < col; q++, sumPtr++, initialPtr++)
@@ -2717,23 +2672,19 @@ public sealed class RealSub : RecoverMultiply
                     }
                     *sumPtr /= 1 - MathR.Exp((1 + initNeg) * LOG2);
                 }
-            }
-            if (rows == 1) { zeta(0, columns); return; }
-            Parallel.For(0, rowChk, p => { zeta(strdInit[p], strd); }); if (res != 0) zeta(resInit, res);
+            });
             initial.Return();
         });
     private unsafe Matrix<Real> ProcessSH(string[] split, Func<Complex, Real, Complex, Complex> function)
     {
         ThrowInvalidLengths(split, [4]); Matrix<Real> _x = UninitMtx(true), _y = UninitMtx(true);
         Real obtain(int i) => Obtain(split[i]); Real r = obtain(0); Complex ctr = new(obtain(1), obtain(2));
-        void processSH(int p, int col)
+        ProcessChunks((p, col) =>
         {
             Real* xPtr = x.RowPtr(p), yPtr = y.RowPtr(p), _xPtr = _x.RowPtr(p), _yPtr = _y.RowPtr(p);
             for (int q = 0; q < col; q++, xPtr++, yPtr++, _xPtr++, _yPtr++)
                 (*_xPtr, *_yPtr) = Complex.ReIm(function(new(*xPtr, *yPtr), r, ctr));
-        }
-        if (rows == 1) processSH(0, columns);
-        else { Parallel.For(0, rowChk, p => { processSH(strdInit[p], strd); }); if (res != 0) processSH(resInit, res); }
+        });
         Matrix<Real> output = new RealSub(split[3], _x, _y, X, Y, buffCocs, rows, columns).ObtainOwnScratch();
         _x.Return(); _y.Return(); return output;
     }
@@ -2830,98 +2781,53 @@ public sealed class RealSub : RecoverMultiply
         return (xCoor, yCoor);
     } // Cannot use HandleMtx in a static method
     private unsafe Matrix<Real> Copy(Matrix<Real> src, bool pooled = false) => HandleMtx(UninitMtx(pooled), dest =>
-    {
-        void copy(int p, uint colBytes) => Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes);
-        if (rows == 1) { copy(0, colBytes); return; }
-        Parallel.For(0, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
-    });
+        ProcessCopyConst((p, colBytes) => { Unsafe.CopyBlock(dest.RowPtr(p), src.RowPtr(p), colBytes); }, true));
     private unsafe Matrix<Real> Const(Real _const, bool pooled = false) => HandleMtx(UninitMtx(pooled), output =>
     {
         Real* outputPtr = output.RowPtr(), _outputPtr = outputPtr;
-        for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const; if (rows == 1) return;
-        void copy(int p, uint colBytes) => Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes);
-        Parallel.For(1, rowChk, p => { copy(strdInit[p], strdBytes); }); if (res != 0) copy(resInit, resBytes);
+        for (int q = 0; q < strd; q++, outputPtr++) *outputPtr = _const;
+        ProcessCopyConst((p, colBytes) => { Unsafe.CopyBlock(output.RowPtr(p), _outputPtr, colBytes); }, false);
     }); // Sensitive
-    private unsafe void Negate(Matrix<Real> value)
+    private unsafe void Negate(Matrix<Real> value) => ProcessChunks((p, col) =>
     {
-        void negate(int p, int col)
-        {
-            Real* valuePtr = value.RowPtr(p);
-            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = -*valuePtr;
-        }
-        if (rows == 1) { negate(0, columns); return; }
-        Parallel.For(0, rowChk, p => { negate(strdInit[p], strd); }); if (res != 0) negate(resInit, res);
-    }
-    private unsafe void Invert(Matrix<Real> value)
+        Real* valuePtr = value.RowPtr(p);
+        for (int q = 0; q < col; q++, valuePtr++) *valuePtr = -*valuePtr;
+    });
+    private unsafe void Invert(Matrix<Real> value) => ProcessChunks((p, col) =>
     {
-        void invert(int p, int col)
-        {
-            Real* valuePtr = value.RowPtr(p);
-            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = 1 / *valuePtr;
-        }
-        if (rows == 1) { invert(0, columns); return; }
-        Parallel.For(0, rowChk, p => { invert(strdInit[p], strd); }); if (res != 0) invert(resInit, res);
-    }
-    private unsafe void Plus(Matrix<Real> src, Matrix<Real> dest)
+        Real* valuePtr = value.RowPtr(p);
+        for (int q = 0; q < col; q++, valuePtr++) *valuePtr = 1 / *valuePtr;
+    });
+    private unsafe void Plus(Matrix<Real> src, Matrix<Real> dest) => ProcessChunks((p, col) =>
     {
-        void plus(int p, int col)
-        {
-            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
-        }
-        if (rows == 1) { plus(0, columns); return; }
-        Parallel.For(0, rowChk, p => { plus(strdInit[p], strd); }); if (res != 0) plus(resInit, res);
-    }
-    private unsafe void Subtract(Matrix<Real> src, Matrix<Real> dest)
+        Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr += *srcPtr;
+    });
+    private unsafe void Subtract(Matrix<Real> src, Matrix<Real> dest) => ProcessChunks((p, col) =>
     {
-        void subtract(int p, int col)
-        {
-            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
-        }
-        if (rows == 1) { subtract(0, columns); return; }
-        Parallel.For(0, rowChk, p => { subtract(strdInit[p], strd); }); if (res != 0) subtract(resInit, res);
-    }
-    private unsafe void Multiply(Matrix<Real> src, Matrix<Real> dest)
+        Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr -= *srcPtr;
+    });
+    private unsafe void Multiply(Matrix<Real> src, Matrix<Real> dest) => ProcessChunks((p, col) =>
     {
-        void multiply(int p, int col)
-        {
-            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
-        }
-        if (rows == 1) { multiply(0, columns); return; }
-        Parallel.For(0, rowChk, p => { multiply(strdInit[p], strd); }); if (res != 0) multiply(resInit, res);
-    }
-    private unsafe void Divide(Matrix<Real> src, Matrix<Real> dest)
+        Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr *= *srcPtr;
+    });
+    private unsafe void Divide(Matrix<Real> src, Matrix<Real> dest) => ProcessChunks((p, col) =>
     {
-        void divide(int p, int col)
-        {
-            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
-        }
-        if (rows == 1) { divide(0, columns); return; }
-        Parallel.For(0, rowChk, p => { divide(strdInit[p], strd); }); if (res != 0) divide(resInit, res);
-    }
-    private unsafe void Power(Matrix<Real> src, Matrix<Real> dest)
+        Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr /= *srcPtr;
+    });
+    private unsafe void Power(Matrix<Real> src, Matrix<Real> dest) => ProcessChunks((p, col) =>
     {
-        void power(int p, int col)
-        {
-            Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
-            for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathR.Pow(*srcPtr, *destPtr);
-        }
-        if (rows == 1) { power(0, columns); return; }
-        Parallel.For(0, rowChk, p => { power(strdInit[p], strd); }); if (res != 0) power(resInit, res);
-    }
-    private unsafe void FuncSub(Matrix<Real> value, Func<Real, Real> function)
+        Real* destPtr = dest.RowPtr(p), srcPtr = src.RowPtr(p);
+        for (int q = 0; q < col; q++, destPtr++, srcPtr++) *destPtr = MathR.Pow(*srcPtr, *destPtr);
+    });
+    private unsafe void FuncSub(Matrix<Real> value, Func<Real, Real> function) => ProcessChunks((p, col) =>
     {
-        void funcSub(int p, int col)
-        {
-            Real* valuePtr = value.RowPtr(p);
-            for (int q = 0; q < col; q++, valuePtr++) *valuePtr = function(*valuePtr);
-        }
-        if (rows == 1) { funcSub(0, columns); return; }
-        Parallel.For(0, rowChk, p => { funcSub(strdInit[p], strd); }); if (res != 0) funcSub(resInit, res);
-    }
+        Real* valuePtr = value.RowPtr(p);
+        for (int q = 0; q < col; q++, valuePtr++) *valuePtr = function(*valuePtr);
+    });
     #endregion
 
     #region Assembly
