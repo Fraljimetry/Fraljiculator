@@ -1031,8 +1031,8 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Max, Min, Dist(Real a, Real b, ...)");
         content += subtitleContent("SPECIALTIES",
             $"\r\n\r\n{GetComment("R&C := Real & Complex.")}" +
-            $"\r\n\r\n{TAB}Hypergeometric & Hypgeo(R&C a, R&C b, R&C c, f(x,y) & f(z)) & " +
-            $"\r\n{TAB}Hypergeometric & Hypgeo(R&C a, R&C b, R&C c, f(x,y) & f(z), int n)" +
+            $"\r\n\r\n{TAB}Hypergeo & Hypgeo(R&C a, R&C b, R&C c, f(x,y) & f(z)) & " +
+            $"\r\n{TAB}Hypergeo & Hypgeo(R&C a, R&C b, R&C c, f(x,y) & f(z), int n)" +
             $"\r\n\r\n{TAB}Gamma & Ga(f(x,y) & f(z)) & " +
             $"\r\n{TAB}Gamma & Ga(f(x,y) & f(z), int n)" +
             $"\r\n\r\n{TAB}Beta(f(x,y) & f(z), g(x,y) & g(z)) & " +
@@ -1929,10 +1929,10 @@ public class ReplaceTags : RealComplex
     public static readonly string[] FUNCTIONS =
         [ "floor", "ceiling", "round", "sign", "factorial", "mod", "nCr", "nPr", "max", "min", "distance", "conjugate", "ei",
             "blaschke", "real", "abs", "log", "exp", "sqrt", "arsinh", "arcosh", "artanh", "arcsin", "arccos", "arctan",
-            "sinh", "cosh", "tanh", "sin", "cos", "tan" ];
+            "sinh", "cosh", "tanh", "sin", "cos", "tan", "hypergeo", "gamma", "beta", "zeta" ];
     public static readonly string[] SPECIALS =
-        [ "hypergeometric", "gamma", "beta", "zeta", "stereographic", "homothety", "sum", "product", "iterate", "iterate1", "iterate2",
-            "compose", "compose1", "compose2", "cocoon", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
+        [ "stereographic", "homothety", "sum", "product", "iterate", "iterate1", "iterate2", "compose", "compose1", "compose2",
+            "cocoon", "substitute", "iterateLoop", "loop", "function", "polar", "parametric" ];
     public static readonly string[] EX_COMPLEX =
         [
             "stereo(3, 1, 1, z)",
@@ -2003,7 +2003,7 @@ public class ReplaceTags : RealComplex
         };
     private static readonly Dictionary<string, string> COMMON_SERIES = AddSuffix(SERIES_TAIL, new()
         {
-            { "hypergeometric", HYPGEO }, { "Hypergeometric", HYPGEO }, { "hypgeo", HYPGEO }, { "Hypgeo", HYPGEO },
+            { "hypergeo", HYPGEO }, { "Hypergeo", HYPGEO }, { "hypgeo", HYPGEO }, { "Hypgeo", HYPGEO },
             { "gamma", GA }, { "Gamma", GA }, { "ga", GA }, { "Ga", GA },
             { "beta", BETA }, { "Beta", BETA },
             { "zeta", ZETA }, { "Zeta", ZETA },
