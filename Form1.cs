@@ -1610,6 +1610,7 @@ public class MyMessageBox : Form
     private static readonly Color BACKDROP_GRAY = Graph.Argb(64, 64, 64),
         FORMAL_FONT = Graph.Argb(224, 224, 224), CUSTOM_FONT = Color.Turquoise, EXCEPTION_FONT = Color.LightPink,
         FORMAL_BUTTON = Color.Black, CUSTOM_BUTTON = Color.DarkBlue, EXCEPTION_BUTTON = Color.DarkRed;
+
     private static Real scale_factor;
     private static readonly Real MSG_TXT_SIZE = 10, BTN_TXT_SIZE = 7;
     private static readonly int DIST = 10, BTN_SIZE = 25, BORDER = 10; // DIST = dist(btnOk, txtMessage)
@@ -1630,6 +1631,7 @@ public class MyMessageBox : Form
     private void BtnOk_MouseEnter(object sender, EventArgs e) => BtnOk_MouseEnterLeave(true);
     private void BtnOk_MouseLeave(object sender, EventArgs e) => BtnOk_MouseEnterLeave(false);
     private void Form_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Close(); }
+
     private void SetUpForm(int width, int height)
     {
         FormBorderStyle = FormBorderStyle.None; Size = new(width, height);
@@ -1674,6 +1676,7 @@ public class MyMessageBox : Form
         Graph.ReduceFontSizeByScale(this, ref scale_factor);
         KeyPreview = true; KeyDown += new(Form_KeyDown);
     }
+
     private static void Display(string message, int width, int height, Color txtColor, Color btnColor, Color btnTxtColor)
     {
         MyMessageBox msgBox = new();
@@ -2033,12 +2036,21 @@ public class ReplaceTags : RealComplex
         }));
     private static readonly Dictionary<string, string> REAL = Concat(REAL_SERIES, REAL_STANDARD);
     private static readonly Dictionary<string, string> COMPLEX_STANDARD = AddSuffix(COMPLEX_TAIL, new()
-        { { "conjugate", CONJ }, { "Conjugate", CONJ }, { "conj", CONJ }, { "Conj", CONJ }, { "ei", EI }, { "Ei", EI } });
+        {
+            { "conjugate", CONJ }, { "Conjugate", CONJ }, { "conj", CONJ }, { "Conj", CONJ },
+            { "ei", EI }, { "Ei", EI }
+        });
     private static readonly Dictionary<string, string> COMPLEX_SERIES = AddSuffix(SERIES_TAIL, AddSuffix(COMPLEX_TAIL, new()
-        { { "blaschke", BLA}, { "Blaschke", BLA}, { "bla", BLA}, { "Bla", BLA}, { "real", _REAL }, { "Real", _REAL } }));
+        {
+            { "blaschke", BLA}, { "Blaschke", BLA}, { "bla", BLA}, { "Bla", BLA},
+            { "real", _REAL }, { "Real", _REAL }
+        }));
     private static readonly Dictionary<string, string> COMPLEX = Concat(COMPLEX_SERIES, COMPLEX_STANDARD);
     private static readonly Dictionary<string, string> CONSTANTS = new()
-        { { "pi", PI }, { "Pi", PI }, { "gamma", _GA }, { "Gamma", _GA }, { "ga", _GA }, { "Ga", _GA } };
+        {
+            { "pi", PI }, { "Pi", PI },
+            { "gamma", _GA }, { "Gamma", _GA }, { "ga", _GA }, { "Ga", _GA }
+        };
     private static readonly Dictionary<string, string> TAGS = AddSuffix(SERIES_TAIL, new()
         {
             { "substitute", SUBS}, { "Substitute", SUBS}, { "subs", SUBS}, { "Subs", SUBS},
@@ -3007,6 +3019,16 @@ public sealed class RealSub : RecoverMultiply
         => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : FinalizeMtx(ObtainCore(input));
     #endregion
 } /// Computes real-variable expressions
+public sealed class MatrixPoolLease<TEntry>(int length)
+{
+    public readonly TEntry[] array = ArrayPool<TEntry>.Shared.Rent(length);
+    private int returned; // To make the lease double-return safe
+    public void Return()
+    {
+        if (Interlocked.Exchange(ref returned, 1) != 0) return;
+        ArrayPool<TEntry>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<TEntry>());
+    }
+} /// Owns a rented ArrayPool buffer
 
 /// <summary>
 /// STRUCTURE SECTION
@@ -3148,16 +3170,6 @@ public readonly struct Complex(Real real, Real imaginary = 0) // Manually inline
     public static Complex Homothety(Complex pt, Real r, Complex ctr) => (pt - ctr) / r + ctr;
     #endregion
 } /// Represents optimized complex numbers with Real components
-public sealed class MatrixPoolLease<TEntry>(int length)
-{
-    public readonly TEntry[] array = ArrayPool<TEntry>.Shared.Rent(length);
-    private int returned; // To make the lease double-return safe
-    public void Return()
-    {
-        if (Interlocked.Exchange(ref returned, 1) != 0) return;
-        ArrayPool<TEntry>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<TEntry>());
-    }
-} /// Owns a rented ArrayPool buffer and ensures that it is returned at most once
 public readonly struct Matrix<TEntry>
 {
     private readonly TEntry[] matrix;
