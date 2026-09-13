@@ -222,8 +222,6 @@ public partial class Graph : Form
     private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
-    private static bool StartsWithTag(string input, string tag)
-        => input[..MathR.Max(0, input.IndexOf('('))] == String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.SERIES_TAIL);
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
     private bool GeneralInput_Undo() => GeneralInput.Text == ZERO;
@@ -638,21 +636,21 @@ public partial class Graph : Form
     }
     private void DisplayLevel3(string input)
     {
-        Action<string[]>? displayMethod = StartsWithTag(input, ReplaceTags.ITLOOP) ? DisplayIterateLoop :
-            StartsWithTag(input, ReplaceTags._FUNC) ? DisplayFunction :
-            StartsWithTag(input, ReplaceTags._POLAR) ? DisplayPolar :
-            StartsWithTag(input, ReplaceTags._PARAM) ? DisplayParametric : null;
+        Action<string[]>? displayMethod = MyString.StartsWithTag(input, ReplaceTags.ITLOOP) ? DisplayIterateLoop :
+            MyString.StartsWithTag(input, ReplaceTags._FUNC) ? DisplayFunction :
+            MyString.StartsWithTag(input, ReplaceTags._POLAR) ? DisplayPolar :
+            MyString.StartsWithTag(input, ReplaceTags._PARAM) ? DisplayParametric : null;
         if (displayMethod != null) displayMethod(MyString.SplitString(input));
         else DisplayRendering(input);
     }
     private void DisplayLevel2(string input)
     {
-        if (StartsWithTag(input, ReplaceTags.LOOP)) DisplayLoop(MyString.SplitString(input));
+        if (MyString.StartsWithTag(input, ReplaceTags.LOOP)) DisplayLoop(MyString.SplitString(input));
         else DisplayLevel3(input);
     }
     private void DisplayLevel1(string input)
     {
-        if (StartsWithTag(input, ReplaceTags.SUBS)) DisplaySubs(MyString.SplitString(input));
+        if (MyString.StartsWithTag(input, ReplaceTags.SUBS)) DisplaySubs(MyString.SplitString(input));
         else DisplayLevel2(input);
     }
     private void DisplayOnScreen()
@@ -1766,6 +1764,8 @@ public class MyString
     #endregion
 
     #region Miscellaneous
+    public static bool StartsWithTag(string input, string tag)
+        => input[..MathR.Max(0, input.IndexOf('('))] == String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.SERIES_TAIL);
     public static string[] SplitString(ReadOnlySpan<char> input)
         => ReplaceRecover(BraFreePart(input, input.IndexOf('('), input.Length - 1)); // Deliberately includes the redundant tail
     public static string[] SplitByChars(ReadOnlySpan<char> input, ReadOnlySpan<char> delimiters)
