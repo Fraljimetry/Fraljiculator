@@ -1764,7 +1764,7 @@ public class MyString
     #endregion
 
     #region Miscellaneous
-    public static bool StartsWithTag(string input, string tag)
+    public static bool StartsWithTag(ReadOnlySpan<char> input, string tag)
         => input[..MathR.Max(0, input.IndexOf('('))] == String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.SERIES_TAIL);
     public static string[] SplitString(ReadOnlySpan<char> input)
         => ReplaceRecover(BraFreePart(input, input.IndexOf('('), input.Length - 1)); // Deliberately includes the redundant tail
