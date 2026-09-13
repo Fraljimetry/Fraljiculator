@@ -222,8 +222,8 @@ public partial class Graph : Form
     private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
-    private static bool ContainsTag(string input, string tag)
-        => input.Contains(String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.SERIES_TAIL, '('));
+    private static bool StartsWithTag(string input, string tag)
+        => input[..MathR.Max(0, input.IndexOf('('))] == String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.SERIES_TAIL);
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
     private bool GeneralInput_Undo() => GeneralInput.Text == ZERO;
@@ -638,21 +638,21 @@ public partial class Graph : Form
     }
     private void DisplayLevel3(string input)
     {
-        Action<string[]>? displayMethod = ContainsTag(input, ReplaceTags.ITLOOP) ? DisplayIterateLoop :
-            ContainsTag(input, ReplaceTags._FUNC) ? DisplayFunction :
-            ContainsTag(input, ReplaceTags._POLAR) ? DisplayPolar :
-            ContainsTag(input, ReplaceTags._PARAM) ? DisplayParametric : null;
+        Action<string[]>? displayMethod = StartsWithTag(input, ReplaceTags.ITLOOP) ? DisplayIterateLoop :
+            StartsWithTag(input, ReplaceTags._FUNC) ? DisplayFunction :
+            StartsWithTag(input, ReplaceTags._POLAR) ? DisplayPolar :
+            StartsWithTag(input, ReplaceTags._PARAM) ? DisplayParametric : null;
         if (displayMethod != null) displayMethod(MyString.SplitString(input));
         else DisplayRendering(input);
     }
     private void DisplayLevel2(string input)
     {
-        if (ContainsTag(input, ReplaceTags.LOOP)) DisplayLoop(MyString.SplitString(input));
+        if (StartsWithTag(input, ReplaceTags.LOOP)) DisplayLoop(MyString.SplitString(input));
         else DisplayLevel3(input);
     }
     private void DisplayLevel1(string input)
     {
-        if (ContainsTag(input, ReplaceTags.SUBS)) DisplaySubs(MyString.SplitString(input));
+        if (StartsWithTag(input, ReplaceTags.SUBS)) DisplaySubs(MyString.SplitString(input));
         else DisplayLevel2(input);
     }
     private void DisplayOnScreen()
@@ -1727,7 +1727,7 @@ public class MyString
     #endregion
 
     #region Replacement
-    protected static ReadOnlySpan<char> BraFreePart(ReadOnlySpan<char> input, int start, int end) => input.Slice(start + 1, end - start - 1);
+    protected static ReadOnlySpan<char> BraFreePart(ReadOnlySpan<char> input, int start, int end) => input[(start + 1)..end];
     protected static ReadOnlySpan<char> TryBraNum(ReadOnlySpan<char> input, char c1, char c2)
     { ThrowException(input[0] != c1 || input[^1] != c2); return BraFreePart(input, 0, input.Length - 1); }
     private static string ReplaceCore(string orig, string sub, int start, int end)
@@ -1767,7 +1767,7 @@ public class MyString
 
     #region Miscellaneous
     public static string[] SplitString(ReadOnlySpan<char> input)
-        => ReplaceRecover(BraFreePart(input, input.IndexOf('('), PairedParenthesis(input, input.IndexOf('('))));
+        => ReplaceRecover(BraFreePart(input, input.IndexOf('('), input.Length - 1)); // Deliberately includes the redundant tail
     public static string[] SplitByChars(ReadOnlySpan<char> input, ReadOnlySpan<char> delimiters)
     {
         Span<bool> lookup = stackalloc bool[1024]; foreach (char d in delimiters) lookup[d] = true; // ASCII + Greek
@@ -1778,7 +1778,7 @@ public class MyString
             else segmentBuilder.Append(c);
         }
         segments.Add(segmentBuilder.ToString());
-        return [.. segments]; // Collection expression (.NET 8.0)
+        return [.. segments];
     }
     protected static string TrimStartChar(ReadOnlySpan<char> input, char startChar)
     {
