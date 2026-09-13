@@ -1764,8 +1764,6 @@ public class MyString
     #endregion
 
     #region Miscellaneous
-    public static bool StartsWithTag(ReadOnlySpan<char> input, string tag)
-        => input[..MathR.Max(0, input.IndexOf('('))] == String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.SERIES_TAIL);
     public static string[] SplitString(ReadOnlySpan<char> input)
         => ReplaceRecover(BraFreePart(input, input.IndexOf('('), input.Length - 1)); // Deliberately includes the redundant tail
     public static string[] SplitByChars(ReadOnlySpan<char> input, ReadOnlySpan<char> delimiters)
@@ -1803,6 +1801,8 @@ public class MyString
         foreach (string s in stringsToCheck) if (input.Contains(s)) return true;
         return false;
     }
+    public static bool StartsWithTag(string input, string tag)
+        => input[..MathR.Max(0, input.IndexOf('('))] == String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.SERIES_TAIL);
     #endregion
 } /// Provides string-manipulation utilities
 public class RealComplex : MyString
