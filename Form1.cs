@@ -96,13 +96,13 @@ public partial class Graph : Form
         GraphTimer = setT(1000); WaitTimer = setT(500); DisplayTimer = setT(1000 / UPDATE);
         WaitTimer.Tick += (sender, e) =>
         {
-            ReverseBool(ref is_flashing); // Properties cannot be passed by reference
+            ToggleBool(ref is_flashing); // Properties cannot be passed by reference
             PictureWait.Visible = is_flashing;
         };
         DisplayTimer.Tick += (sender, e) =>
         {
             if (++display_elapsed % UPDATE == 0) SetText(TimeDisplay, (display_elapsed / UPDATE).ToString() + "s");
-            SetText(PointNumDisplay, (pixel_number + segment_number).ToString()); // Refreshes $"{RATE}" times per second
+            SetText(PointNumDisplay, (pixel_number + segment_number).ToString()); // Refreshes $"{UPDATE}" times per second
         };
     }
     private void InitializeGraphics()
@@ -122,31 +122,22 @@ public partial class Graph : Form
     }
     private void InitializeCombo()
     {
-        static void coloringContour_AddItem(ComboBox cbx, int index, string[] options)
-        { cbx.Items.AddRange(options); cbx.SelectedIndex = index; }
-        coloringContour_AddItem(ComboColoring, 4, COLOR_MODES); coloringContour_AddItem(ComboContour, 1, CONTOUR_MODES);
+        ComboColoring.Items.AddRange(COLOR_MODES); ComboColoring.SelectedIndex = 4;
+        ComboContour.Items.AddRange(CONTOUR_MODES); ComboContour.SelectedIndex = 1;
 
-        void addExamples(string[] items) { foreach (string item in items) ComboExamples.Items.Add(item); }
-        addExamples(ReplaceTags.EX_COMPLEX); ComboExamples.Items.Add(String.Empty);
-        addExamples(ReplaceTags.EX_REAL); ComboExamples.Items.Add(String.Empty);
-        addExamples(ReplaceTags.EX_CURVES); ComboExamples.Items.Add(String.Empty);
+        ComboExamples.Items.AddRange(ReplaceTags.EX_COMPLEX); ComboExamples.Items.Add(String.Empty);
+        ComboExamples.Items.AddRange(ReplaceTags.EX_REAL); ComboExamples.Items.Add(String.Empty);
+        ComboExamples.Items.AddRange(ReplaceTags.EX_CURVES); ComboExamples.Items.Add(String.Empty);
 
-        void functionsSpecial_AddItem(string[] options, bool isFunc)
-        {
-            string[] modifiedOptions = new string[options.Length]; int index = 0;
-            foreach (string option in options) modifiedOptions[index++] = option;
-            Action<string[]> addOptions = isFunc ? ComboFunctions.Items.AddRange : ComboSpecial.Items.AddRange;
-            addOptions(modifiedOptions);
-        }
-        functionsSpecial_AddItem(ReplaceTags.FUNCTIONS, true); functionsSpecial_AddItem(ReplaceTags.SPECIALS, false);
+        ComboFunctions.Items.AddRange(ReplaceTags.FUNCTIONS); ComboSpecial.Items.AddRange(ReplaceTags.SPECIALS);
     }
-    private void RecoverInput()
+    private void ResetInputs()
     {
         SetText(InputString, INPUT_DEFAULT); SetText(AddressInput, ADDRESS_DEFAULT);
         SetText(GeneralInput, GENERAL_DEFAULT); SetText(ThickInput, THICK_DEFAULT); SetText(DenseInput, DENSE_DEFAULT);
-        InputString_Focus();
+        FocusInput();
     }
-    private void InitializeData() { RecoverInput(); SetText(DraftBox, DRAFT_DEFAULT); SetText(CaptionBox, CAPTION_DEFAULT); }
+    private void InitializeData() { ResetInputs(); SetText(DraftBox, DRAFT_DEFAULT); SetText(CaptionBox, CAPTION_DEFAULT); }
     private void SetThicknessDensenessScopesBorders(bool autoFill = true)
     {
         FillEmpty(GeneralInput, GENERAL_DEFAULT); FillEmpty(ThickInput, THICK_DEFAULT); FillEmpty(DenseInput, DENSE_DEFAULT);
@@ -157,7 +148,7 @@ public partial class Graph : Form
         stride_real = STRIDE_REAL / _dense; stride = STRIDE / _dense; mod_stride = MOD / _dense; arg_stride = ARG / _dense;
         epsilon = (is_complex ? EPS_COMPLEX : EPS_REAL) * _thick; size_real = SIZE_REAL * _thick / (1 + _thick); decay = DECAY * _thick;
 
-        if (!GeneralInput_Undo())
+        if (!DetailedScopeEnabled())
         {
             Real _scope = Obtain(GeneralInput);
             scopes = [-_scope, _scope, -_scope, _scope]; // Note the signs
@@ -215,20 +206,20 @@ public partial class Graph : Form
     private static Rectangle GetRect(int[] borders, int margin = 0)
         => new(borders[0] + margin, borders[2] + margin, RowBorders(borders) - margin, ColumnBorders(borders) - margin);
     private static Bitmap GetBitmap(bool isMain) => isMain ? bmp_mac : bmp_mic;
-    private static ref bool ReturnAxesDrawn(bool isMain) => ref (isMain ? ref axes_drawn_mac : ref axes_drawn_mic);
-    private static void SetAxesDrawn(bool isMain, bool drawn = false) { ReturnAxesDrawn(isMain) = drawn; }
-    private static void ReverseBool(ref bool isChecked) => isChecked = !isChecked;
-    private static Real Obtain(string text) => RealSub.Obtain(RecoverMultiply.Simplify(text));
+    private static ref bool GetAxesDrawnRef(bool isMain) => ref (isMain ? ref axes_drawn_mac : ref axes_drawn_mic);
+    private static void SetAxesDrawn(bool isMain, bool drawn = false) { GetAxesDrawnRef(isMain) = drawn; }
+    private static void ToggleBool(ref bool isChecked) => isChecked = !isChecked;
+    private static Real Obtain(string text) => RealSub.Obtain(ImplicitMultiply.NormalizeInput(text));
     private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
-    private bool GeneralInput_Undo() => GeneralInput.Text == ZERO;
-    private void ComboExamples_Undo() => ComboExamples.SelectedIndex = -1;
-    private void InputString_Focus() { InputString.Focus(); InputString.SelectionStart = InputString.Text.Length; }
+    private bool DetailedScopeEnabled() => GeneralInput.Text == ZERO;
+    private void ClearExampleSelection() => ComboExamples.SelectedIndex = -1;
+    private void FocusInput() { InputString.Focus(); InputString.SelectionStart = InputString.Text.Length; }
     private bool NoInput() => String.IsNullOrEmpty(InputString.Text);
-    private bool ProcessingGraphics() => InputString.ReadOnly;
+    private bool InputLocked() => InputString.ReadOnly;
     #endregion
 
     #region Auxiliary Drawings
@@ -245,12 +236,12 @@ public partial class Graph : Form
         void drawGrids(Real xGrid, Real yGrid, Real penWidth)
         {
             Pen gridPen = new(GRID_GRAY, (float)penWidth);
-            RealComplex.CheckFor((int)MathR.Floor(scopes[2] / yGrid), (int)MathR.Ceiling(scopes[3] / yGrid), i =>
+            RealComplex.ForEachInclusive((int)MathR.Floor(scopes[2] / yGrid), (int)MathR.Ceiling(scopes[3] / yGrid), i =>
             {
                 int pos = LinearTransformY(i * yGrid, borders, ratioColumn);
                 if (pos >= yInit && pos < yEnd) graphics.DrawLine(gridPen, xInit, pos, xEnd, pos);
             });
-            RealComplex.CheckFor((int)MathR.Floor(scopes[0] / xGrid), (int)MathR.Ceiling(scopes[1] / xGrid), i =>
+            RealComplex.ForEachInclusive((int)MathR.Floor(scopes[0] / xGrid), (int)MathR.Ceiling(scopes[1] / xGrid), i =>
             {
                 int pos = LinearTransformX(i * xGrid, borders, ratioRow);
                 if (pos >= xInit && pos < xEnd) graphics.DrawLine(gridPen, pos, yEnd, pos, yInit);
@@ -265,11 +256,11 @@ public partial class Graph : Form
     private static void DrawBackdropAxesGrids(int[] borders, bool isMain, bool isFrozen = false)
     {
         if (!isFrozen) { DrawBackdrop(borders); SetAxesDrawn(isMain); }
-        if (!delete_coor && !ReturnAxesDrawn(isMain)) { DrawAxesGrids(borders); SetAxesDrawn(isMain, true); }
+        if (!delete_coor && !GetAxesDrawnRef(isMain)) { DrawAxesGrids(borders); SetAxesDrawn(isMain, true); }
     } // Sensitive
     private void DrawReferenceRectangles(Color color) => graphics.FillRectangle(new SolidBrush(color), VScrollBarX.Location.X - REF_POS_1,
         Y_UP_MIC + REF_POS_2, 2 * (VScrollBarX.Width + REF_POS_1), VScrollBarX.Height - 2 * REF_POS_2);
-    private void DrawScrollBar((Real x, Real y) xyCoor)
+    private void UpdateScrollBars((Real x, Real y) xyCoor)
     {
         int range = VScrollBarX.Maximum - VScrollBarX.Minimum;
         VScrollBarX.Value = Frac(range, (xyCoor.x - scopes[0]) / RowScopes());
@@ -287,9 +278,9 @@ public partial class Graph : Form
         => (scopes[0] + (x - borders[0]) * xCoor, scopes[3] + (y - borders[2]) * yCoor);
     private static int LowIdx(Real a, Real m) => (int)MathR.Floor(a / m);
     private static Real LowDist(Real a, Real m) => a - m * LowIdx(a, m);
-    private static Real LowRatio(Real a, Real m) => a == -0 ? 1 : LowDist(a, m) / m; // -0 is necessary
+    private static Real LowRatio(Real a, Real m) => a == 0 && BitConverter.DoubleToInt64Bits(a) < 0 ? 1 : LowDist(a, m) / m;
     private static Real GetShade(Real alpha) => (alpha - 1) / DEPTH + 1;
-    private unsafe static (Real, Real) FiniteExtremities(Matrix<Real> output, int rows, int columns)
+    private unsafe static (Real, Real) GetAtanExtrema(Matrix<Real> output, int rows, int columns)
     {
         static Real seekM(Func<Real, Real, Real> function, Real* ptr, int length)
         {
@@ -298,17 +289,15 @@ public partial class Graph : Form
             { if (Real.IsNaN(*ptr)) continue; if (Real.IsNaN(value)) value = *ptr; else value = function(*ptr, value); }
             return value;
         }
-        Matrix<Real> outputAtan = Matrix<Real>.Rent(RealComplex.GetArithProg(rows, columns), columns), minMax = GetMatrix(2, rows);
+        Matrix<Real> minMax = GetMatrix(2, rows);
         Parallel.For(0, rows, p =>
         {
-            Real* destPtr = outputAtan.RowPtr(p), _destPtr = destPtr, srcPtr = output.RowPtr(p);
-            for (int q = 0; q < columns; q++, destPtr++, srcPtr++) *destPtr = MathR.Atan(*srcPtr);
-            minMax[0, p] = seekM(MathR.Min, _destPtr, columns); minMax[1, p] = seekM(MathR.Max, _destPtr, columns);
+            Real* srcPtr = output.RowPtr(p);
+            minMax[0, p] = seekM(MathR.Min, srcPtr, columns); minMax[1, p] = seekM(MathR.Max, srcPtr, columns);
         });
-        var result = (seekM(MathR.Min, minMax.RowPtr(0), rows), seekM(MathR.Max, minMax.RowPtr(1), rows));
-        outputAtan.Return(); return result;
+        return (MathR.Atan(seekM(MathR.Min, minMax.RowPtr(0), rows)), MathR.Atan(seekM(MathR.Max, minMax.RowPtr(1), rows)));
     } // Finds the minimum and maximum after applying atan, which bounds infinite values
-    private unsafe static (int, int, Matrix<Real>, Matrix<Real>) GetRowColumnCoor()
+    private unsafe static (int, int, Matrix<Real>, Matrix<Real>) CreateCoorMatrices()
     {
         var (rows, columns, _x, _y) = (RowBorders(borders), ColumnBorders(borders), GetRatioRow(borders), GetRatioColumn(borders));
         var (xCoor, yCoor) = (GetMatrix(rows, columns), GetMatrix(rows, columns));
@@ -322,11 +311,11 @@ public partial class Graph : Form
     #endregion
 
     #region Rendering Core
-    private static (int, BitmapData) GetBppBmpData(Bitmap bmp) // bpp: bytes per pixel
+    private static (int, BitmapData) LockBitmapData(Bitmap bmp) // bpp: bytes per pixel
         => (Image.GetPixelFormatSize(bmp.PixelFormat) / 8, bmp.LockBits(rectangle, ImageLockMode.ReadWrite, bmp.PixelFormat));
     private unsafe static void ClearBitmap(Bitmap bmp)
     {
-        var (bpp, bmpData) = GetBppBmpData(bmp);
+        var (bpp, bmpData) = LockBitmapData(bmp);
         try
         {
             var bmpInit = (byte*)bmpData.Scan0 + bpp - 1;
@@ -353,7 +342,7 @@ public partial class Graph : Form
     private delegate void PixelLoop(int x, int y, IntPtr pixelPtr, ref int pixNum); // Instead of Action<int, int, IntPtr, ref int>
     private unsafe static void LoopBase(PixelLoop pixelLoop)
     {
-        Bitmap bmp = GetBitmap(is_main); var (bpp, bmpData) = GetBppBmpData(bmp);
+        Bitmap bmp = GetBitmap(is_main); var (bpp, bmpData) = LockBitmapData(bmp);
         var (xInit, yInit) = (AddOne(borders[0]), AddOne(borders[2])); var (xLen, yLen) = (borders[1] - xInit, borders[3] - yInit);
         try
         {
@@ -437,7 +426,7 @@ public partial class Graph : Form
             4 => Real4,
             5 => Real5
         };
-        realOperation(output_real, FiniteExtremities(output_real, RowBorders(borders), ColumnBorders(borders)));
+        realOperation(output_real, GetAtanExtrema(output_real, RowBorders(borders), ColumnBorders(borders)));
     }
     private void Real1(Matrix<Real> output, (Real, Real) mM) => RealLoop123(output, ZERO_BLUE, POLE_PURPLE, 1, mM);
     private void Real2(Matrix<Real> output, (Real, Real) mM) => RealLoop123(output, ZERO_BLUE, POLE_PURPLE, 2, mM);
@@ -468,7 +457,7 @@ public partial class Graph : Form
     #endregion
 
     #region Curves
-    private (Real, Real, Real) SetStartEndIncrement(string[] split, bool isPolar, bool isParam)
+    private (Real, Real, Real) GetCurveBounds(string[] split, bool isPolar, bool isParam)
     {
         Real obtain(int index) => Obtain(split[index]);
         (Real, Real, Real) initializeParamPolar(int relPos)
@@ -480,29 +469,31 @@ public partial class Graph : Form
         else if (isPolar) return initializeParamPolar(2);
         else
         {
-            MyString.ThrowInvalidLengths(split, [0, 1, 2, 3, 4]); Real range = Obtain(GeneralInput);
-            Real getRange(TextBox tbx, bool minus) => GeneralInput_Undo() ? Obtain(tbx) : (minus ? -range : range);
+            MyString.ThrowInvalidLengths(split, [1, 2, 3, 4]); Real range = Obtain(GeneralInput);
+            Real getRange(TextBox tbx, bool minus) => DetailedScopeEnabled() ? Obtain(tbx) : (minus ? -range : range);
             return (split.Length < 3 ? getRange(X_Left, true) : obtain(1),
                 split.Length < 3 ? getRange(X_Right, false) : obtain(2),
                 split.Length == 2 ? obtain(1) : split.Length == 4 ? obtain(3) : INCREMENT);
         }
     }
-    private unsafe static (Matrix<Real>, Matrix<Real>, int, bool) SetCurveValues(string[] split, bool isPolar, bool isParam,
-        Real start, Real end, Real increment)
+    private static (string, string) GetCurveInputs(string[] split, bool isPolar, bool isParam)
     {
         string replace(string s, int index) => s.Replace(split[index], "x");
-        string tag1 = ReplaceTags.FUNC_HEAD + ReplaceTags.COS, tag2 = ReplaceTags.FUNC_HEAD + ReplaceTags.SIN,
-            input1 = isParam ? replace(split[0], 2) : isPolar ? replace($"({split[0]})*{tag1}({split[1]})", 1) : "x",
-            input2 = isParam ? replace(split[1], 2) : isPolar ? replace($"({split[0]})*{tag2}({split[1]})", 1) : split[0];
-
-        int length = (int)((end - start) / increment), _length = length + 1; // For safety
+        string tag1 = ReplaceTags.FUNC_HEAD + ReplaceTags.COS, tag2 = ReplaceTags.FUNC_HEAD + ReplaceTags.SIN;
+        return (isParam ? replace(split[0], 2) : isPolar ? replace($"({split[0]})*{tag1}({split[1]})", 1) : "x",
+            isParam ? replace(split[1], 2) : isPolar ? replace($"({split[0]})*{tag2}({split[1]})", 1) : split[0]);
+    }
+    private unsafe static (Matrix<Real>, Matrix<Real>, int) EvaluateCurveValues(
+        string input1, string input2, Real start, Real end, Real increment)
+    {
+        int length = (int)((end - start) / increment), _length = length + 1;
         Matrix<Real> partition = GetMatrix(1, _length); Real steps = start;
-        Real obtainCheck(string input) => RealSub.Obtain(input, steps); // Already simplified
-        if (is_checking) { obtainCheck(input1); obtainCheck(input2); return (partition, partition, length, true); }
 
-        Real* partPtr = partition.RowPtr(); for (int i = 0; i < _length; i++, partPtr++, steps += increment) *partPtr = steps;
+        Real* partPtr = partition.RowPtr();
+        for (int i = 0; i < _length; i++, partPtr++, steps += increment) *partPtr = steps;
+
         Matrix<Real> obtain(string input) => new RealSub(input, partition, null, null, null, null, 1, _length).Obtain();
-        return (obtain(input1), obtain(input2), length, false);
+        return (obtain(input1), obtain(input2), length);
     }
     private unsafe void DrawCurve(Matrix<Real> value1, Matrix<Real> value2, int length)
     {
@@ -533,7 +524,7 @@ public partial class Graph : Form
                 if (color_mode > 3) vividPen.Color = ObtainColorWheelCurve(ratio);
                 graphics.DrawLine(selectedPen, posBuffer, pos);
                 SetScrollBars(true); // Necessary for each loop
-                DrawScrollBar(LinearTransform(pos.X, pos.Y, ratioRow, ratioColumn, borders));
+                UpdateScrollBars(LinearTransform(pos.X, pos.Y, ratioRow, ratioColumn, borders));
                 _ratio = Frac(REFRESH, ratio);
                 if (_ratioBuffer != _ratio) DrawReferenceRectangles(selectedPen.Color);
                 _ratioBuffer = _ratio;
@@ -541,17 +532,18 @@ public partial class Graph : Form
             inRangeBuffer = inRange; posBuffer = pos;
         }
     }
-    private void DisplayFPPBase(string[] split, bool isPolar = false, bool isParam = false)
+    private void DisplayCurve(string[] split, bool isPolar = false, bool isParam = false)
     {
-        var (start, end, increment) = SetStartEndIncrement(split, isPolar, isParam);
-        MyString.ThrowException(start >= end);
-        var (value1, value2, length, isChecking) = SetCurveValues(split, isPolar, isParam, start, end, increment);
-        if (isChecking) return;
+        var (start, end, increment) = GetCurveBounds(split, isPolar, isParam);
+        MyString.ThrowException(start >= end || increment <= 0);
+        var (input1, input2) = GetCurveInputs(split, isPolar, isParam);
+        if (is_checking) { RealSub.Obtain(input1, start); RealSub.Obtain(input2, start); return; }
+        var (value1, value2, length) = EvaluateCurveValues(input1, input2, start, end, increment);
         DisplayBase(() => { DrawCurve(value1, value2, length); pixel_number += segment_number; segment_number = 0; });
     }
-    private void DisplayFunction(string[] split) => DisplayFPPBase(split); // Necessary
-    private void DisplayPolar(string[] split) => DisplayFPPBase(split, isPolar: true);
-    private void DisplayParametric(string[] split) => DisplayFPPBase(split, isParam: true);
+    private void DisplayFunction(string[] split) => DisplayCurve(split); // Necessary
+    private void DisplayPolar(string[] split) => DisplayCurve(split, isPolar: true);
+    private void DisplayParametric(string[] split) => DisplayCurve(split, isParam: true);
     #endregion
 
     #region Graph Display
@@ -566,20 +558,20 @@ public partial class Graph : Form
     private void RunDisplayBase(Action computeAction)
     {
         if (is_checking) return; // Necessary
-        ClearBitmap(bmp_mac); ClearBitmap(bmp_mic); // Required thanks to ZAL
+        ClearBitmap(GetBitmap(is_main)); // Required thanks to ZAL
         computeAction();
         DisplayBase(() => { graphics.DrawImage(GetBitmap(is_main), 0, 0); });
     }
-    private void DisplayRendering(string input)
+    private void DisplayExpression(string input)
     {
-        var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
+        var (rows, columns, xCoor, yCoor) = CreateCoorMatrices();
         if (is_complex) output_complex = new ComplexSub(input, xCoor, yCoor, rows, columns).Obtain();
         else output_real = new RealSub(input, xCoor, yCoor, null, null, null, rows, columns).Obtain();
         RunDisplayBase(is_complex ? ComplexComputation : RealComputation);
     }
     private void DisplayIterateLoop(string[] split)
     {
-        var (rows, columns, xCoor, yCoor) = GetRowColumnCoor();
+        var (rows, columns, xCoor, yCoor) = CreateCoorMatrices();
         string replaceLoop(int loops, int origIdx, int subIdx) => MyString.ReplaceLoop(split, origIdx, subIdx, loops.ToString(), true);
         string obtainDisplay(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(loops, 5, 2) : defaultInput;
         if (is_complex)
@@ -589,7 +581,7 @@ public partial class Graph : Form
             {
                 Matrix<Complex> z = ComplexSub.InitializeZ(xCoor, yCoor, rows, columns); // Complex-specific
                 Matrix<Complex> Z = new ComplexSub(split[1], z, null, null, rows, columns).Obtain();
-                RealComplex.CheckFor(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
+                RealComplex.ForEachInclusive(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
                 {
                     Z = new ComplexSub(replaceLoop(loops, 0, 2), z, Z, null, rows, columns).Obtain();
                     output_complex = new ComplexSub(obtainDisplay(loops, "Z"), z, Z, null, rows, columns).Obtain();
@@ -600,7 +592,7 @@ public partial class Graph : Form
             {
                 Matrix<Real> X = new RealSub(split[2], xCoor, yCoor, null, null, null, rows, columns).Obtain(), temp1;
                 Matrix<Real> Y = new RealSub(split[3], xCoor, yCoor, null, null, null, rows, columns).Obtain(), temp2;
-                RealComplex.CheckFor(RealSub.ToInt(split[5]), RealSub.ToInt(split[6]), loops =>
+                RealComplex.ForEachInclusive(RealSub.ToInt(split[5]), RealSub.ToInt(split[6]), loops =>
                 {
                     temp1 = new RealSub(replaceLoop(loops, 0, 4), xCoor, yCoor, X, Y, null, rows, columns).Obtain();
                     temp2 = new RealSub(replaceLoop(loops, 1, 4), xCoor, yCoor, X, Y, null, rows, columns).Obtain();
@@ -614,7 +606,7 @@ public partial class Graph : Form
         {
             MyString.ThrowInvalidLengths(split, [5, 6]);
             Matrix<Real> X = new RealSub(split[1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
-            RealComplex.CheckFor(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
+            RealComplex.ForEachInclusive(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
             {
                 X = new RealSub(replaceLoop(loops, 0, 2), xCoor, yCoor, X, null, null, rows, columns).Obtain();
                 output_real = new RealSub(obtainDisplay(loops, "y-X"), xCoor, yCoor, X, null, null, rows, columns).Obtain();
@@ -625,39 +617,39 @@ public partial class Graph : Form
     private void DisplayLoop(string[] split)
     {
         MyString.ThrowInvalidLengths(split, [4]);
-        RealComplex.CheckFor(RealSub.ToInt(split[2]), RealSub.ToInt(split[3]), loops =>
-        { DisplayLevel3(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
+        RealComplex.ForEachInclusive(RealSub.ToInt(split[2]), RealSub.ToInt(split[3]), loops =>
+        { DispatchGraphCall(MyString.ReplaceLoop(split, 0, 1, loops.ToString(), true)); });
     }
     private void DisplaySubs(string[] split)
     {
         MyString.ThrowException(Int32.IsEvenInteger(split.Length));
         for (int i = 0, j = 1; i < split.Length / 2; i++) split[0] = MyString.ReplaceLoop(split, 0, j++, split[j++]);
-        DisplayLevel2(split[0]);
+        DispatchLoop(split[0]);
     }
-    private void DisplayLevel3(string input)
+    private void DispatchGraphCall(string input)
     {
         Action<string[]>? displayMethod = MyString.StartsWithTag(input, ReplaceTags.ITLOOP) ? DisplayIterateLoop :
             MyString.StartsWithTag(input, ReplaceTags._FUNC) ? DisplayFunction :
             MyString.StartsWithTag(input, ReplaceTags._POLAR) ? DisplayPolar :
             MyString.StartsWithTag(input, ReplaceTags._PARAM) ? DisplayParametric : null;
-        if (displayMethod != null) displayMethod(MyString.SplitString(input));
-        else DisplayRendering(input);
+        if (displayMethod != null) displayMethod(MyString.SplitArguments(input));
+        else DisplayExpression(input);
     }
-    private void DisplayLevel2(string input)
+    private void DispatchLoop(string input)
     {
-        if (MyString.StartsWithTag(input, ReplaceTags.LOOP)) DisplayLoop(MyString.SplitString(input));
-        else DisplayLevel3(input);
+        if (MyString.StartsWithTag(input, ReplaceTags.LOOP)) DisplayLoop(MyString.SplitArguments(input));
+        else DispatchGraphCall(input);
     }
-    private void DisplayLevel1(string input)
+    private void DispatchSubstitute(string input)
     {
-        if (MyString.StartsWithTag(input, ReplaceTags.SUBS)) DisplaySubs(MyString.SplitString(input));
-        else DisplayLevel2(input);
+        if (MyString.StartsWithTag(input, ReplaceTags.SUBS)) DisplaySubs(MyString.SplitArguments(input));
+        else DispatchLoop(input);
     }
-    private void DisplayOnScreen()
+    private void DisplayInput()
     {
         if (NoInput()) return; // Necessary
-        string[] split = MyString.SplitByChars(InputString.Text, "|");
-        for (int loops = 0; loops < split.Length; loops++) DisplayLevel1(RecoverMultiply.Simplify(split[loops]));
+        string[] split = MyString.SplitTopLevel(InputString.Text, "|");
+        for (int loops = 0; loops < split.Length; loops++) DispatchSubstitute(ImplicitMultiply.NormalizeInput(split[loops]));
     }
     #endregion
 
@@ -710,7 +702,7 @@ public partial class Graph : Form
         Graphics.FromImage(BMP_PIXEL).CopyFromScreen(Cursor.Position, Point.Empty, SIZE_PIXEL);
         DrawReferenceRectangles(BMP_PIXEL.GetPixel(0, 0));
         SetScrollBars(true);
-        HandleMouseAction(e, borders, v => { DrawScrollBar(v); DisplayMouseMove(e, v.Item1, v.Item2); });
+        HandleMouseAction(e, borders, v => { UpdateScrollBars(v); DisplayMouseMove(e, v.Item1, v.Item2); });
     }
     private void RunMouseDown(MouseEventArgs e, int[] borders)
     { chosen_number++; HandleMouseAction(e, borders, v => { DisplayMouseDown(e, v.Item1, v.Item2); }); }
@@ -731,16 +723,16 @@ public partial class Graph : Form
     }
     private void DisplayMouseMove(MouseEventArgs e, Real xCoor, Real yCoor)
     {
-        static string trimMove(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
+        static string trimMove(Real input) => MyString.FormatNumber(input, THRESHOLD);
         SetText(X_CoorDisplay, trimMove(xCoor)); SetText(Y_CoorDisplay, trimMove(yCoor));
-        SetText(ModulusDisplay, trimMove(Real.Hypot(xCoor, yCoor))); SetText(AngleDisplay, MyString.GetAngle(xCoor, yCoor));
+        SetText(ModulusDisplay, trimMove(Real.Hypot(xCoor, yCoor))); SetText(AngleDisplay, MyString.FormatAngle(xCoor, yCoor));
         DisplayMouseMoveCore(e.X - AddOne(borders[0]), e.Y - AddOne(borders[2]));
     }
     private void DisplayMouseDown(MouseEventArgs e, Real xCoor, Real yCoor)
     {
-        static string trimDown(Real input) => MyString.TrimExtremeNum(input, THRESHOLD);
+        static string trimDown(Real input) => MyString.FormatNumber(input, THRESHOLD);
         string _xCoor = trimDown(xCoor), _yCoor = trimDown(yCoor), modulus = trimDown(Real.Hypot(xCoor, yCoor)),
-            angle = MyString.GetAngle(xCoor, yCoor), message = String.Empty;
+            angle = MyString.FormatAngle(xCoor, yCoor), message = String.Empty;
         if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
         {
             message += "\r\n\r\n";
@@ -822,7 +814,7 @@ public partial class Graph : Form
     {
         (x_left, x_right, y_up, y_down, is_main) = (borders[0], borders[1], borders[2], borders[3], isMain);
         SetThicknessDensenessScopesBorders();
-        DisplayOnScreen();
+        DisplayInput();
     }
     private void Ending(string mode)
     {
@@ -832,7 +824,7 @@ public partial class Graph : Form
         AddDraft($"\r\n{SEP} No.{loop_number} [{mode}] {SEP}\r\n" + $"\r\n{MyString.BeautifyInput(InputString.Text)}\r\n" +
             $"\r\nPixels: {PointNumDisplay.Text}\r\nDuration: {TimeDisplay.Text}\r\n");
         if (is_auto && !error_address) RunStore();
-        InputString_Focus();
+        FocusInput();
     }
     #endregion
 
@@ -873,7 +865,7 @@ public partial class Graph : Form
     private void InputErrorBox(object sender, EventArgs e, string message)
     {
         error_input = true;
-        bool temp = ProcessingGraphics();
+        bool temp = InputLocked();
         InputString.ReadOnly = false; CheckAll(sender, e); InputString.ReadOnly = temp; // Sensitive
         GetInputErrorBox(message);
     }
@@ -918,7 +910,7 @@ public partial class Graph : Form
     private void Graph_KeyDown(object sender, KeyEventArgs e)
     {
         HandleModifierKeys(e, true);
-        if (!NoInput() && !ProcessingGraphics() && sft_pressed && e.KeyCode == Keys.Back)
+        if (!NoInput() && !InputLocked() && sft_pressed && e.KeyCode == Keys.Back)
             ExecuteSuppress(() =>
             {
                 AddDraft("\r\nDeleted: " + InputString.Text + "\r\n");
@@ -947,7 +939,7 @@ public partial class Graph : Form
         if (!ctrl_pressed) return;
         void restoreDefault(object sender, KeyEventArgs e)
         {
-            RecoverInput(); ComboColoring.SelectedIndex = 4; ComboContour.SelectedIndex = 1;
+            ResetInputs(); ComboColoring.SelectedIndex = 4; ComboContour.SelectedIndex = 1;
             CheckBox[] checkFalse = [CheckAuto, CheckSwap, CheckPoints, CheckShade, CheckRetain, CheckEdit];
             foreach (var cbx in checkFalse) cbx.Checked = false;
             CheckBox[] checkTrue = [CheckComplex, CheckCoor];
@@ -961,11 +953,11 @@ public partial class Graph : Form
             Keys.D3 => () => ClearButton_Click(sender, e),
             Keys.D2 => () => PictureLogo_DoubleClick(sender, e),
             Keys.OemQuestion => () => TitleLabel_DoubleClick(sender, e),
-            Keys.D when !ProcessingGraphics() => () => restoreDefault(sender, e),
-            Keys.B when !ProcessingGraphics() => () => AllButton_Click(sender, e),
-            Keys.P when !ProcessingGraphics() => () => PreviewButton_Click(sender, e),
-            Keys.G when !ProcessingGraphics() => () => ConfirmButton_Click(sender, e),
-            Keys.C when !ProcessingGraphics() && sft_pressed => () => CheckAll(sender, e),
+            Keys.D when !InputLocked() => () => restoreDefault(sender, e),
+            Keys.B when !InputLocked() => () => AllButton_Click(sender, e),
+            Keys.P when !InputLocked() => () => PreviewButton_Click(sender, e),
+            Keys.G when !InputLocked() => () => ConfirmButton_Click(sender, e),
+            Keys.C when !InputLocked() && sft_pressed => () => CheckAll(sender, e),
             _ => null
         };
         if (shortcutHandler != null) ExecuteSuppress(shortcutHandler, e);
@@ -1089,9 +1081,9 @@ public partial class Graph : Form
         content += getShortcuts("Control + R", 3, "Clear all validation results");
         content += getShortcuts("Control + D", 3, "Restore default settings");
         content += getShortcuts("Shift + Back", 3, "Clear the input box");
-        content += getShortcuts("Control + D2", 3, "View Fraljimetry's profile");
-        content += getShortcuts("Control + D3", 3, "Clear all read-only displays");
-        content += getShortcuts("Control + OemQuestion", 2, "View the user manual");
+        content += getShortcuts("Control + 2", 3, "View Fraljimetry's profile");
+        content += getShortcuts("Control + 3", 3, "Clear all read-only displays");
+        content += getShortcuts("Control + /", 2, "View the user manual");
         content += getShortcuts("Delete", 3, "Clear the Microbox & Macrobox");
         content += getShortcuts("Escape", 3, "Close Fraljiculator");
         return content + $"\r\n\r\n{GetComment("Double-click the subtitle to repaint the backdrop.")}";
@@ -1232,7 +1224,7 @@ public partial class Graph : Form
             6 => (3, "1.1", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (true, false, false, false)),
             7 => (3, "0", ("-0.2", "1.2", "-0.2", "1.2"), ("0.5", DENSE_DEFAULT), (true, false, false, true))
         };
-        else { ComboExamples_Undo(); InputString.ReadOnly = false; return; }
+        else { ClearExampleSelection(); InputString.ReadOnly = false; return; }
         InputString.ReadOnly = false;
 
         ComboColoring.SelectedIndex = set.iC;
@@ -1243,20 +1235,20 @@ public partial class Graph : Form
     private void ComboFS_SelectionChanged(ComboBox cbx)
     {
         string selectedItem = cbx.SelectedItem.ToString();
-        if (ProcessingGraphics()) return; int pos = InputString.SelectionStart;
-        SetText(InputString, MyString.Replace(InputString.Text, String.Concat(selectedItem, RecoverMultiply.LR_BRA),
+        if (InputLocked()) return; int pos = InputString.SelectionStart;
+        SetText(InputString, MyString.Replace(InputString.Text, String.Concat(selectedItem, ImplicitMultiply.EMPTY_PARENS),
             pos, pos + InputString.SelectionLength - 1));
         InputString.Focus(); InputString.SelectionStart = pos + selectedItem.Length + 1; // Must remain after .Focus()
     }
     private void ComboExamples_SelectedIndexChanged(object sender, EventArgs e)
     {
         string? selection = ComboExamples.SelectedItem?.ToString();
-        if (ProcessingGraphics() || String.IsNullOrEmpty(selection) || ComboExamples.SelectedIndex == -1) return;
+        if (InputLocked() || String.IsNullOrEmpty(selection) || ComboExamples.SelectedIndex == -1) return;
         SetText(InputString, selection);
         SetValuesForSelectedIndex(ComboExamples.SelectedIndex);
-        ComboExamples_Undo(); // Prevents repeated calls
+        ClearExampleSelection(); // Prevents repeated calls
         Delete_Click(e);
-        InputString_Focus();
+        FocusInput();
     }
     private void ComboFunctions_SelectedIndexChanged(object sender, EventArgs e) => ComboFS_SelectionChanged(ComboFunctions);
     private void ComboSpecial_SelectedIndexChanged(object sender, EventArgs e) => ComboFS_SelectionChanged(ComboSpecial);
@@ -1264,13 +1256,13 @@ public partial class Graph : Form
     private void ComboColoring_SelectedIndexChanged(object sender, EventArgs e) => color_mode = ComboCC_SelectionChanged(ComboColoring);
     private void ComboContour_SelectedIndexChanged(object sender, EventArgs e) => contour_mode = ComboCC_SelectionChanged(ComboContour);
     //
-    private void CheckComplex_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref is_complex);
-    private void CheckSwap_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref swap_colors);
-    private void CheckCoor_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref delete_coor);
-    private void CheckPoints_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref delete_point);
-    private void CheckShade_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref shade);
-    private void CheckRetain_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref freeze_graph);
-    private void CheckAuto_CheckedChanged(object sender, EventArgs e) => ReverseBool(ref is_auto);
+    private void CheckComplex_CheckedChanged(object sender, EventArgs e) => ToggleBool(ref is_complex);
+    private void CheckSwap_CheckedChanged(object sender, EventArgs e) => ToggleBool(ref swap_colors);
+    private void CheckCoor_CheckedChanged(object sender, EventArgs e) => ToggleBool(ref delete_coor);
+    private void CheckPoints_CheckedChanged(object sender, EventArgs e) => ToggleBool(ref delete_point);
+    private void CheckShade_CheckedChanged(object sender, EventArgs e) => ToggleBool(ref shade);
+    private void CheckRetain_CheckedChanged(object sender, EventArgs e) => ToggleBool(ref freeze_graph);
+    private void CheckAuto_CheckedChanged(object sender, EventArgs e) => ToggleBool(ref is_auto);
     private void CheckEdit_CheckedChanged(object sender, EventArgs e)
     {
         DraftBox.ReadOnly = !DraftBox.ReadOnly; // Properties cannot be passed by reference
@@ -1298,10 +1290,10 @@ public partial class Graph : Form
         TextBox[] textBoxes = [DraftBox, PointNumDisplay, TimeDisplay, X_CoorDisplay, Y_CoorDisplay,
                 ModulusDisplay, AngleDisplay, FunctionDisplay, CaptionBox];
         foreach (var tbx in textBoxes) SetText(tbx, String.Empty);
-        InputString_Focus();
+        FocusInput();
     }
     private void PictureIncorrect_Click(object sender, EventArgs e)
-    { if (!ProcessingGraphics()) CheckValidityCore(() => InputErrorBox(sender, e, WRONG_FORMAT)); }
+    { if (!InputLocked()) CheckValidityCore(() => InputErrorBox(sender, e, WRONG_FORMAT)); }
     //
     private void PointNumDisplay_MouseDown(object sender, MouseEventArgs e) => HideCaret(PointNumDisplay.Handle);
     private void TimeDisplay_MouseDown(object sender, MouseEventArgs e) => HideCaret(TimeDisplay.Handle);
@@ -1341,7 +1333,7 @@ public partial class Graph : Form
     {
         try
         {
-            if (ProcessingGraphics()) return; bool noSomeInput = false;
+            if (InputLocked()) return; bool noSomeInput = false;
             foreach (var tbx in textBoxes)
             {
                 bool noInput = String.IsNullOrEmpty(tbx.Text); noSomeInput = noSomeInput || noInput;
@@ -1354,7 +1346,7 @@ public partial class Graph : Form
     private void MiniChecks(TextBox tbx, Label lbl) => MiniChecks([tbx], lbl);
     private void Details_TextChanged(object sender, EventArgs e)
     {
-        if (ProcessingGraphics()) return;
+        if (InputLocked()) return;
         MiniChecks([X_Left, X_Right, Y_Left, Y_Right], DetailLabel);
         if (scopes == null) return; // Required during initialization
         void checkScopes(bool b1, bool b2, Color c) { if (b1) X_Scope.ForeColor = c; if (b2) Y_Scope.ForeColor = c; }
@@ -1372,11 +1364,11 @@ public partial class Graph : Form
     private void DenseInput_TextChanged(object sender, EventArgs e) => MiniChecks(DenseInput, DenseLabel);
     private void InputString_TextChanged(object sender, EventArgs e)
     {
-        if (ProcessingGraphics()) return;
+        if (InputLocked()) return;
         static int removeSomeKeys(TextBox tbx)
         {
             int caretPosition = tbx.Text.Length - tbx.SelectionStart - tbx.SelectionLength; // Necessary
-            foreach (char c in RecoverMultiply.BARRED_CHARS) SetText(tbx, tbx.Text.Replace(c, ' '));
+            foreach (char c in ImplicitMultiply.BARRED_CHARS) SetText(tbx, tbx.Text.Replace(c, ' '));
             return tbx.Text.Length - caretPosition;
         }
         int pos = removeSomeKeys(InputString); // Necessary
@@ -1390,7 +1382,7 @@ public partial class Graph : Form
     }
     private void AddressInput_TextChanged(object sender, EventArgs e)
     {
-        if (ProcessingGraphics()) return;
+        if (InputLocked()) return;
         if (String.IsNullOrEmpty(AddressInput.Text)) AtLabel.ForeColor = Color.White;
         else AtLabel.ForeColor = Directory.Exists(AddressInput.Text) ? CORRECT_GREEN : ERROR_RED;
     }
@@ -1410,7 +1402,7 @@ public partial class Graph : Form
 
     #region Key Press & Key Down
     private void BarSomeKeys(object sender, KeyPressEventArgs e)
-    { if (RecoverMultiply.BARRED_CHARS.Contains(e.KeyChar)) e.Handled = true; }
+    { if (ImplicitMultiply.BARRED_CHARS.Contains(e.KeyChar)) e.Handled = true; }
     private void InputString_KeyPress(object sender, KeyPressEventArgs e) => BarSomeKeys(sender, e);
     private void GeneralInput_KeyPress(object sender, KeyPressEventArgs e) => BarSomeKeys(sender, e);
     private void X_Left_KeyPress(object sender, KeyPressEventArgs e) => BarSomeKeys(sender, e);
@@ -1430,7 +1422,7 @@ public partial class Graph : Form
         char obtainLeft() => e.KeyCode switch { Keys.D9 => '(', Keys.OemOpenBrackets => '{' };
         char obtainRight(char left) => left switch { '(' => ')', '{' => '}' };
 
-        if (!MyString.CheckParenthesis(tbx.Text.AsSpan(caretPosition, tbx.SelectionLength))) selectSuppress(0);
+        if (!MyString.HasBalancedParen(tbx.Text.AsSpan(caretPosition, tbx.SelectionLength))) selectSuppress(0);
         else if ((e.KeyCode == Keys.D9 || e.KeyCode == Keys.OemOpenBrackets) && (ModifierKeys & Keys.Shift) != 0)
         {
             char left = obtainLeft(), right = obtainRight(left);
@@ -1446,20 +1438,20 @@ public partial class Graph : Form
         {
             if (tbx.SelectionLength > 0) selectSuppress(0);
             else if (caretPosition == 0) selectSuppress(0);
-            else if (RecoverMultiply.IsBraL(tbx.Text[caretPosition - 1])) selectSuppress(1);
+            else if (ImplicitMultiply.IsOpeningBracket(tbx.Text[caretPosition - 1])) selectSuppress(1);
         }
         else if (e.KeyCode == Keys.Oemcomma) insertSelectSuppress(", ", 2);
         else if (e.KeyCode == Keys.OemPipe) insertSelectSuppress(" | ", 3);
         else if (e.KeyCode == Keys.Back)
         {
-            if (caretPosition == 0 || !MyString.CheckParenthesis(tbx.Text) || tbx.SelectionLength > 0) return;
+            if (caretPosition == 0 || !MyString.HasBalancedParen(tbx.Text) || tbx.SelectionLength > 0) return;
             char c = tbx.Text[caretPosition - 1];
-            if (RecoverMultiply.IsBraL(c))
+            if (ImplicitMultiply.IsOpeningBracket(c))
             {
                 if (tbx.Text[caretPosition] == obtainRight(c)) SetText(tbx, tbx.Text.Remove(caretPosition - 1, 2));
                 selectSuppress(-1);
             }
-            else if (RecoverMultiply.IsBraR(c)) selectSuppress(-1);
+            else if (ImplicitMultiply.IsClosingBracket(c)) selectSuppress(-1);
         }
     } // Sensitive
     private void InputString_KeyDown(object sender, KeyEventArgs e) => AutoKeyDown(InputString, e);
@@ -1699,92 +1691,67 @@ public class MyString
     public static readonly string[] FUNC = AddSuffix(["function", "Function", "func", "Func"]),
         POLAR = AddSuffix(["polar", "Polar"]), PARAM = AddSuffix(["parametric", "Parametric", "param", "Param"]);
     public static readonly string[] FPP_NAMES = [.. FUNC, .. POLAR, .. PARAM];
-    protected static readonly char SUB_CHAR = ';'; // Replaces ","
 
     #region Parentheses
-    protected static int PairedParenthesis(ReadOnlySpan<char> input, int start)
+    protected static int FindMatchingParen(ReadOnlySpan<char> input, int start)
     {
         for (int i = start + 1, count = 1; ; i++)
         { if (input[i] == '(') count++; else if (input[i] == ')') count--; if (count == 0) return i; }
     }
-    protected static bool ContainsAnyOuter(ReadOnlySpan<char> input, ReadOnlySpan<char> chars)
+    protected static bool ContainsAnyTopLevel(ReadOnlySpan<char> input, ReadOnlySpan<char> chars)
     {
         for (int i = 0; i < input.Length; i++)
-        { if (input[i] == '(') i = PairedParenthesis(input, i); else if (chars.Contains(input[i])) return true; }
+        { if (input[i] == '(') i = FindMatchingParen(input, i); else if (chars.Contains(input[i])) return true; }
         return false;
     }
-    protected static string[] SplitByCharsOuter(ReadOnlySpan<char> input, ReadOnlySpan<char> delimiters)
+    public static string[] SplitTopLevel(ReadOnlySpan<char> input, ReadOnlySpan<char> delimiters)
     {
         List<string> split = []; int start = 0;
         for (int i = 0; i < input.Length; i++)
         {
-            if (input[i] == '(') i = PairedParenthesis(input, i);
+            if (input[i] == '(') i = FindMatchingParen(input, i);
             else if (delimiters.Contains(input[i])) { split.Add(input[start..i].ToString()); start = i + 1; }
         }
         split.Add(input[start..].ToString()); return [.. split];
     }
-    protected static (int, string[]) PrepareSeriesSub(ReadOnlySpan<char> input)
+    protected static (int, string[]) ParseSeriesCall(ReadOnlySpan<char> input)
     {
-        int i = input.IndexOf(ReplaceTags.SERIES_TAIL), end = PairedParenthesis(input, i + 1);
-        return (i, ReplaceRecover(BraFreePart(input, i + 1, end)));
+        int i = input.IndexOf(ReplaceTags.SERIES_TAIL), end = FindMatchingParen(input, i + 1);
+        return (i, SplitTopLevel(ParenContent(input, i + 1, end), ","));
     }
-    public static bool CheckParenthesis(ReadOnlySpan<char> input)
+    public static bool HasBalancedParen(ReadOnlySpan<char> input)
     { int sum = 0; foreach (char c in input) { if (c == '(') sum++; else if (c == ')') sum--; if (sum < 0) return false; } return sum == 0; }
     #endregion
 
     #region Replacement
-    protected static ReadOnlySpan<char> BraFreePart(ReadOnlySpan<char> input, int start, int end) => input[(start + 1)..end];
-    protected static ReadOnlySpan<char> TryBraNum(ReadOnlySpan<char> input, char c1, char c2)
-    { ThrowException(input[0] != c1 || input[^1] != c2); return BraFreePart(input, 0, input.Length - 1); }
-    private static string ReplaceCore(string orig, string sub, int start, int end)
+    protected static ReadOnlySpan<char> ParenContent(ReadOnlySpan<char> input, int start, int end) => input[(start + 1)..end];
+    protected static ReadOnlySpan<char> BraceContent(ReadOnlySpan<char> input)
+    { ThrowException(input[0] != '{' || input[^1] != '}'); return input[1..^1]; }
+    public static string Replace(string orig, string sub, int start, int end)
         => String.Create(start + sub.Length + orig.Length - end - 1, (start, end, sub.Length), (span, state) =>
         {
             var (_start, _end, _subLen) = state;
-            orig[.._start].CopyTo(span); sub.CopyTo(span[_start..]); orig[(_end + 1)..].CopyTo(span[(_start + _subLen)..]);
+            orig[.._start].CopyTo(span);
+            sub.CopyTo(span[_start..]);
+            orig[(_end + 1)..].CopyTo(span[(_start + _subLen)..]);
         });
-    public static string Replace(ReadOnlySpan<char> orig, ReadOnlySpan<char> sub, int start, int end)
-        => ReplaceCore(orig.ToString(), sub.ToString(), start, end);
-    public static string ReplaceLoop(ReadOnlySpan<string> split, int origIdx, int subIdx, string idxStr, bool wrapBra = false)
-        => split[origIdx].Replace(split[subIdx], wrapBra ? String.Concat('(', idxStr, ')') : idxStr);
-    private static string ReplaceInterior(ReadOnlySpan<char> input, char origChar, char subChar)
-    {
-        if (!input.Contains(ReplaceTags.SERIES_TAIL)) return input.ToString();
-        StringBuilder buffer = new(input.Length); buffer.Append(input);
-        for (int i = 0; i < buffer.Length; i++)
-        {
-            if (buffer[i] != ReplaceTags.SERIES_TAIL) continue;
-            int endIndex = PairedParenthesis(input, i + 1);
-            for (int j = i + 1; j < endIndex; j++) if (buffer[j] == origChar) buffer[j] = subChar;
-            i = endIndex;
-        }
-        return buffer.ToString();
-    } // Prevents commas inside parentheses from interfering with outer splitting
-    private static string[] ReplaceRecover(ReadOnlySpan<char> input)
-        => [.. SplitByChars(ReplaceInterior(input, ',', SUB_CHAR), ",").Select(part => part.Replace(SUB_CHAR, ','))];
-    public static string ReplaceSubstrings(string input, ReadOnlySpan<string> substrings, string substitution)
-    { foreach (string s in substrings) input = input.Replace(s, substitution); return input; }
-    protected static string RemoveEnterBlank(string input) => ReplaceSubstrings(input, RecoverMultiply.ENTER_BLANK, String.Empty);
-    public static string BeautifyInput(string input) => RemoveEnterBlank(input).Replace(",", ", ").Replace("|", " | ");
+    public static string ReplaceLoop(ReadOnlySpan<string> split, int origIdx, int subIdx, string idxStr, bool wrapParen = false)
+        => split[origIdx].Replace(split[subIdx], wrapParen ? String.Concat('(', idxStr, ')') : idxStr);
+    protected static string RemoveWhitespace(string input)
+    { foreach (string s in ImplicitMultiply.ENTER_BLANK) input = input.Replace(s, String.Empty); return input; }
+    public static string BeautifyInput(string input) => RemoveWhitespace(input).Replace(",", ", ").Replace("|", " | ");
     #endregion
 
     #region Miscellaneous
-    public static string[] SplitString(ReadOnlySpan<char> input)
-        => ReplaceRecover(BraFreePart(input, input.IndexOf('('), input.Length - 1)); // Deliberately includes the redundant tail
-    public static string[] SplitByChars(ReadOnlySpan<char> input, ReadOnlySpan<char> delimiters)
-    {
-        List<string> segments = []; int start = 0;
-        for (int i = 0; i < input.Length; i++)
-            if (delimiters.Contains(input[i])) { segments.Add(input[start..i].ToString()); start = i + 1; }
-        segments.Add(input[start..].ToString());
-        return [.. segments];
-    }
-    public static string TrimExtremeNum(Real input, Real threshold)
+    public static string[] SplitArguments(ReadOnlySpan<char> input)
+        => SplitTopLevel(ParenContent(input, input.IndexOf('('), input.Length - 1), ",");
+    public static string FormatNumber(Real input, Real threshold)
         => (MathR.Abs(input) < threshold && MathR.Abs(input) > 1 / threshold) ? input.ToString("#0.0000000") : input.ToString("E3");
-    public static string GetAngle(Real x, Real y) => (Graph.ArgRGB(x, y) / MathR.PI).ToString("#0.000000") + " π";
+    public static string FormatAngle(Real x, Real y) => (Graph.ArgRGB(x, y) / MathR.PI).ToString("#0.000000") + " π";
     public static void ThrowException(bool error = true) { if (error) throw new Exception(); }
     public static void ThrowInvalidLengths(ReadOnlySpan<string> split, ReadOnlySpan<int> lengths)
         => ThrowException(!lengths.Contains(split.Length));
-    protected static (int, int) ObtainStartEnd(ReadOnlySpan<string> split, int length, int start, int iteration)
+    protected static (int, int) GetIterationBounds(ReadOnlySpan<string> split, int length, int start, int iteration)
     {
         ThrowInvalidLengths(split, [length, length + 1]);
         int end = split.Length == length ? iteration : RealSub.ToInt(split[^1]);
@@ -1795,14 +1762,18 @@ public class MyString
         foreach (string s in stringsToCheck) if (input.IndexOf(s.AsSpan()) >= 0) return true;
         return false;
     }
-    public static bool StartsWithTag(string input, string tag)
-        => input[..MathR.Max(0, input.IndexOf('('))] == String.Concat(ReplaceTags.FUNC_HEAD, tag, ReplaceTags.SERIES_TAIL);
+    public static bool StartsWithTag(ReadOnlySpan<char> input, ReadOnlySpan<char> tag)
+    {
+        int end = input.IndexOf('(');
+        return end == tag.Length + 2 && input[0] == ReplaceTags.FUNC_HEAD && input[end - 1] == ReplaceTags.SERIES_TAIL &&
+            input[1..(1 + tag.Length)].SequenceEqual(tag);
+    }
     #endregion
 } /// Provides string-manipulation utilities
 public class RealComplex : MyString
 {
     protected static readonly Real GAMMA = (Real)0.5772156649015329, LOG2 = MathR.Log(2);
-    protected static readonly int STEP = 1; // STEP: a tunable chunk size
+    protected static readonly int STEP = 1; // A tunable chunk size
     protected const char _A = 'a', A_ = 'A', B_ = 'B', _C = 'c', C_ = 'C', D_ = 'D', _D_ = '$', E = 'e', E_ = 'E',
         _F = 'f', F_ = 'F', _F_ = '!', G = 'γ', G_ = 'G', _H = 'h', H_ = 'H', I = 'i', I_ = 'I', J_ = 'J', K_ = 'K', _L = 'l',
         M_ = 'M', MAX = '>', MIN = '<', MODE_1 = '1', MODE_2 = '2', P = 'π', P_ = 'P', _Q = 'q', _R = 'r', R_ = 'R',
@@ -1858,7 +1829,7 @@ public class RealComplex : MyString
         }
         return (coeffSeq, _coeffSeq, logSeq);
     }
-    public static void CheckFor(int start, int end, Action<int> action)
+    public static void ForEachInclusive(int start, int end, Action<int> action)
     { ThrowException(start > end); for (int i = start; i <= end; i++) action(i); }
     protected static Matrix<Real> ChooseMode((string mode, Matrix<Real> m1, Matrix<Real> m2) m)
     {
@@ -1866,19 +1837,19 @@ public class RealComplex : MyString
         var (selected, unused) = m.mode[0] == MODE_1 ? (m.m1, m.m2) : (m.m2, m.m1); unused.Return(); return selected;
     }
     protected static Matrix<TEntry> HandleMtx<TEntry>(Matrix<TEntry> mtx, Action<Matrix<TEntry>> action) { action(mtx); return mtx; }
-    protected static MatrixCopy<TEntry> HandleSolo<TEntry>(ReadOnlySpan<char> input, MatrixCopy<TEntry> mc)
+    protected static MatrixCopy<TEntry> RequireSingleChar<TEntry>(ReadOnlySpan<char> input, MatrixCopy<TEntry> mc)
     { ThrowException(input.Length != 1); return mc; }
-    protected static (string[], StringBuilder) GetPSMDComponents(ReadOnlySpan<char> input, ReadOnlySpan<char> signs)
+    protected static (string[], StringBuilder) SplitOperatorLevel(ReadOnlySpan<char> input, ReadOnlySpan<char> signs)
     {
         bool signHead = input[0] == signs[1];
         ThrowException(signHead && input.Length > 1 && input[1] == signs[1]);
         ReadOnlySpan<char> core = signHead ? input[1..] : input;
         StringBuilder result = new(core.Length + 1); result.Append(signHead ? signs[1] : signs[0]);
         for (int i = 0; i < core.Length; i++)
-            if (core[i] == '(') i = PairedParenthesis(core, i); else if (signs.Contains(core[i])) result.Append(core[i]);
-        return (SplitByCharsOuter(core, signs), result);
+            if (core[i] == '(') i = FindMatchingParen(core, i); else if (signs.Contains(core[i])) result.Append(core[i]);
+        return (SplitTopLevel(core, signs), result);
     }
-    protected static (bool trig, bool hyper) IsInverseFunc(ReadOnlySpan<char> input, int start)
+    protected static (bool trig, bool hyper) GetInverseFlags(ReadOnlySpan<char> input, int start)
         => (start <= 1 || input[start - 2] == _A, start <= 2 || input[start - 3] == _A);
 } /// Provides shared functionality for RealSub and ComplexSub
 public class ReplaceTags : RealComplex
@@ -2028,24 +1999,25 @@ public class ReplaceTags : RealComplex
     { foreach (var kvp in dictionary) input = input.Replace(kvp.Key, kvp.Value); return input; }
     private static string ReplaceConstant(string input) => ReplaceBase(input, CONSTANTS);
     private static string ReplaceCommon(string input) => ReplaceConstant(ReplaceBase(input, AddPrefixSuffix(COMMON)));
-    protected static string ReplaceRealComplex(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(REAL_COMPLEX)));
-    protected static string ReplaceCurves(string input) => ReplaceBase(input, AddPrefixSuffix(TAGS));
+    protected static string NormalizeMathNames(string input) => ReplaceCommon(ReplaceBase(input, AddPrefixSuffix(REAL_COMPLEX)));
+    protected static string NormalizeSpecialTags(string input) => ReplaceBase(input, AddPrefixSuffix(TAGS));
 } /// Interprets function names
-public class RecoverMultiply : ReplaceTags
+public class ImplicitMultiply : ReplaceTags
 {
-    public static readonly string LR_BRA = "()", LR_CBRA = "{}", _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_),
-        _ZZ_BRA = String.Concat(_ZZ_, LR_CBRA), _XX__YY_BRA = String.Concat(_XX__YY_, LR_CBRA),
+    public static readonly string EMPTY_PARENS = "()", EMPTY_BRACES = "{}",
+        _ZZ_ = String.Concat(_Z, Z_), _XX__YY_ = String.Concat(_X, X_, _Y, Y_),
+        _ZZ_BRACES = String.Concat(_ZZ_, EMPTY_BRACES), _XX__YY_BRACES = String.Concat(_XX__YY_, EMPTY_BRACES),
         BARRED_CHARS = String.Concat("\t!\"#$%&\':;<=>?@[\\]_`~", SUBS, ITLOOP, LOOP, _FUNC, _POLAR, _PARAM);
     private static readonly string VAR_REAL = _XX__YY_, VAR_COMPLEX = String.Concat(_ZZ_, I), CONST = String.Concat(E, P, G),
-        ARITH = "+-*/^(,|", BRA_L = "({", BRA_R = ")}";
+        ARITH = "+-*/^(,|", OPEN_BRACKETS = "({", CLOSE_BRACKETS = ")}";
     public static readonly string[] ENTER_BLANK = ["\n", "\r", " "];
 
-    public static string Simplify(string input)
+    public static string NormalizeInput(string input)
     {
-        ThrowException(!CheckParenthesis(input) || input.Contains(LR_BRA) || input.AsSpan().ContainsAny(BARRED_CHARS));
-        return ReplaceRealComplex(ReplaceCurves(RemoveEnterBlank(input))); // Sensitive
-    } // Used only once at the beginning
-    protected static string Recover(ReadOnlySpan<char> input, bool isComplex)
+        ThrowException(!HasBalancedParen(input) || input.Contains(EMPTY_PARENS) || input.AsSpan().ContainsAny(BARRED_CHARS));
+        return NormalizeMathNames(NormalizeSpecialTags(RemoveWhitespace(input))); // Sensitive
+    }
+    protected static string InsertImpMultiply(ReadOnlySpan<char> input, bool isComplex)
     {
         if (input.Length == 1) return input.ToString();
         Func<char, bool> isVar = isComplex ? IsVarComplex : IsVarReal;
@@ -2053,34 +2025,34 @@ public class RecoverMultiply : ReplaceTags
         recoveredInput.Append(input[0]);
         for (int i = 1; i < input.Length; i++) // Do not parallelize this loop
         {
-            if (DecideRecovery(input[i - 1], input[i], isVar)) recoveredInput.Append('*');
+            if (NeedsImpMultiply(input[i - 1], input[i], isVar)) recoveredInput.Append('*');
             recoveredInput.Append(input[i]);
         }
         return recoveredInput.ToString();
     } // Moved outside the loops
-    private static bool DecideRecovery(char c1, char c2, Func<char, bool> isVar)
+    private static bool NeedsImpMultiply(char c1, char c2, Func<char, bool> isVar)
     {
         bool isConstNum(char c) => IsConst(c) || Char.IsNumber(c);
         bool isConstVar(char c) => IsConst(c) || isVar(c);
         bool isConstNumVar(char c) => IsConst(c) || Char.IsNumber(c) || isVar(c);
         bool bNV = isConstNum(c1) && isConstVar(c2), bVN = isConstVar(c1) && isConstNum(c2), bVV = isVar(c1) && isVar(c2),
-            bNVL = isConstNumVar(c1) && IsBraL(c2), bRNV = IsBraR(c1) && isConstNumVar(c2), bRL = IsBraR(c1) && IsBraL(c2),
+            bNVL = isConstNumVar(c1) && IsOpeningBracket(c2), bRNV = IsClosingBracket(c1) && isConstNumVar(c2), bRL = IsClosingBracket(c1) && IsOpeningBracket(c2),
             bAF = !IsArithmetic(c1) && IsFunctionHead(c2);
         return bNV || bVN || bVV || bNVL || bRNV || bRL || bAF;
     } // Sensitive
     private static bool IsVarReal(char c) => VAR_REAL.Contains(c);
     private static bool IsVarComplex(char c) => VAR_COMPLEX.Contains(c);
     private static bool IsConst(char c) => CONST.Contains(c);
-    private static bool IsArithmetic(char c) => ARITH.Contains(c); // Function heads after these operators do not require recovery
+    private static bool IsArithmetic(char c) => ARITH.Contains(c); // Functions after these operators are not multiplied
     private static bool IsFunctionHead(char c) => c == FUNC_HEAD;
-    public static bool IsBraL(char c) => BRA_L.Contains(c);
-    public static bool IsBraR(char c) => BRA_R.Contains(c);
+    public static bool IsOpeningBracket(char c) => OPEN_BRACKETS.Contains(c);
+    public static bool IsClosingBracket(char c) => CLOSE_BRACKETS.Contains(c);
 } /// Restores omitted multiplication operators ("*")
 
 /// <summary>
 /// COMPUTATION SECTION
 /// </summary>
-public sealed class ComplexSub : RecoverMultiply
+public sealed class ComplexSub : ImplicitMultiply
 {
     #region Fields & Constructors
     private readonly Matrix<Complex> z;
@@ -2091,7 +2063,7 @@ public sealed class ComplexSub : RecoverMultiply
     public ComplexSub(ReadOnlySpan<char> input, Matrix<Complex>? z, Matrix<Complex>? Z, Matrix<Complex>[]? buffCocs,
         int rows, int columns, bool useList = false)
     {
-        this.input = Recover(input, true);
+        this.input = InsertImpMultiply(input, true);
         if (z != null) this.z = (Matrix<Complex>)z; if (Z != null) this.Z = (Matrix<Complex>)Z;
         this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
         Initialize<Complex>(rows, columns, ref rowChk, ref rowOffs, ref colBytes,
@@ -2122,7 +2094,7 @@ public sealed class ComplexSub : RecoverMultiply
     private unsafe Matrix<Complex> Hypergeometric(string[] split) // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
         => HandleMtx(Const(Complex.ZERO, true), sum =>
         {
-            var (start, end) = ObtainStartEnd(split, 4, 0, 100);
+            var (start, end) = GetIterationBounds(split, 4, 0, 100);
             Matrix<Complex> obtain(int index) => ObtainValue(split[index]);
             Matrix<Complex> a = obtain(0), b = obtain(1), c = obtain(2), initial = obtain(3);
             ProcessChunks((p, col) =>
@@ -2143,7 +2115,7 @@ public sealed class ComplexSub : RecoverMultiply
     private unsafe Matrix<Complex> Gamma(string[] split) // Reference: https://en.wikipedia.org/wiki/Gamma_function
         => HandleMtx(UninitMtx(true), output =>
         {
-            var (start, end) = ObtainStartEnd(split, 1, 1, 100);
+            var (start, end) = GetIterationBounds(split, 1, 1, 100);
             Matrix<Complex> initial = ObtainValue(split[0]);
             ProcessChunks((p, col) =>
             {
@@ -2160,7 +2132,7 @@ public sealed class ComplexSub : RecoverMultiply
     private unsafe Matrix<Complex> Beta(string[] split) // Reference: https://en.wikipedia.org/wiki/Beta_function
         => HandleMtx(UninitMtx(true), output =>
         {
-            var (start, end) = ObtainStartEnd(split, 2, 1, 100);
+            var (start, end) = GetIterationBounds(split, 2, 1, 100);
             Matrix<Complex> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
             ProcessChunks((p, col) =>
             {
@@ -2177,7 +2149,7 @@ public sealed class ComplexSub : RecoverMultiply
     private unsafe Matrix<Complex> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
         => HandleMtx(Const(Complex.ZERO, true), sum =>
         {
-            var (start, end) = ObtainStartEnd(split, 1, 0, 50);
+            var (start, end) = GetIterationBounds(split, 1, 0, 50);
             Matrix<Complex> initial = ObtainValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
             ProcessChunks((p, col) =>
             {
@@ -2210,10 +2182,10 @@ public sealed class ComplexSub : RecoverMultiply
     private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
     {
         ThrowInvalidLengths(split, [validLength, validLength - 2]); bool sub = split.Length == validLength;
-        int subIdx = validLength - 3; if (sub) split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
+        int subIdx = validLength - 3; if (sub) split[0] = InsertImpMultiply(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
         ComplexSub buffer = ObtainSub(sub ? ReplaceLoop(split, 0, subIdx, "0") : split[0], initMtx, buffCocs, true);
 
-        CheckFor(sub ? RealSub.ToInt(split[subIdx + 1]) : 1, RealSub.ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
+        ForEachInclusive(sub ? RealSub.ToInt(split[subIdx + 1]) : 1, RealSub.ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countCst = 0;
             action(buffer); if (!buffer.readList) buffer.readList = true; // Precomputes cstMtcs
@@ -2337,18 +2309,18 @@ public sealed class ComplexSub : RecoverMultiply
     } // Cached constants must remain ordinary matrices
     private MatrixCopy<Complex> Evaluate(ReadOnlySpan<char> input, bool pooled = false) => input[0] switch
     {
-        _Z => HandleSolo<Complex>(input, new(z, true)),
-        Z_ => HandleSolo<Complex>(input, new(Z, true)),
-        '{' => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
-        I => HandleSolo(input, ConstMtx(Complex.I, pooled)),
-        E => HandleSolo(input, ConstMtx(new(MathR.E), pooled)),
-        P => HandleSolo(input, ConstMtx(new(MathR.PI), pooled)),
-        G => HandleSolo(input, ConstMtx(new(GAMMA), pooled)),
+        _Z => RequireSingleChar<Complex>(input, new(z, true)),
+        Z_ => RequireSingleChar<Complex>(input, new(Z, true)),
+        '{' => new(buffCocs[Int32.Parse(BraceContent(input))], true),
+        I => RequireSingleChar(input, ConstMtx(Complex.I, pooled)),
+        E => RequireSingleChar(input, ConstMtx(new(MathR.E), pooled)),
+        P => RequireSingleChar(input, ConstMtx(new(MathR.PI), pooled)),
+        G => RequireSingleChar(input, ConstMtx(new(GAMMA), pooled)),
         _ => ConstMtx(new(Real.Parse(input)), pooled)
     };
     private MatrixCopy<Complex> SeriesSub(ReadOnlySpan<char> input)
     {
-        var (idx, split) = PrepareSeriesSub(input);
+        var (idx, split) = ParseSeriesCall(input);
         Func<string[], Matrix<Complex>> handleSub(Func<string[], Matrix<Complex>> func, int tagL, ReadOnlySpan<char> source)
         { ThrowException(source[idx - tagL] != FUNC_HEAD); return func; }
         Func<string[], Matrix<Complex>> braFunc = input[idx - 1] switch
@@ -2374,7 +2346,7 @@ public sealed class ComplexSub : RecoverMultiply
     }
     private MatrixCopy<Complex> SubCore(ReadOnlySpan<char> input, int start, MatrixCopy<Complex> bFValue, bool pooled = false)
     {
-        var (trig, hyper) = IsInverseFunc(input, start);
+        var (trig, hyper) = GetInverseFlags(input, start);
         MatrixCopy<Complex> handleSub(Func<Complex, Complex> func, int tagL, ReadOnlySpan<char> source)
         {
             ThrowException(source[start - tagL] != FUNC_HEAD);
@@ -2405,23 +2377,23 @@ public sealed class ComplexSub : RecoverMultiply
     private MatrixCopy<Complex> Transform(ReadOnlySpan<char> input, bool pooled = false)
     {
         int start = input.IndexOf('('); if (start < 0) return Evaluate(input, pooled);
-        int end = PairedParenthesis(input, start); ThrowException(end != input.Length - 1);
+        int end = FindMatchingParen(input, start); ThrowException(end != input.Length - 1);
         if (start > 0 && input[start - 1] == SERIES_TAIL) return SeriesSub(input);
-        MatrixCopy<Complex> value = ObtainCore(BraFreePart(input, start, end), true);
+        MatrixCopy<Complex> value = ObtainCore(ParenContent(input, start, end), true);
         return start == 0 ? value : SubCore(input, start, value, pooled);
     }
     private MatrixCopy<Complex> PowerCore(ReadOnlySpan<char> input, bool pooled = false)
     {
-        if (!ContainsAnyOuter(input, "^")) return Transform(input, pooled);
-        string[] split = SplitByCharsOuter(input, "^");
+        if (!ContainsAnyTopLevel(input, "^")) return Transform(input, pooled);
+        string[] split = SplitTopLevel(input, "^");
         Matrix<Complex> tower = CopyMtx(Transform(split[^1], pooled), pooled);
         for (int k = split.Length - 2; k >= 0; k--) PoolOp(Transform(split[k], true), tower, Power);
         return new(tower);
     }
     private MatrixCopy<Complex> MultiplyDivideCore(ReadOnlySpan<char> input, bool pooled = false)
     {
-        if (!ContainsAnyOuter(input, "*/")) return PowerCore(input, pooled);
-        var (split, signs) = GetPSMDComponents(input, "*/");
+        if (!ContainsAnyTopLevel(input, "*/")) return PowerCore(input, pooled);
+        var (split, signs) = SplitOperatorLevel(input, "*/");
         Matrix<Complex> product = CopyMtx(PowerCore(split[0], pooled), pooled); if (signs[0] == '/') Invert(product);
         for (int j = 1; j < split.Length; j++)
             PoolOp(PowerCore(split[j], true), product, signs[j] switch { '*' => Multiply, '/' => Divide });
@@ -2429,8 +2401,8 @@ public sealed class ComplexSub : RecoverMultiply
     }
     private MatrixCopy<Complex> PlusSubtractCore(ReadOnlySpan<char> input, bool pooled = false)
     {
-        if (!ContainsAnyOuter(input, "+-")) return MultiplyDivideCore(input, pooled);
-        var (split, signs) = GetPSMDComponents(input, "+-");
+        if (!ContainsAnyTopLevel(input, "+-")) return MultiplyDivideCore(input, pooled);
+        var (split, signs) = SplitOperatorLevel(input, "+-");
         Matrix<Complex> sum = CopyMtx(MultiplyDivideCore(split[0], pooled), pooled); if (signs[0] == '-') Negate(sum);
         for (int i = 1; i < split.Length; i++)
             PoolOp(MultiplyDivideCore(split[i], true), sum, signs[i] switch { '+' => Plus, '-' => Subtract });
@@ -2439,14 +2411,14 @@ public sealed class ComplexSub : RecoverMultiply
     private MatrixCopy<Complex> ObtainCore(ReadOnlySpan<char> input, bool pooled = false)
         => Int32.TryParse(input, out int result) ? ConstMtx(new(result), pooled) : PlusSubtractCore(input, pooled);
     private MatrixCopy<Complex> ObtainScratch()
-        => !input.AsSpan().ContainsAny(_ZZ_BRA) ? new(Const(Obtain(input), true)) : ObtainCore(input, true);
+        => !input.AsSpan().ContainsAny(_ZZ_BRACES) ? new(Const(Obtain(input), true)) : ObtainCore(input, true);
     private Matrix<Complex> ObtainOwnScratch()
     { MatrixCopy<Complex> mc = ObtainScratch(); return !mc.copy && mc.matrix.IsPooled() ? mc.matrix : Copy(mc.matrix, true); }
     public Matrix<Complex> Obtain(bool checkVar = true)
-        => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRA) ? Const(Obtain(input)) : FinalizeMtx(ObtainCore(input));
+        => checkVar && !input.AsSpan().ContainsAny(_ZZ_BRACES) ? Const(Obtain(input)) : FinalizeMtx(ObtainCore(input));
     #endregion
 } /// Computes complex-variable expressions
-public sealed class RealSub : RecoverMultiply
+public sealed class RealSub : ImplicitMultiply
 {
     #region Fields & Constructors
     private readonly Matrix<Real> x, y;
@@ -2457,7 +2429,7 @@ public sealed class RealSub : RecoverMultiply
     public RealSub(ReadOnlySpan<char> input, Matrix<Real>? x, Matrix<Real>? y, Matrix<Real>? X, Matrix<Real>? Y, Matrix<Real>[]? buffCocs,
         int rows, int columns, bool useList = false)
     {
-        this.input = Recover(input, false);
+        this.input = InsertImpMultiply(input, false);
         if (x != null) this.x = (Matrix<Real>)x; if (y != null) this.y = (Matrix<Real>)y;
         if (X != null) this.X = (Matrix<Real>)X; if (Y != null) this.Y = (Matrix<Real>)Y;
         this.rows = rows; this.columns = columns; this.useList = useList; this.buffCocs = buffCocs;
@@ -2473,7 +2445,7 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> ObtainValue(ReadOnlySpan<char> input) => ObtainSub(input, X, Y, buffCocs).ObtainOwnScratch();
     public static Real Obtain(ReadOnlySpan<char> input, Real? x = null)
         => new RealSub(input, x != null ? new((Real)x) : null, null, null, null, null, 1, 1).Obtain(false)[0, 0];
-    public static int ToInt(ReadOnlySpan<char> input) => (int)Obtain(input); // Often used with RealComplex.CheckFor
+    public static int ToInt(ReadOnlySpan<char> input) => (int)Obtain(input); // Often used with RealComplex.ForEachInclusive
     #endregion
 
     #region Basic Calculations
@@ -2531,7 +2503,7 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> Hypergeometric(string[] split) // Reference: https://en.wikipedia.org/wiki/Hypergeometric_function
         => HandleMtx(Const(0, true), sum =>
         {
-            var (start, end) = ObtainStartEnd(split, 4, 0, 100);
+            var (start, end) = GetIterationBounds(split, 4, 0, 100);
             Matrix<Real> obtain(int index) => ObtainValue(split[index]);
             Matrix<Real> a = obtain(0), b = obtain(1), c = obtain(2), initial = obtain(3);
             ProcessChunks((p, col) =>
@@ -2552,7 +2524,7 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> Gamma(string[] split) // Reference: https://en.wikipedia.org/wiki/Gamma_function
         => HandleMtx(UninitMtx(true), output =>
         {
-            var (start, end) = ObtainStartEnd(split, 1, 1, 100);
+            var (start, end) = GetIterationBounds(split, 1, 1, 100);
             Matrix<Real> initial = ObtainValue(split[0]);
             ProcessChunks((p, col) =>
             {
@@ -2569,7 +2541,7 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> Beta(string[] split) // Reference: https://en.wikipedia.org/wiki/Beta_function
         => HandleMtx(UninitMtx(true), output =>
         {
-            var (start, end) = ObtainStartEnd(split, 2, 1, 100);
+            var (start, end) = GetIterationBounds(split, 2, 1, 100);
             Matrix<Real> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
             ProcessChunks((p, col) =>
             {
@@ -2586,7 +2558,7 @@ public sealed class RealSub : RecoverMultiply
     private unsafe Matrix<Real> Zeta(string[] split) // Reference: https://en.wikipedia.org/wiki/Riemann_zeta_function
         => HandleMtx(Const(0, true), sum =>
         {
-            var (start, end) = ObtainStartEnd(split, 1, 0, 50);
+            var (start, end) = GetIterationBounds(split, 1, 0, 50);
             Matrix<Real> initial = ObtainValue(split[0]); var (coeffSeq, _coeffSeq, logSeq) = GetSeqsForZeta(start, end);
             ProcessChunks((p, col) =>
             {
@@ -2620,10 +2592,10 @@ public sealed class RealSub : RecoverMultiply
     private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
     {
         ThrowInvalidLengths(split, [validLength, validLength - 2]); bool sub = split.Length == validLength;
-        int subIdx = validLength - 3; if (sub) split[0] = Recover(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
+        int subIdx = validLength - 3; if (sub) split[0] = InsertImpMultiply(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
         RealSub buffer = ObtainSub(sub ? ReplaceLoop(split, 0, subIdx, "0") : split[0], initMtx, null, buffCocs, true);
 
-        CheckFor(sub ? ToInt(split[subIdx + 1]) : 1, ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
+        ForEachInclusive(sub ? ToInt(split[subIdx + 1]) : 1, ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countCst = 0;
             action(buffer); if (!buffer.readList) buffer.readList = true; // Precomputes cstMtcs
@@ -2639,12 +2611,12 @@ public sealed class RealSub : RecoverMultiply
     public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split)
     {
         ThrowInvalidLengths(split, [8, 6]); bool sub = split.Length == 8;
-        string replaceLoop(int i) => Recover(ReplaceLoop(split, i, 4, split[4], true), false);
+        string replaceLoop(int i) => InsertImpMultiply(ReplaceLoop(split, i, 4, split[4], true), false);
         Matrix<Real> initialX = ObtainValue(split[2]), initialY = ObtainValue(split[3]);
         RealSub obtainSub(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i], initialX, initialY, buffCocs, true);
         if (sub) (split[0], split[1]) = (replaceLoop(0), replaceLoop(1)); var (buffer1, buffer2) = (obtainSub(0), obtainSub(1));
 
-        CheckFor(sub ? ToInt(split[5]) : 1, ToInt(split[sub ? 6 : 4]), i =>
+        ForEachInclusive(sub ? ToInt(split[5]) : 1, ToInt(split[sub ? 6 : 4]), i =>
         {
             if (sub) (buffer1.input, buffer2.input) = (ReplaceLoop(split, 0, 4, i.ToString()), ReplaceLoop(split, 1, 4, i.ToString()));
             buffer1.countCst = buffer2.countCst = 0;
@@ -2781,19 +2753,19 @@ public sealed class RealSub : RecoverMultiply
     } // Cached constants must remain ordinary matrices
     private MatrixCopy<Real> Evaluate(ReadOnlySpan<char> input, bool pooled = false) => input[0] switch
     {
-        _X => HandleSolo<Real>(input, new(x, true)),
-        _Y => HandleSolo<Real>(input, new(y, true)),
-        X_ => HandleSolo<Real>(input, new(X, true)),
-        Y_ => HandleSolo<Real>(input, new(Y, true)),
-        '{' => new(buffCocs[Int32.Parse(TryBraNum(input, '{', '}'))], true),
-        E => HandleSolo(input, ConstMtx(MathR.E, pooled)),
-        P => HandleSolo(input, ConstMtx(MathR.PI, pooled)),
-        G => HandleSolo(input, ConstMtx(GAMMA, pooled)),
+        _X => RequireSingleChar<Real>(input, new(x, true)),
+        _Y => RequireSingleChar<Real>(input, new(y, true)),
+        X_ => RequireSingleChar<Real>(input, new(X, true)),
+        Y_ => RequireSingleChar<Real>(input, new(Y, true)),
+        '{' => new(buffCocs[Int32.Parse(BraceContent(input))], true),
+        E => RequireSingleChar(input, ConstMtx(MathR.E, pooled)),
+        P => RequireSingleChar(input, ConstMtx(MathR.PI, pooled)),
+        G => RequireSingleChar(input, ConstMtx(GAMMA, pooled)),
         _ => ConstMtx(Real.Parse(input), pooled)
     };
     private MatrixCopy<Real> SeriesSub(ReadOnlySpan<char> input)
     {
-        var (idx, split) = PrepareSeriesSub(input);
+        var (idx, split) = ParseSeriesCall(input);
         Func<string[], Matrix<Real>> handleSub(Func<string[], Matrix<Real>> func, int tagL, ReadOnlySpan<char> source)
         { ThrowException(source[idx - tagL] != FUNC_HEAD); return func; }
         Func<string[], Matrix<Real>> braFunc = input[idx - 1] switch
@@ -2825,7 +2797,7 @@ public sealed class RealSub : RecoverMultiply
     }
     private MatrixCopy<Real> SubCore(ReadOnlySpan<char> input, int start, MatrixCopy<Real> bFValue, bool pooled = false)
     {
-        var (trig, hyper) = IsInverseFunc(input, start);
+        var (trig, hyper) = GetInverseFlags(input, start);
         MatrixCopy<Real> handleSub(Func<Real, Real> func, int tagL, ReadOnlySpan<char> source)
         {
             ThrowException(source[start - tagL] != FUNC_HEAD);
@@ -2859,23 +2831,23 @@ public sealed class RealSub : RecoverMultiply
     private MatrixCopy<Real> Transform(ReadOnlySpan<char> input, bool pooled = false)
     {
         int start = input.IndexOf('('); if (start < 0) return Evaluate(input, pooled);
-        int end = PairedParenthesis(input, start); ThrowException(end != input.Length - 1);
+        int end = FindMatchingParen(input, start); ThrowException(end != input.Length - 1);
         if (start > 0 && input[start - 1] == SERIES_TAIL) return SeriesSub(input);
-        MatrixCopy<Real> value = ObtainCore(BraFreePart(input, start, end), true);
+        MatrixCopy<Real> value = ObtainCore(ParenContent(input, start, end), true);
         return start == 0 ? value : SubCore(input, start, value, pooled);
     }
     private MatrixCopy<Real> PowerCore(ReadOnlySpan<char> input, bool pooled = false)
     {
-        if (!ContainsAnyOuter(input, "^")) return Transform(input, pooled);
-        string[] split = SplitByCharsOuter(input, "^");
+        if (!ContainsAnyTopLevel(input, "^")) return Transform(input, pooled);
+        string[] split = SplitTopLevel(input, "^");
         Matrix<Real> tower = CopyMtx(Transform(split[^1], pooled), pooled);
         for (int k = split.Length - 2; k >= 0; k--) PoolOp(Transform(split[k], true), tower, Power);
         return new(tower);
     }
     private MatrixCopy<Real> MultiplyDivideCore(ReadOnlySpan<char> input, bool pooled = false)
     {
-        if (!ContainsAnyOuter(input, "*/")) return PowerCore(input, pooled);
-        var (split, signs) = GetPSMDComponents(input, "*/");
+        if (!ContainsAnyTopLevel(input, "*/")) return PowerCore(input, pooled);
+        var (split, signs) = SplitOperatorLevel(input, "*/");
         Matrix<Real> product = CopyMtx(PowerCore(split[0], pooled), pooled); if (signs[0] == '/') Invert(product);
         for (int j = 1; j < split.Length; j++)
             PoolOp(PowerCore(split[j], true), product, signs[j] switch { '*' => Multiply, '/' => Divide });
@@ -2883,8 +2855,8 @@ public sealed class RealSub : RecoverMultiply
     }
     private MatrixCopy<Real> PlusSubtractCore(ReadOnlySpan<char> input, bool pooled = false)
     {
-        if (!ContainsAnyOuter(input, "+-")) return MultiplyDivideCore(input, pooled);
-        var (split, signs) = GetPSMDComponents(input, "+-");
+        if (!ContainsAnyTopLevel(input, "+-")) return MultiplyDivideCore(input, pooled);
+        var (split, signs) = SplitOperatorLevel(input, "+-");
         Matrix<Real> sum = CopyMtx(MultiplyDivideCore(split[0], pooled), pooled); if (signs[0] == '-') Negate(sum);
         for (int i = 1; i < split.Length; i++)
             PoolOp(MultiplyDivideCore(split[i], true), sum, signs[i] switch { '+' => Plus, '-' => Subtract });
@@ -2893,11 +2865,11 @@ public sealed class RealSub : RecoverMultiply
     private MatrixCopy<Real> ObtainCore(ReadOnlySpan<char> input, bool pooled = false)
         => Int32.TryParse(input, out int result) ? ConstMtx(result, pooled) : PlusSubtractCore(input, pooled);
     private MatrixCopy<Real> ObtainScratch()
-        => !input.AsSpan().ContainsAny(_XX__YY_BRA) ? new(Const(Obtain(input), true)) : ObtainCore(input, true);
+        => !input.AsSpan().ContainsAny(_XX__YY_BRACES) ? new(Const(Obtain(input), true)) : ObtainCore(input, true);
     private Matrix<Real> ObtainOwnScratch()
     { MatrixCopy<Real> mc = ObtainScratch(); return !mc.copy && mc.matrix.IsPooled() ? mc.matrix : Copy(mc.matrix, true); }
     public Matrix<Real> Obtain(bool checkVar = true)
-        => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRA) ? Const(Obtain(input)) : FinalizeMtx(ObtainCore(input));
+        => checkVar && !input.AsSpan().ContainsAny(_XX__YY_BRACES) ? Const(Obtain(input)) : FinalizeMtx(ObtainCore(input));
     #endregion
 } /// Computes real-variable expressions
 public sealed class MatrixPoolLease<TEntry>(int length)
