@@ -571,49 +571,46 @@ public partial class Graph : Form
     }
     private void DisplayIterateLoop(string[] split)
     {
+        if (is_complex && split.Length == 7) split = [.. split, "z"];
         var (rows, columns, xCoor, yCoor) = CreateCoorMatrices();
         string replaceLoop(int loops, int origIdx, int subIdx) => MyString.ReplaceLoop(split, origIdx, subIdx, loops.ToString(), true);
         string obtainDisplay(int loops, string defaultInput) => split.Length == 6 ? replaceLoop(loops, 5, 2) : defaultInput;
+
         if (is_complex)
         {
             MyString.ThrowInvalidLengths(split, [5, 6, 8]);
             if (split.Length != 8)
             {
                 Matrix<Complex> z = ComplexSub.InitializeZ(xCoor, yCoor, rows, columns); // Complex-specific
-                Matrix<Complex> Z = new ComplexSub(split[1], z, null, null, rows, columns).Obtain();
-                RealComplex.ForEachInclusive(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
+                ComplexSub iterator = new("0", z, null, null, rows, columns);
+                iterator.Iterate(split[..5], (loops, Z) =>
                 {
-                    Z = new ComplexSub(replaceLoop(loops, 0, 2), z, Z, null, rows, columns).Obtain();
                     output_complex = new ComplexSub(obtainDisplay(loops, "Z"), z, Z, null, rows, columns).Obtain();
                     RunDisplayBase(ComplexComputation);
-                });
+                }).Return();
             }
             else
             {
-                Matrix<Real> X = new RealSub(split[2], xCoor, yCoor, null, null, null, rows, columns).Obtain(), temp1;
-                Matrix<Real> Y = new RealSub(split[3], xCoor, yCoor, null, null, null, rows, columns).Obtain(), temp2;
-                RealComplex.ForEachInclusive(RealSub.ToInt(split[5]), RealSub.ToInt(split[6]), loops =>
+                RealSub iterator = new("0", xCoor, yCoor, null, null, null, rows, columns);
+                var (_, finalX, finalY) = iterator.ProcessIterate2([.. split], (loops, X, Y) =>
                 {
-                    temp1 = new RealSub(replaceLoop(loops, 0, 4), xCoor, yCoor, X, Y, null, rows, columns).Obtain();
-                    temp2 = new RealSub(replaceLoop(loops, 1, 4), xCoor, yCoor, X, Y, null, rows, columns).Obtain();
-                    X = temp1; Y = temp2;
                     output_complex = new ComplexSub(replaceLoop(loops, 7, 4), X, Y, rows, columns).Obtain();
                     RunDisplayBase(ComplexComputation);
                 });
+                finalX.Return(); finalY.Return();
             }
         }
         else
         {
             MyString.ThrowInvalidLengths(split, [5, 6]);
-            Matrix<Real> X = new RealSub(split[1], xCoor, yCoor, null, null, null, rows, columns).Obtain();
-            RealComplex.ForEachInclusive(RealSub.ToInt(split[3]), RealSub.ToInt(split[4]), loops =>
+            RealSub iterator = new("0", xCoor, yCoor, null, null, null, rows, columns);
+            iterator.Iterate1(split[..5], (loops, X) =>
             {
-                X = new RealSub(replaceLoop(loops, 0, 2), xCoor, yCoor, X, null, null, rows, columns).Obtain();
                 output_real = new RealSub(obtainDisplay(loops, "y-X"), xCoor, yCoor, X, null, null, rows, columns).Obtain();
                 RunDisplayBase(RealComputation);
-            });
+            }).Return();
         }
-    } // Intentionally buffer-free; rendering provides its own delay [see ComplexSub.ProcessSPI and RealSub.ProcessSPI]
+    }
     private void DisplayLoop(string[] split)
     {
         MyString.ThrowInvalidLengths(split, [4]);
@@ -1065,6 +1062,7 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Loop(Input(k), k, int a, int b)" +
             $"\r\n\r\n{TAB}IterateLoop & ItLoop(f(x,y,X,k), g(x,y), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop & ItLoop(f(x,y,X,k), g(x,y), k, int a, int b, F(x,y,X,k)) & " +
+            $"\r\n{TAB}IterateLoop & ItLoop(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(x,y), k, int a, int b)" +
             $"\r\n{TAB}IterateLoop & ItLoop(f1(x,y,X,Y,k), f2(...), g1(x,y), g2(x,y), k, int a, int b, F(z,k))" +
             $"\r\n\r\n{TAB}IterateLoop & ItLoop(f(z,Z,k), g(z), k, int a, int b) & " +
             $"\r\n{TAB}IterateLoop & ItLoop(f(z,Z,k), g(z), k, int a, int b, F(z,Z,k))" +
@@ -1083,7 +1081,7 @@ public partial class Graph : Form
         content += getShortcuts("Shift + Back", 3, "Clear the input box");
         content += getShortcuts("Control + 2", 3, "View Fraljimetry's profile");
         content += getShortcuts("Control + 3", 3, "Clear all read-only displays");
-        content += getShortcuts("Control + /", 2, "View the user manual");
+        content += getShortcuts("Control + /", 3, "View the user manual");
         content += getShortcuts("Delete", 3, "Clear the Microbox & Macrobox");
         content += getShortcuts("Escape", 3, "Close Fraljiculator");
         return content + $"\r\n\r\n{GetComment("Double-click the subtitle to repaint the backdrop.")}";
@@ -1276,6 +1274,7 @@ public partial class Graph : Form
     #region Click & Mouse Down & Text Changed
     private void Delete_Click(int[] borders, bool isMain)
     {
+        if (InputLocked()) return;
         Details_TextChanged(null, EventArgs.Empty); // Ensures that the axes and grids are drawn correctly
         ClearBitmap(GetBitmap(isMain));
         Invalidate(isMain ? rect_mac : rect_mic); Update(); // Clears curves that extend beyond the display bounds
@@ -2179,7 +2178,8 @@ public sealed class ComplexSub : ImplicitMultiply
         Matrix<Complex> output = new ComplexSub(split[3], _z, Z, buffCocs, rows, columns).ObtainOwnScratch();
         _z.Return(); return output;
     }
-    private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action)
+    private Matrix<Complex> ProcessSPI(string[] split, int validLength, Matrix<Complex> initMtx, Action<ComplexSub> action,
+        Action<int, Matrix<Complex>>? iterationAction = null)
     {
         ThrowInvalidLengths(split, [validLength, validLength - 2]); bool sub = split.Length == validLength;
         int subIdx = validLength - 3; if (sub) split[0] = InsertImpMultiply(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
@@ -2188,7 +2188,7 @@ public sealed class ComplexSub : ImplicitMultiply
         ForEachInclusive(sub ? RealSub.ToInt(split[subIdx + 1]) : 1, RealSub.ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countCst = 0;
-            action(buffer); if (!buffer.readList) buffer.readList = true; // Precomputes cstMtcs
+            action(buffer); if (!buffer.readList) buffer.readList = true; iterationAction?.Invoke(i, buffer.Z);
         });
         return buffer.Z;
     } // Meticulously optimized
@@ -2205,7 +2205,9 @@ public sealed class ComplexSub : ImplicitMultiply
         => ProcessSPI(split, 4, Const(initial), b => { PoolOp(b.ObtainScratch(), b.Z, operation); });
     private Matrix<Complex> Sum(string[] split) => ProcessSP(split, Complex.ZERO, Plus);
     private Matrix<Complex> Product(string[] split) => ProcessSP(split, Complex.ONE, Multiply);
-    public Matrix<Complex> Iterate(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { PoolSub(b, ref b.Z); });
+    public Matrix<Complex> Iterate(string[] split) => Iterate(split, null);
+    public Matrix<Complex> Iterate(string[] split, Action<int, Matrix<Complex>>? iterationAction)
+        => ProcessSPI(split, 5, ObtainValue(split[1]), b => { PoolSub(b, ref b.Z); }, iterationAction);
     private Matrix<Complex> Iterate2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessIterate2);
     private Matrix<Complex> Compose2(string[] split) => ProcessI2C2(split, new RealSub("0", z, rows, columns).ProcessCompose2);
     public Matrix<Complex> Compose(string[] split)
@@ -2589,7 +2591,8 @@ public sealed class RealSub : ImplicitMultiply
         Matrix<Real> output = new RealSub(split[3], _x, _y, X, Y, buffCocs, rows, columns).ObtainOwnScratch();
         _x.Return(); _y.Return(); return output;
     }
-    private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action)
+    private Matrix<Real> ProcessSPI(string[] split, int validLength, Matrix<Real> initMtx, Action<RealSub> action,
+        Action<int, Matrix<Real>>? iterationAction = null)
     {
         ThrowInvalidLengths(split, [validLength, validLength - 2]); bool sub = split.Length == validLength;
         int subIdx = validLength - 3; if (sub) split[0] = InsertImpMultiply(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
@@ -2598,7 +2601,7 @@ public sealed class RealSub : ImplicitMultiply
         ForEachInclusive(sub ? ToInt(split[subIdx + 1]) : 1, ToInt(split[sub ? subIdx + 2 : subIdx]), i =>
         {
             if (sub) buffer.input = ReplaceLoop(split, 0, subIdx, i.ToString()); buffer.countCst = 0;
-            action(buffer); if (!buffer.readList) buffer.readList = true; // Precomputes cstMtcs
+            action(buffer); if (!buffer.readList) buffer.readList = true; iterationAction?.Invoke(i, buffer.X);
         });
         return buffer.X;
     } // Meticulously optimized
@@ -2608,7 +2611,9 @@ public sealed class RealSub : ImplicitMultiply
         Matrix<Real> output = new RealSub(split[^1], xCoor, yCoor, null, null, null, rows, columns).ObtainOwnScratch();
         xCoor.Return(); yCoor.Return(); return output;
     }
-    public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split)
+    public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split) => ProcessIterate2(split, null);
+    public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split,
+        Action<int, Matrix<Real>, Matrix<Real>>? iterationAction)
     {
         ThrowInvalidLengths(split, [8, 6]); bool sub = split.Length == 8;
         string replaceLoop(int i) => InsertImpMultiply(ReplaceLoop(split, i, 4, split[4], true), false);
@@ -2625,6 +2630,7 @@ public sealed class RealSub : ImplicitMultiply
             buffer1.X = buffer2.X = newX; buffer1.Y = buffer2.Y = newY;
             if (oldX.IsPooled()) oldX.Return(); if (oldY.IsPooled()) oldY.Return();
             if (!buffer1.readList) buffer1.readList = buffer2.readList = true; // Precomputes cstMtcs
+            iterationAction?.Invoke(i, newX, newY);
         });
         return (split[^1], buffer1.X, buffer1.Y); // buffer2 would work as well
     }
@@ -2647,7 +2653,9 @@ public sealed class RealSub : ImplicitMultiply
         => ProcessSPI(split, 4, Const(initial), b => { PoolOp(b.ObtainScratch(), b.X, operation); });
     private Matrix<Real> Sum(string[] split) => ProcessSP(split, 0, Plus);
     private Matrix<Real> Product(string[] split) => ProcessSP(split, 1, Multiply);
-    private Matrix<Real> Iterate1(string[] split) => ProcessSPI(split, 5, ObtainValue(split[1]), b => { PoolSub(b, ref b.X); });
+    public Matrix<Real> Iterate1(string[] split) => Iterate1(split, null);
+    public Matrix<Real> Iterate1(string[] split, Action<int, Matrix<Real>>? iterationAction)
+        => ProcessSPI(split, 5, ObtainValue(split[1]), b => { PoolSub(b, ref b.X); }, iterationAction);
     private Matrix<Real> Iterate(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Iterate);
     private Matrix<Real> Compose(string[] split) => ProcessIC(split, new ComplexSub("0", x, y, rows, columns).Compose);
     private Matrix<Real> Iterate2(string[] split) => ChooseMode(ProcessIterate2(split));
