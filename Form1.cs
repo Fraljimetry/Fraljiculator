@@ -1030,6 +1030,7 @@ public partial class Graph : Form
             $"\r\n\r\n{TAB}Homothety & Homoth(Real r, Real ctrX, Real ctrY, f(x,y) & f(z))";
         content += subtitleContent("REPETITIONS",
             $"\r\n\r\n{GetComment("Capital letters denote variable substitutions.")}" +
+            $"\r\n{GetComment("\"k, int a, int b\" can be replaced by a single length \"int n\".")}" +
             $"\r\n\r\n{TAB}Sum(f(x,y,k) & f(z,k), k, int a, int b)" +
             $"\r\n{TAB}Product & Prod(f(x,y,k) & f(z,k), k, int a, int b)" +
             $"\r\n\r\n{TAB}Iterate1(f(x,y,X,k), g(x,y), k, int a, int b)" +
