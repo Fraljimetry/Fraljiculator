@@ -20,7 +20,15 @@ public partial class Graph : Form
     #region Fields
     private static DateTime TimeNow = new();
     private static TimeSpan TimeCount = new();
-    private static System.Windows.Forms.Timer GraphTimer, WaitTimer, DisplayTimer;
+    private static System.Windows.Forms.Timer WaitTimer, DisplayTimer;
+    private static TextBox? paren_tbx; // The actual on-screen textbox being temporarily modified
+    private TextBox[] math_inputs, detail_inputs, read_only_inputs, clear_outputs;
+    private (TextBox tbx, string value)[] parameter_defaults, reset_inputs;
+    private Button[] graph_buttons;
+    private (CheckBox cbx, bool value)[] default_checks;
+    private Label[] reset_labels;
+    private ComboBox[] combo_boxes;
+    private Action<object, EventArgs>[] check_actions;
     private static Graphics graphics;
     private static Rectangle rectangle, rect_mac, rect_mic; // rect_: slightly larger than the display regions
     private static Bitmap bmp_mac, bmp_mic, bmp_screen; // bmp_screen: snapshots
@@ -37,20 +45,22 @@ public partial class Graph : Form
     private static readonly Real GRID_WIDTH_1 = 3, GRID_WIDTH_2 = 2, CURVE_WIDTH_LIMIT = 20, STRIDE = (Real)0.25, MOD = (Real)0.25,
         ARG = MathR.PI / 12, STRIDE_REAL = 1, EPS_REAL = (Real)0.015, EPS_COMPLEX = (Real)0.015, SIZE_REAL = (Real)0.5,
         DECAY = (Real)0.2, DEPTH = 2, CURVE_WIDTH = 5, INCREMENT = (Real)0.001;
-    private static int display_elapsed, x_left, x_right, y_up, y_down, color_mode, contour_mode,
+    private static int display_elapsed, x_left, x_right, y_up, y_down, color_mode, contour_mode, paren_left = -1, paren_right = -1,
         loop_number, chosen_number, export_number, pixel_number, segment_number;
     private static readonly int X_LEFT_MAC = 620, X_RIGHT_MAC = 1520, Y_UP_MAC = 45, Y_DOWN_MAC = 945,
         X_LEFT_MIC = 1565, X_RIGHT_MIC = 1765, Y_UP_MIC = 745, Y_DOWN_MIC = 945, X_LEFT_CHECK = 1921, X_RIGHT_CHECK = 1922,
         Y_UP_CHECK = 1081, Y_DOWN_CHECK = 1082, REF_POS_1 = 9, REF_POS_2 = 27, WIDTH_IND = 22, HEIGHT_IND = 55,
         LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 200, THRESHOLD = 1000;
-    private static Real[] scopes; // Corresponds to tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]
+    private static readonly int[] BORDERS_MAC = [X_LEFT_MAC, X_RIGHT_MAC, Y_UP_MAC, Y_DOWN_MAC], BORDERS_MIC = [X_LEFT_MIC,
+        X_RIGHT_MIC, Y_UP_MIC, Y_DOWN_MIC], BORDERS_CHECK = [X_LEFT_CHECK, X_RIGHT_CHECK, Y_UP_CHECK, Y_DOWN_CHECK];
+    private static Real[] scopes; // Corresponds to detail_inputs = [X_Left, X_Right, Y_Left, Y_Right]
     private static int[] borders; // = [x_left, x_right, y_up, y_down]
     private static Matrix<Complex> output_complex;
     private static Matrix<Real> output_real;
     //
     private static bool is_flashing, is_complex = true, delete_point = true, delete_coor, swap_colors, is_auto, freeze_graph,
         clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking, error_input, error_address, is_resized,
-        ctrl_pressed, sft_pressed, suppress_key_up, bdp_painted;
+        ctrl_pressed, sft_pressed, bdp_painted, paren_change;
     private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile", INPUT_DEFAULT = "z",
         GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO", MICRO = "MICRO", ZERO = "0",
         REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History saved at", CAPTION_DEFAULT = "Your inputs will be shown here.",
@@ -65,11 +75,43 @@ public partial class Graph : Form
     #region Initializations
     public Graph()
     {
-        InitializeComponent(); SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor); BanMouseWheel();
+        InitializeComponent(); InitializeArrays();
+        SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor); BanMouseWheel();
         InitializeTimers(); InitializeGraphics(); InitializeCombo(); InitializeData(); SetThicknessDensenessScopesBorders();
     }
     private void Graph_Load(object sender, EventArgs e) => TextBoxFocus(sender, e);
     private void Graph_Paint(object sender, PaintEventArgs e) { if (!bdp_painted && !clicked) SubtitleBox_DoubleClick(sender, e); }
+    private void InitializeArrays()
+    {
+        detail_inputs = [X_Left, X_Right, Y_Left, Y_Right];
+        math_inputs = [InputString, GeneralInput, .. detail_inputs, ThickInput, DenseInput];
+        read_only_inputs = [.. math_inputs, AddressInput];
+
+        parameter_defaults = [(GeneralInput, GENERAL_DEFAULT), (ThickInput, THICK_DEFAULT), (DenseInput, DENSE_DEFAULT)];
+        reset_inputs = [(InputString, INPUT_DEFAULT), (AddressInput, ADDRESS_DEFAULT), .. parameter_defaults];
+
+        graph_buttons = [ConfirmButton, PreviewButton, AllButton];
+        clear_outputs = [DraftBox, PointNumDisplay, TimeDisplay, X_CoorDisplay, Y_CoorDisplay, ModulusDisplay, AngleDisplay,
+            FunctionDisplay, CaptionBox];
+
+        default_checks = [(CheckAuto, false), (CheckSwap, false), (CheckPoints, false), (CheckShade, false), (CheckRetain, false),
+            (CheckEdit, false), (CheckComplex, true), (CheckCoor, true)];
+
+        reset_labels = [InputLabel, AtLabel, GeneralLabel, DetailLabel, X_Scope, Y_Scope, ThickLabel, DenseLabel, ExampleLabel,
+            FunctionLabel, ModeLabel, ContourLabel];
+
+        combo_boxes = [ComboExamples, ComboFunctions, ComboSpecial, ComboColoring, ComboContour];
+
+        check_actions =
+        [
+            GeneralInput_DoubleClick,
+            Details_TextChanged, // Order-sensitive position
+            InputString_DoubleClick,
+            ThickInput_DoubleClick,
+            DenseInput_DoubleClick,
+            AddressInput_DoubleClick
+        ];
+    }
     private int SetTitleBarColor()
     {
         int mode = 1;  // Set to 1 to apply immersive color mode
@@ -85,15 +127,12 @@ public partial class Graph : Form
             if (ctrl.Controls.Count > 0) ReduceFontSizeByScale(ctrl, ref scalingFactor);
         }
     } // Also used for message boxes, so scalingFactor should remain a parameter rather than a field
-    private void BanMouseWheel()
-    {
-        ComboBox[] comboBoxes = [ComboExamples, ComboFunctions, ComboSpecial, ComboColoring, ComboContour];
-        foreach (var cbx in comboBoxes) cbx.MouseWheel += (sender, e) => ((HandledMouseEventArgs)e).Handled = true;
-    } // Default mouse-wheel behavior conflicts with the custom combo boxes
+    private void BanMouseWheel() // Default mouse-wheel behavior conflicts with the custom combo boxes
+    { foreach (var cbx in combo_boxes) cbx.MouseWheel += (sender, e) => ((HandledMouseEventArgs)e).Handled = true; }
     private void InitializeTimers()
     {
         static System.Windows.Forms.Timer setT(int interval) => new() { Interval = interval };
-        GraphTimer = setT(1000); WaitTimer = setT(500); DisplayTimer = setT(1000 / UPDATE);
+        WaitTimer = setT(500); DisplayTimer = setT(1000 / UPDATE);
         WaitTimer.Tick += (sender, e) =>
         {
             ToggleBool(ref is_flashing); // Properties cannot be passed by reference
@@ -131,18 +170,12 @@ public partial class Graph : Form
 
         ComboFunctions.Items.AddRange(ReplaceTags.FUNCTIONS); ComboSpecial.Items.AddRange(ReplaceTags.SPECIALS);
     }
-    private void ResetInputs()
-    {
-        SetText(InputString, INPUT_DEFAULT); SetText(AddressInput, ADDRESS_DEFAULT);
-        SetText(GeneralInput, GENERAL_DEFAULT); SetText(ThickInput, THICK_DEFAULT); SetText(DenseInput, DENSE_DEFAULT);
-        FocusInput();
-    }
+    private void ResetInputs() { foreach (var (tbx, value) in reset_inputs) SetText(tbx, value); FocusInput(); }
     private void InitializeData() { ResetInputs(); SetText(DraftBox, DRAFT_DEFAULT); SetText(CaptionBox, CAPTION_DEFAULT); }
     private void SetThicknessDensenessScopesBorders(bool autoFill = true)
     {
-        FillEmpty(GeneralInput, GENERAL_DEFAULT); FillEmpty(ThickInput, THICK_DEFAULT); FillEmpty(DenseInput, DENSE_DEFAULT);
-        TextBox[] tbxDetails = [X_Left, X_Right, Y_Left, Y_Right]; // Crucial ordering
-        if (autoFill) foreach (var tbx in tbxDetails) FillEmpty(tbx, ZERO);
+        foreach (var (tbx, value) in parameter_defaults) FillEmpty(tbx, value);
+        if (autoFill) foreach (var tbx in detail_inputs) FillEmpty(tbx, ZERO);
 
         Real _dense = Obtain(DenseInput), _thick = Obtain(ThickInput);
         stride_real = STRIDE_REAL / _dense; stride = STRIDE / _dense; mod_stride = MOD / _dense; arg_stride = ARG / _dense;
@@ -152,9 +185,9 @@ public partial class Graph : Form
         {
             Real _scope = Obtain(GeneralInput);
             scopes = [-_scope, _scope, -_scope, _scope]; // Note the signs
-            for (int i = 0; i < tbxDetails.Length; i++) SetText(tbxDetails[i], scopes[i].ToString("0.################"));
+            for (int i = 0; i < detail_inputs.Length; i++) SetText(detail_inputs[i], scopes[i].ToString("0.################"));
         } // Never use scientific notation
-        else for (int i = 0; i < tbxDetails.Length; i++) scopes[i] = Obtain(tbxDetails[i]);
+        else for (int i = 0; i < detail_inputs.Length; i++) scopes[i] = Obtain(detail_inputs[i]);
         MyString.ThrowException(InvalidScopesX() || InvalidScopesY()); // A more specific exception is determined later
         borders = [x_left, x_right, y_up, y_down];
     }
@@ -162,6 +195,12 @@ public partial class Graph : Form
     {
         foreach (var ctrl in Controls.OfType<TextBox>())
             ctrl.GotFocus += (sender, e) => { ((TextBox)sender).SelectionStart = ((TextBox)sender).Text.Length; };
+        foreach (var tbx in math_inputs)
+        {
+            tbx.MouseDown += (sender, e) => RecoverParen();
+            tbx.MouseUp += (sender, e) => ShowParen(tbx);
+            tbx.Leave += (sender, e) => RecoverParen();
+        }
     } // Forces the caret to the end of each text box
     #endregion
 
@@ -196,12 +235,7 @@ public partial class Graph : Form
     private static Real ColumnScopes() => scopes[3] - scopes[2]; // Sign conventions vary across the codebase
     private static bool InvalidScopesX() => scopes[0] >= scopes[1];
     private static bool InvalidScopesY() => scopes[2] >= scopes[3];
-    private static int[] GetBorders(int mode) => mode switch
-    {
-        1 => [X_LEFT_MAC, X_RIGHT_MAC, Y_UP_MAC, Y_DOWN_MAC],
-        2 => [X_LEFT_MIC, X_RIGHT_MIC, Y_UP_MIC, Y_DOWN_MIC],
-        3 => [X_LEFT_CHECK, X_RIGHT_CHECK, Y_UP_CHECK, Y_DOWN_CHECK]
-    };
+    private static int[] GetBorders(int mode) => mode switch { 1 => BORDERS_MAC, 2 => BORDERS_MIC, 3 => BORDERS_CHECK };
     private static Matrix<Real> GetMatrix(int rows, int columns) => new(RealComplex.GetArithProg(rows, columns), columns);
     private static Rectangle GetRect(int[] borders, int margin = 0)
         => new(borders[0] + margin, borders[2] + margin, RowBorders(borders) - margin, ColumnBorders(borders) - margin);
@@ -219,7 +253,7 @@ public partial class Graph : Form
     private void ClearExampleSelection() => ComboExamples.SelectedIndex = -1;
     private void FocusInput() { InputString.Focus(); InputString.SelectionStart = InputString.Text.Length; }
     private bool NoInput() => String.IsNullOrEmpty(InputString.Text);
-    private bool InputLocked() => InputString.ReadOnly;
+    private bool InputLocked() => InputString.ReadOnly || paren_change;
     #endregion
 
     #region Auxiliary Drawings
@@ -749,7 +783,7 @@ public partial class Graph : Form
     {
         RunPreview_Click(sender, e);
         if (error_input) return; // Prevents a second error box from appearing
-        Invoke(() => { StopTimers(); Thread.Sleep(SLEEP); StartTimers(); }); // Executed on the UI thread
+        Thread.Sleep(SLEEP); Invoke(StartTimers);
         RunConfirm_Click(sender, e);
     });
     private void RunConfirm_Click(object sender, EventArgs e) => RunClick(sender, e, GetBorders(1), true, () => Ending(MACRO));
@@ -779,32 +813,33 @@ public partial class Graph : Form
     }
     private async Task Async(Action runClick)
     {
-        if (NoInput()) return;
+        RecoverParen(); if (NoInput()) return; FocusInput();
         Clipboard.SetText(MyString.BeautifyInput(InputString.Text)); // Problematic on JSX's PC
         BlockInput(true);
-        StartTimers();
-        await Task.Run(() => { Thread.CurrentThread.Priority = ThreadPriority.Highest; runClick(); });
-        BlockInput(false);
+        try
+        {
+            StartTimers();
+            await Task.Run(() => { Thread.CurrentThread.Priority = ThreadPriority.Highest; runClick(); });
+        }
+        finally { BlockInput(false); }
     }
     private void StartTimers()
     {
         display_elapsed = 0;
         SetText(TimeDisplay, "0s");
         is_flashing = false; // Delays the hourglass
-        DisplayTimer.Start(); WaitTimer.Start(); GraphTimer.Start();
+        DisplayTimer.Start(); WaitTimer.Start();
         TimeNow = DateTime.Now;
     }
     private static void StopTimers()
     {
-        DisplayTimer.Stop(); WaitTimer.Stop(); GraphTimer.Stop();
+        DisplayTimer.Stop(); WaitTimer.Stop();
         TimeCount = DateTime.Now - TimeNow;
     }
     private void SetTextboxButtonReadOnly(bool readOnly)
     {
-        TextBox[] textBoxes = [InputString, GeneralInput, X_Left, X_Right, Y_Left, Y_Right, ThickInput, DenseInput, AddressInput];
-        foreach (var tbx in textBoxes) tbx.ReadOnly = readOnly;
-        Button[] buttons = [ConfirmButton, PreviewButton, AllButton];
-        foreach (var btn in buttons) btn.Enabled = !readOnly;
+        foreach (var tbx in read_only_inputs) tbx.ReadOnly = readOnly;
+        foreach (var btn in graph_buttons) btn.Enabled = !readOnly;
         activate_mouse = !readOnly;
     }
     private void PrepareSetDisplay(int[] borders, bool isMain)
@@ -862,7 +897,7 @@ public partial class Graph : Form
     private void InputErrorBox(object sender, EventArgs e, string message)
     {
         error_input = true;
-        bool temp = InputLocked();
+        bool temp = InputString.ReadOnly;
         InputString.ReadOnly = false; CheckAll(sender, e); InputString.ReadOnly = temp; // Sensitive
         GetInputErrorBox(message);
     }
@@ -884,35 +919,24 @@ public partial class Graph : Form
             catch { CheckComplex.Checked = !CheckComplex.Checked; errorHandler(); }
         }
     } // Sensitive
-    private void CheckAll(object sender, EventArgs e)
-    {
-        Action<object, EventArgs>[] checkActions =
-        [
-            GeneralInput_DoubleClick,
-            Details_TextChanged, // Order-sensitive position
-            InputString_DoubleClick,
-            ThickInput_DoubleClick,
-            DenseInput_DoubleClick,
-            AddressInput_DoubleClick
-        ];
-        foreach (var action in checkActions) action(sender, e);
-    }
+    private void CheckAll(object sender, EventArgs e) { foreach (var action in check_actions) action(sender, e); }
     private void Graph_KeyUp(object sender, KeyEventArgs e)
     {
         HandleModifierKeys(e, false);
-        if (suppress_key_up) return; // Do not merge with the next line
         if (HandleSpecialKeys(e)) return;
         HandleCtrlCombination(sender, e);
     }
     private void Graph_KeyDown(object sender, KeyEventArgs e)
     {
         HandleModifierKeys(e, true);
-        if (!NoInput() && !InputLocked() && sft_pressed && e.KeyCode == Keys.Back)
+        if (ActiveControl is TextBox tbx && math_inputs.Contains(tbx) && !InputLocked() && !String.IsNullOrEmpty(tbx.Text) &&
+            sft_pressed && e.KeyCode == Keys.Back)
             ExecuteSuppress(() =>
             {
-                AddDraft("\r\nDeleted: " + InputString.Text + "\r\n");
-                SetText(InputString, String.Empty);
-                InputString.Focus();
+                RecoverParen();
+                AddDraft("\r\nDeleted: " + tbx.Text + "\r\n");
+                SetText(tbx, String.Empty);
+                tbx.Focus();
             }, e);
         else if (e.KeyCode == Keys.Delete) ExecuteSuppress(null, e); // Suppresses the default Delete action
     }
@@ -933,14 +957,11 @@ public partial class Graph : Form
     }
     private void HandleCtrlCombination(object sender, KeyEventArgs e)
     {
-        if (!ctrl_pressed) return;
+        if (!ctrl_pressed) return; RecoverParen();
         void restoreDefault(object sender, KeyEventArgs e)
         {
             ResetInputs(); ComboColoring.SelectedIndex = 4; ComboContour.SelectedIndex = 1;
-            CheckBox[] checkFalse = [CheckAuto, CheckSwap, CheckPoints, CheckShade, CheckRetain, CheckEdit];
-            foreach (var cbx in checkFalse) cbx.Checked = false;
-            CheckBox[] checkTrue = [CheckComplex, CheckCoor];
-            foreach (var cbx in checkTrue) cbx.Checked = true;
+            foreach (var (cbx, value) in default_checks) cbx.Checked = value;
         }
         Action? shortcutHandler = e.KeyCode switch
         {
@@ -959,13 +980,7 @@ public partial class Graph : Form
         };
         if (shortcutHandler != null) ExecuteSuppress(shortcutHandler, e);
     }
-    private static void ExecuteSuppress(Action? action, KeyEventArgs e)
-    {
-        suppress_key_up = true;
-        action?.Invoke();
-        e.Handled = e.SuppressKeyPress = true;
-        suppress_key_up = false;
-    }
+    private static void ExecuteSuppress(Action? action, KeyEventArgs e) { action?.Invoke(); e.Handled = e.SuppressKeyPress = true; }
     #endregion
 
     #region Dialogs
@@ -1224,12 +1239,12 @@ public partial class Graph : Form
             7 => (3, "0", ("-0.2", "1.2", "-0.2", "1.2"), ("0.5", DENSE_DEFAULT), (true, false, false, true))
         };
         else { ClearExampleSelection(); InputString.ReadOnly = false; return; }
-        InputString.ReadOnly = false;
 
         ComboColoring.SelectedIndex = set.iC;
         SetText(GeneralInput, set.sG); SetText(ThickInput, set.sO.T); SetText(DenseInput, set.sO.D);
         SetText(X_Left, set.sD.xL); SetText(X_Right, set.sD.xR); SetText(Y_Left, set.sD.yL); SetText(Y_Right, set.sD.yR);
         (CheckCoor.Checked, CheckPoints.Checked, CheckShade.Checked, CheckRetain.Checked) = set.bC;
+        InputString.ReadOnly = false;
     }
     private void ComboFS_SelectionChanged(ComboBox cbx)
     {
@@ -1243,8 +1258,8 @@ public partial class Graph : Form
     {
         string? selection = ComboExamples.SelectedItem?.ToString();
         if (InputLocked() || String.IsNullOrEmpty(selection) || ComboExamples.SelectedIndex == -1) return;
-        SetText(InputString, selection);
         SetValuesForSelectedIndex(ComboExamples.SelectedIndex);
+        SetText(InputString, selection);
         ClearExampleSelection(); // Prevents repeated calls
         Delete_Click(e);
         FocusInput();
@@ -1287,9 +1302,7 @@ public partial class Graph : Form
     private void ClearButton_Click(object sender, EventArgs e)
     {
         loop_number = chosen_number = 0;
-        TextBox[] textBoxes = [DraftBox, PointNumDisplay, TimeDisplay, X_CoorDisplay, Y_CoorDisplay,
-                ModulusDisplay, AngleDisplay, FunctionDisplay, CaptionBox];
-        foreach (var tbx in textBoxes) SetText(tbx, String.Empty);
+        foreach (var tbx in clear_outputs) SetText(tbx, String.Empty);
         FocusInput();
     }
     private void PictureIncorrect_Click(object sender, EventArgs e)
@@ -1308,9 +1321,7 @@ public partial class Graph : Form
     private void Graph_DoubleClick(object sender, EventArgs e)
     {
         InputString.BackColor = FOCUS_GRAY;
-        Label[] labels = [InputLabel, AtLabel, GeneralLabel, DetailLabel, X_Scope, Y_Scope, ThickLabel, DenseLabel,
-                ExampleLabel, FunctionLabel, ModeLabel, ContourLabel];
-        foreach (var lbl in labels) lbl.ForeColor = Color.White;
+        foreach (var lbl in reset_labels) lbl.ForeColor = Color.White;
         PictureIncorrect.Visible = PictureCorrect.Visible = is_checking = false;
     }
     private void SubtitleBox_DoubleClick(object sender, EventArgs e)
@@ -1329,6 +1340,15 @@ public partial class Graph : Form
     private void ThickInput_DoubleClick(object sender, EventArgs e) => ThickInput_TextChanged(sender, e);
     private void DenseInput_DoubleClick(object sender, EventArgs e) => DenseInput_TextChanged(sender, e);
     //
+    private static bool RemoveSomeKeys(TextBox tbx)
+    {
+        int caretPosition = tbx.Text.Length - tbx.SelectionStart - tbx.SelectionLength; // Necessary
+        string text = tbx.Text;
+        foreach (char c in ImplicitMultiply.BARRED_CHARS) text = text.Replace(c, ' ');
+        if (text == tbx.Text) return false;
+        SetText(tbx, text); tbx.SelectionStart = MathR.Clamp(tbx.Text.Length - caretPosition, 0, tbx.Text.Length);
+        return true;
+    }
     private void MiniChecks(TextBox[] textBoxes, Label lbl)
     {
         try
@@ -1343,11 +1363,12 @@ public partial class Graph : Form
         }
         catch (Exception) { lbl.ForeColor = ERROR_RED; }
     }
-    private void MiniChecks(TextBox tbx, Label lbl) => MiniChecks([tbx], lbl);
+    private void MiniChecks(TextBox tbx, Label lbl) { if (InputLocked() || RemoveSomeKeys(tbx)) return; MiniChecks([tbx], lbl); }
     private void Details_TextChanged(object sender, EventArgs e)
     {
         if (InputLocked()) return;
-        MiniChecks([X_Left, X_Right, Y_Left, Y_Right], DetailLabel);
+        if (sender is TextBox tbx && RemoveSomeKeys(tbx)) return;
+        MiniChecks(detail_inputs, DetailLabel);
         if (scopes == null) return; // Required during initialization
         void checkScopes(bool b1, bool b2, Color c) { if (b1) X_Scope.ForeColor = c; if (b2) Y_Scope.ForeColor = c; }
 
@@ -1364,20 +1385,12 @@ public partial class Graph : Form
     private void DenseInput_TextChanged(object sender, EventArgs e) => MiniChecks(DenseInput, DenseLabel);
     private void InputString_TextChanged(object sender, EventArgs e)
     {
-        if (InputLocked()) return;
-        static int removeSomeKeys(TextBox tbx)
-        {
-            int caretPosition = tbx.Text.Length - tbx.SelectionStart - tbx.SelectionLength; // Necessary
-            foreach (char c in ImplicitMultiply.BARRED_CHARS) SetText(tbx, tbx.Text.Replace(c, ' '));
-            return tbx.Text.Length - caretPosition;
-        }
-        int pos = removeSomeKeys(InputString); // Necessary
+        if (InputLocked() || RemoveSomeKeys(InputString)) return;
         CheckValidityCore(() =>
         {
             InputString.BackColor = InputLabel.ForeColor = ERROR_RED;
             PictureIncorrect.Visible = true; PictureCorrect.Visible = false;
         });
-        InputString.SelectionStart = pos;
         if (PictureCorrect.Visible) DisplayMouseMoveCore(); // Displays the value in the lower-right corner
     }
     private void AddressInput_TextChanged(object sender, EventArgs e)
@@ -1412,10 +1425,37 @@ public partial class Graph : Form
     private void ThickInput_KeyPress(object sender, KeyPressEventArgs e) => BarSomeKeys(sender, e);
     private void DenseInput_KeyPress(object sender, KeyPressEventArgs e) => BarSomeKeys(sender, e);
     //
+    private static void SetParen(char left, char right)
+    {
+        char[] text = paren_tbx!.Text.ToCharArray(); text[paren_left] = left; text[paren_right] = right;
+        paren_change = true; try { SetText(paren_tbx, new(text)); } finally { paren_change = false; }
+    } // Strings are immutable
+    private static void RecoverParen()
+    {
+        if (paren_tbx == null) return;
+        int pos = paren_tbx.SelectionStart;
+        if (paren_left >= 0 && paren_right >= 0 && paren_left < paren_tbx.Text.Length && paren_right < paren_tbx.Text.Length &&
+            paren_tbx.Text[paren_left] == '[' && paren_tbx.Text[paren_right] == ']') SetParen('(', ')');
+        paren_tbx.SelectionStart = MathR.Min(pos, paren_tbx.Text.Length);
+        paren_tbx = null; paren_left = paren_right = -1;
+    }
+    private static void ShowParen(TextBox tbx)
+    {
+        if (!tbx.Focused || tbx.ReadOnly) return;
+        RecoverParen(); int pos = tbx.SelectionStart - 1;
+        if (pos < 0 || tbx.SelectionLength > 0 || !MyString.HasBalancedParen(tbx.Text)) return;
+
+        char c = tbx.Text[pos]; if (c != '(' && c != ')') return;
+        int match = c == '(' ? MyString.FindMatchingParen(tbx.Text, pos) : MyString.FindMatchingParenBack(tbx.Text, pos);
+        paren_tbx = tbx; (paren_left, paren_right) = c == '(' ? (pos, match) : (match, pos);
+        SetParen('[', ']'); tbx.SelectionStart = pos + 1;
+    }
     private static void AutoKeyDown(TextBox tbx, KeyEventArgs e)
     {
         if (tbx.ReadOnly) return;
+        RecoverParen(); tbx.BeginInvoke(() => ShowParen(tbx));
         int caretPosition = tbx.SelectionStart; // Necessary
+
         void selectSuppress(int pos) { tbx.SelectionStart = caretPosition + pos; e.SuppressKeyPress = true; }
         void insertSelectSuppress(string insertion, int pos)
         { SetText(tbx, tbx.Text.Insert(caretPosition, insertion)); selectSuppress(pos); }
@@ -1438,7 +1478,8 @@ public partial class Graph : Form
         {
             if (tbx.SelectionLength > 0) selectSuppress(0);
             else if (caretPosition == 0) selectSuppress(0);
-            else if (ImplicitMultiply.IsOpeningBracket(tbx.Text[caretPosition - 1])) selectSuppress(1);
+            else if (caretPosition < tbx.Text.Length && ImplicitMultiply.IsOpeningBracket(tbx.Text[caretPosition - 1]) &&
+                tbx.Text[caretPosition] == obtainRight(tbx.Text[caretPosition - 1])) selectSuppress(1);
         }
         else if (e.KeyCode == Keys.Oemcomma) insertSelectSuppress(", ", 2);
         else if (e.KeyCode == Keys.OemPipe) insertSelectSuppress(" | ", 3);
@@ -1448,7 +1489,8 @@ public partial class Graph : Form
             char c = tbx.Text[caretPosition - 1];
             if (ImplicitMultiply.IsOpeningBracket(c))
             {
-                if (tbx.Text[caretPosition] == obtainRight(c)) SetText(tbx, tbx.Text.Remove(caretPosition - 1, 2));
+                if (caretPosition < tbx.Text.Length && tbx.Text[caretPosition] == obtainRight(c))
+                    SetText(tbx, tbx.Text.Remove(caretPosition - 1, 2));
                 selectSuppress(-1);
             }
             else if (ImplicitMultiply.IsClosingBracket(c)) selectSuppress(-1);
@@ -1693,10 +1735,15 @@ public class MyString
     public static readonly string[] FPP_NAMES = [.. FUNC, .. POLAR, .. PARAM];
 
     #region Parentheses
-    protected static int FindMatchingParen(ReadOnlySpan<char> input, int start)
+    public static int FindMatchingParen(ReadOnlySpan<char> input, int start)
     {
         for (int i = start + 1, count = 1; ; i++)
         { if (input[i] == '(') count++; else if (input[i] == ')') count--; if (count == 0) return i; }
+    }
+    public static int FindMatchingParenBack(ReadOnlySpan<char> input, int start)
+    {
+        for (int i = start - 1, count = 1; ; i--)
+        { if (input[i] == ')') count++; else if (input[i] == '(') count--; if (count == 0) return i; }
     }
     protected static bool ContainsAnyTopLevel(ReadOnlySpan<char> input, ReadOnlySpan<char> chars)
     {
