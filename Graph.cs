@@ -46,7 +46,7 @@ public partial class Graph : Form
     private static readonly int X_LEFT_MAC = 620, X_RIGHT_MAC = 1520, Y_UP_MAC = 45, Y_DOWN_MAC = 945,
         X_LEFT_MIC = 1565, X_RIGHT_MIC = 1765, Y_UP_MIC = 745, Y_DOWN_MIC = 945, X_LEFT_CHECK = 1921, X_RIGHT_CHECK = 1922,
         Y_UP_CHECK = 1081, Y_DOWN_CHECK = 1082, REF_POS_1 = 9, REF_POS_2 = 27, WIDTH_IND = 22, HEIGHT_IND = 55,
-        LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 200, THRESHOLD = 1000;
+        LEFT_SUPP = 11, TOP_SUPP = 45, GRID = 5, UPDATE = 5, REFRESH = 100, SLEEP = 100, THRESHOLD = 1000;
     private static readonly int[] BORDERS_MAC = [X_LEFT_MAC, X_RIGHT_MAC, Y_UP_MAC, Y_DOWN_MAC], BORDERS_MIC = [X_LEFT_MIC,
         X_RIGHT_MIC, Y_UP_MIC, Y_DOWN_MIC], BORDERS_CHECK = [X_LEFT_CHECK, X_RIGHT_CHECK, Y_UP_CHECK, Y_DOWN_CHECK];
     private static Real[] scopes; // Corresponds to detail_inputs = [X_Left, X_Right, Y_Left, Y_Right]
@@ -240,12 +240,13 @@ public partial class Graph : Form
     private static Real Obtain(string text) => RealSub.Obtain(ImplicitMultiply.NormalizeInput(text));
     private static Real Obtain(TextBox tbx) => Obtain(tbx.Text);
     private static void SetText(TextBox tbx, string text) => tbx.Text = text;
+    private static void SetCaret(TextBox tbx, int pos) { tbx.SelectionStart = MathR.Clamp(pos, 0, tbx.Text.Length); tbx.ScrollToCaret(); }
     private static void FillEmpty(TextBox tbx, string text) { if (String.IsNullOrEmpty(tbx.Text)) SetText(tbx, text); }
     private void AddDraft(string text) => SetText(DraftBox, text + DraftBox.Text);
     private void SetScrollBars(bool enabled) => VScrollBarX.Enabled = VScrollBarY.Enabled = enabled;
     private bool DetailedScopeEnabled() => GeneralInput.Text == ZERO;
     private void ClearExampleSelection() => ComboExamples.SelectedIndex = -1;
-    private void FocusInput() { InputString.Focus(); InputString.SelectionStart = InputString.Text.Length; }
+    private void FocusInput() { InputString.Focus(); SetCaret(InputString, InputString.Text.Length); }
     private bool NoInput() => String.IsNullOrEmpty(InputString.Text);
     private bool InputLocked() => InputString.ReadOnly || paren_change;
     #endregion
@@ -1246,7 +1247,7 @@ public partial class Graph : Form
         if (InputLocked()) return; int pos = InputString.SelectionStart;
         SetText(InputString, MyString.Replace(InputString.Text, String.Concat(selectedItem, ImplicitMultiply.EMPTY_PARENS),
             pos, pos + InputString.SelectionLength - 1));
-        InputString.Focus(); InputString.SelectionStart = pos + selectedItem.Length + 1; // Must remain after .Focus()
+        InputString.Focus(); SetCaret(InputString, pos + selectedItem.Length + 1); // Must remain after .Focus()
     }
     private void ComboExamples_SelectedIndexChanged(object sender, EventArgs e)
     {
@@ -1340,7 +1341,7 @@ public partial class Graph : Form
         string text = tbx.Text;
         foreach (char c in ImplicitMultiply.BARRED_CHARS) text = text.Replace(c, ' ');
         if (text == tbx.Text) return false;
-        SetText(tbx, text); tbx.SelectionStart = MathR.Clamp(tbx.Text.Length - caretPosition, 0, tbx.Text.Length);
+        SetText(tbx, text); SetCaret(tbx, tbx.Text.Length - caretPosition);
         return true;
     }
     private void MiniChecks(TextBox[] textBoxes, Label lbl)
@@ -1428,12 +1429,15 @@ public partial class Graph : Form
     {
         if (paren_tbx == null) return;
         int pos = paren_tbx.SelectionStart;
+
         bool recovered = paren_left >= 0 && paren_right >= 0 &&
             paren_left < paren_tbx.Text.Length && paren_right < paren_tbx.Text.Length &&
             paren_tbx.Text[paren_left] == '[' && paren_tbx.Text[paren_right] == ']';
+
         if (recovered) SetParen('(', ')');
-        paren_tbx.SelectionStart = MathR.Min(pos, paren_tbx.Text.Length);
+        SetCaret(paren_tbx, pos);
         if (recovered) paren_tbx.Refresh();
+
         paren_tbx = null; paren_left = paren_right = -1;
     }
     private static void ShowParen(TextBox tbx)
@@ -1444,8 +1448,10 @@ public partial class Graph : Form
 
         char c = tbx.Text[pos]; if (c != '(' && c != ')') return;
         int match = c == '(' ? MyString.FindMatchingParen(tbx.Text, pos) : MyString.FindMatchingParenBack(tbx.Text, pos);
-        paren_tbx = tbx; (paren_left, paren_right) = c == '(' ? (pos, match) : (match, pos);
-        SetParen('[', ']'); tbx.SelectionStart = pos + 1;
+
+        paren_tbx = tbx;
+        (paren_left, paren_right) = c == '(' ? (pos, match) : (match, pos);
+        SetParen('[', ']'); SetCaret(tbx, pos + 1);
     }
     private static void SnapSeparatorCaret(TextBox tbx)
     {
@@ -1461,40 +1467,73 @@ public partial class Graph : Form
     {
         if (tbx.ReadOnly) return;
         RecoverParen(); tbx.BeginInvoke(() => ShowParen(tbx));
-        int caretPos = tbx.SelectionStart; // Necessary
 
-        void selectSuppress(int pos) { tbx.SelectionStart = caretPos + pos; e.SuppressKeyPress = true; }
+        int caretPos = tbx.SelectionStart, selectionLength = tbx.SelectionLength;
+        bool shift = (ModifierKeys & Keys.Shift) != 0;
+
+        void selectSuppress(int pos)
+        {
+            SetCaret(tbx, caretPos + pos);
+            e.SuppressKeyPress = true;
+        }
+
         void insertSelectSuppress(string insertion, int pos)
-        { SetText(tbx, tbx.Text.Insert(caretPos, insertion)); selectSuppress(pos); }
+        {
+            SetText(tbx, tbx.Text.Insert(caretPos, insertion));
+            selectSuppress(pos);
+        }
+
         char obtainLeft() => e.KeyCode switch { Keys.D9 => '(', Keys.OemOpenBrackets => '{' };
         char obtainRight(char left) => left switch { '(' => ')', '{' => '}' };
 
-        if (!MyString.HasBalancedParen(tbx.Text.AsSpan(caretPos, tbx.SelectionLength))) selectSuppress(0);
-        else if ((e.KeyCode == Keys.D9 || e.KeyCode == Keys.OemOpenBrackets) && (ModifierKeys & Keys.Shift) != 0)
+        if (!MyString.HasBalancedParen(tbx.Text.AsSpan(caretPos, selectionLength))) selectSuppress(0);
+
+        else if (shift && (e.KeyCode == Keys.D9 || e.KeyCode == Keys.OemOpenBrackets))
         {
             char left = obtainLeft(), right = obtainRight(left);
-            if (tbx.SelectionLength == 0) insertSelectSuppress($"{left}{right}", 1);
+
+            if (selectionLength == 0) insertSelectSuppress($"{left}{right}", 1);
             else
             {
-                string selectedText = tbx.Text.Substring(caretPos, tbx.SelectionLength);
-                SetText(tbx, tbx.Text.Remove(caretPos, tbx.SelectionLength));
-                insertSelectSuppress($"{left}{selectedText}{right}", selectedText.Length + 2);
+                string selectedText = tbx.Text.Substring(caretPos, selectionLength),
+                    insertion = $"{left}{selectedText}{right}";
+
+                SetText(tbx, MyString.Replace(tbx.Text, insertion,
+                    caretPos, caretPos + selectionLength - 1));
+
+                selectSuppress(insertion.Length);
             }
         }
-        else if ((e.KeyCode == Keys.D0 || e.KeyCode == Keys.OemCloseBrackets) && (ModifierKeys & Keys.Shift) != 0)
+
+        else if (shift && (e.KeyCode == Keys.D0 || e.KeyCode == Keys.OemCloseBrackets))
         {
-            if (tbx.SelectionLength > 0) selectSuppress(0);
+            if (selectionLength > 0) selectSuppress(0);
             else if (caretPos == 0) selectSuppress(0);
-            else if (caretPos < tbx.Text.Length && ImplicitMultiply.IsOpeningBracket(tbx.Text[caretPos - 1]) &&
-                tbx.Text[caretPos] == obtainRight(tbx.Text[caretPos - 1])) selectSuppress(1);
+            else if (caretPos < tbx.Text.Length &&
+                ImplicitMultiply.IsOpeningBracket(tbx.Text[caretPos - 1]) &&
+                tbx.Text[caretPos] == obtainRight(tbx.Text[caretPos - 1]))
+                selectSuppress(1);
         }
-        else if (e.KeyCode == Keys.Oemcomma) insertSelectSuppress(", ", 2);
-        else if (e.KeyCode == Keys.OemPipe) insertSelectSuppress(" | ", 3);
+
+        else if (e.KeyCode == Keys.Oemcomma && !shift)
+            insertSelectSuppress(", ", 2);
+
+        else if (e.KeyCode == Keys.OemPipe && shift)
+            insertSelectSuppress(" | ", 3);
+
         else if (e.KeyCode == Keys.Back)
         {
-            if (caretPos == 0 || tbx.SelectionLength > 0) return;
-            bool pipe = caretPos >= 3 && tbx.Text[caretPos - 3] == ' ' && tbx.Text[caretPos - 2] == '|' && tbx.Text[caretPos - 1] == ' ',
-                comma = caretPos >= 2 && tbx.Text[caretPos - 2] == ',' && tbx.Text[caretPos - 1] == ' ';
+            if (caretPos == 0 || selectionLength > 0) return;
+
+            bool pipe = caretPos >= 3 &&
+                tbx.Text[caretPos - 3] == ' ' &&
+                tbx.Text[caretPos - 2] == '|' &&
+                tbx.Text[caretPos - 1] == ' ',
+
+                comma = caretPos >= 2 &&
+                tbx.Text[caretPos - 2] == ',' &&
+                tbx.Text[caretPos - 1] == ' ';
+
             if (pipe || comma)
             {
                 int length = pipe ? 3 : 2;
@@ -1505,12 +1544,16 @@ public partial class Graph : Form
             {
                 if (!MyString.HasBalancedParen(tbx.Text)) return;
                 char c = tbx.Text[caretPos - 1];
+
                 if (ImplicitMultiply.IsOpeningBracket(c))
                 {
-                    if (caretPos < tbx.Text.Length && tbx.Text[caretPos] == obtainRight(c)) SetText(tbx, tbx.Text.Remove(caretPos - 1, 2));
+                    if (caretPos < tbx.Text.Length && tbx.Text[caretPos] == obtainRight(c))
+                        SetText(tbx, tbx.Text.Remove(caretPos - 1, 2));
+
                     selectSuppress(-1);
                 }
-                else if (ImplicitMultiply.IsClosingBracket(c)) selectSuppress(-1);
+                else if (ImplicitMultiply.IsClosingBracket(c))
+                    selectSuppress(-1);
             }
         }
     } // Sensitive
