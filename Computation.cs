@@ -80,11 +80,11 @@ public class MyString
         => (MathR.Abs(input) < threshold && MathR.Abs(input) > 1 / threshold) ? input.ToString("#0.0000000") : input.ToString("E3");
     public static string FormatAngle(Real x, Real y) => (RealComplex.ArgRGB(x, y) / MathR.PI).ToString("#0.000000") + " π";
     public static void ThrowException(bool error = true) { if (error) throw new Exception(); }
-    public static void ThrowInvalidLens(ReadOnlySpan<string> split, ReadOnlySpan<int> lengths)
+    public static void ThrowInvalidLengths(ReadOnlySpan<string> split, ReadOnlySpan<int> lengths)
         => ThrowException(!lengths.Contains(split.Length));
     protected static (int, int) GetIterationBounds(ReadOnlySpan<string> split, int length, int start, int iteration)
     {
-        ThrowInvalidLens(split, [length, length + 1]);
+        ThrowInvalidLengths(split, [length, length + 1]);
         int end = split.Length == length ? iteration : RealSub.ToInt(split[^1]);
         ThrowException(start > end); return (start, end);
     }
@@ -414,7 +414,7 @@ public sealed class ComplexSub : ImplicitMultiply
     private unsafe Matrix<Complex> Blaschke(string[] split) // Reference: https://en.wikipedia.org/wiki/Blaschke_product
         => HandleMtx(UninitMtx(true), output =>
         {
-            ThrowInvalidLens(split, [2]);
+            ThrowInvalidLengths(split, [2]);
             Matrix<Complex> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
             ProcessChunks((p, col) =>
             {
@@ -502,7 +502,7 @@ public sealed class ComplexSub : ImplicitMultiply
         });
     private unsafe Matrix<Complex> ProcessSH(string[] split, Func<Complex, Real, Complex, Complex> function)
     {
-        ThrowInvalidLens(split, [4]); Matrix<Complex> _z = UninitMtx(true);
+        ThrowInvalidLengths(split, [4]); Matrix<Complex> _z = UninitMtx(true);
         Real obtain(int i) => RealSub.Obtain(split[i]); Real r = obtain(0); Complex ctr = new(obtain(1), obtain(2));
         ProcessChunks((p, col) =>
         {
@@ -515,7 +515,7 @@ public sealed class ComplexSub : ImplicitMultiply
     private Matrix<Complex> ProcessSPI(string[] split, int validLen, Matrix<Complex> initMtx, Action<ComplexSub> action,
         Action<int, Matrix<Complex>>? iterateAction = null)
     {
-        ThrowInvalidLens(split, [validLen, validLen - 2]); bool sub = split.Length == validLen;
+        ThrowInvalidLengths(split, [validLen, validLen - 2]); bool sub = split.Length == validLen;
         int subIdx = validLen - 3; if (sub) split[0] = InsertImpMultiply(ReplaceLoop(split, 0, subIdx, split[subIdx], true), true);
         ComplexSub buffer = ObtainSub(sub ? ReplaceLoop(split, 0, subIdx, "0") : split[0], initMtx, buffCocs, true);
 
@@ -558,7 +558,7 @@ public sealed class ComplexSub : ImplicitMultiply
         foreach (var buffCoc in body.buffCocs) buffCoc.Return();
         return output;
     } // Used for shallow but complicated compositions
-    private Matrix<Complex> RealBlock(string[] split) { ThrowInvalidLens(split, [1]); return Const(new(RealSub.Obtain(split[0])), true); }
+    private Matrix<Complex> RealBlock(string[] split) { ThrowInvalidLengths(split, [1]); return Const(new(RealSub.Obtain(split[0])), true); }
     #endregion
 
     #region Elements
@@ -802,7 +802,7 @@ public sealed class RealSub : ImplicitMultiply
     private unsafe Matrix<Real> ProcessMCP(string[] split, Func<Real, Real, Real> function)
         => HandleMtx(UninitMtx(true), output =>
         {
-            ThrowInvalidLens(split, [2]);
+            ThrowInvalidLengths(split, [2]);
             Matrix<Real> initial1 = ObtainValue(split[0]), initial2 = ObtainValue(split[1]);
             ProcessChunks((p, col) =>
             {
@@ -914,7 +914,7 @@ public sealed class RealSub : ImplicitMultiply
         });
     private unsafe Matrix<Real> ProcessSH(string[] split, Func<Complex, Real, Complex, Complex> function)
     {
-        ThrowInvalidLens(split, [4]); Matrix<Real> _x = UninitMtx(true), _y = UninitMtx(true);
+        ThrowInvalidLengths(split, [4]); Matrix<Real> _x = UninitMtx(true), _y = UninitMtx(true);
         Real obtain(int i) => Obtain(split[i]); Real r = obtain(0); Complex ctr = new(obtain(1), obtain(2));
         ProcessChunks((p, col) =>
         {
@@ -928,7 +928,7 @@ public sealed class RealSub : ImplicitMultiply
     private Matrix<Real> ProcessSPI(string[] split, int validLen, Matrix<Real> initMtx, Action<RealSub> action,
         Action<int, Matrix<Real>>? iterateAction = null)
     {
-        ThrowInvalidLens(split, [validLen, validLen - 2]); bool sub = split.Length == validLen;
+        ThrowInvalidLengths(split, [validLen, validLen - 2]); bool sub = split.Length == validLen;
         int subIdx = validLen - 3; if (sub) split[0] = InsertImpMultiply(ReplaceLoop(split, 0, subIdx, split[subIdx], true), false);
         RealSub buffer = ObtainSub(sub ? ReplaceLoop(split, 0, subIdx, "0") : split[0], initMtx, null, buffCocs, true);
 
@@ -948,7 +948,7 @@ public sealed class RealSub : ImplicitMultiply
     public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split) => ProcessIterate2(split, null);
     public (string, Matrix<Real>, Matrix<Real>) ProcessIterate2(string[] split, Action<int, Matrix<Real>, Matrix<Real>>? iterateAction)
     {
-        ThrowInvalidLens(split, [8, 6]); bool sub = split.Length == 8;
+        ThrowInvalidLengths(split, [8, 6]); bool sub = split.Length == 8;
         string replaceLoop(int i) => InsertImpMultiply(ReplaceLoop(split, i, 4, split[4], true), false);
         Matrix<Real> initialX = ObtainValue(split[2]), initialY = ObtainValue(split[3]);
         RealSub obtainSub(int i) => ObtainSub(sub ? ReplaceLoop(split, i, 4, "0") : split[i], initialX, initialY, buffCocs, true);
