@@ -26,7 +26,7 @@ public partial class Graph : Form
     private ComboBox[] combo_boxes;
     private Action<object, EventArgs>[] check_actions;
     private static Graphics graphics;
-    private static Rectangle rectangle, rect_mac, rect_mic; // rect_: slightly larger than the display regions
+    private static Rectangle rect_mac, rect_mic; // rect_: slightly larger than the display regions
     private static Bitmap bmp_mac, bmp_mic, bmp_screen; // bmp_screen: snapshots
     private static readonly Bitmap BMP_PIXEL = new(1, 1);
     private static readonly Size SIZE_PIXEL = new(1, 1);
@@ -143,13 +143,15 @@ public partial class Graph : Form
     private void InitializeGraphics()
     {
         graphics = CreateGraphics();
-        bmp_mac = bmp_mic = new(Width, Height, PixelFormat.Format32bppArgb);
-        bmp_screen = new(Width - WIDTH_IND, Height - HEIGHT_IND);
-        rectangle = new(0, 0, Width, Height);
 
         int indent = (int)(CURVE_WIDTH_LIMIT / 2), _indent = indent * 2,
             widthMac = X_RIGHT_MAC - X_LEFT_MAC, heightMac = Y_DOWN_MAC - Y_UP_MAC,
             widthMic = X_RIGHT_MIC - X_LEFT_MIC, heightMic = Y_DOWN_MIC - Y_UP_MIC;
+
+        bmp_mac = new(widthMac, heightMac, PixelFormat.Format32bppArgb);
+        bmp_mic = new(widthMic, heightMic, PixelFormat.Format32bppArgb);
+        bmp_screen = new(Width - WIDTH_IND, Height - HEIGHT_IND);
+
         rect_mac = new(X_LEFT_MAC - indent, Y_UP_MAC - indent, widthMac + _indent, heightMac + _indent);
         rect_mic = new(X_LEFT_MIC - indent, Y_UP_MIC - indent, widthMic + _indent, heightMic + _indent);
 
@@ -308,6 +310,12 @@ public partial class Graph : Form
     private static int LowIdx(Real a, Real m) => (int)MathR.Floor(a / m);
     private static Real LowDist(Real a, Real m) => a - m * LowIdx(a, m);
     private static Real LowRatio(Real a, Real m) => a == 0 && BitConverter.DoubleToInt64Bits(a) < 0 ? 1 : LowDist(a, m) / m;
+    private static Real LowRatioFast(Real a, Real m)
+    {
+        if (a == 0 && BitConverter.DoubleToInt64Bits(a) < 0) return 1;
+        Real q = a / m; return q - MathR.Floor(q);
+    }
+    private static Real LowNearDist(Real a, Real m) { Real d = LowDist(a, m); return MathR.Min(d, m - d); }
     private static Real GetShade(Real alpha) => (alpha - 1) / DEPTH + 1;
     private unsafe static (Real, Real) GetAtanExtrema(Matrix<Real> output, int rows, int columns)
     {
@@ -341,18 +349,19 @@ public partial class Graph : Form
 
     #region Rendering Core
     private static (int, BitmapData) LockBitmapData(Bitmap bmp) // bpp: bytes per pixel
-        => (Image.GetPixelFormatSize(bmp.PixelFormat) / 8, bmp.LockBits(rectangle, ImageLockMode.ReadWrite, bmp.PixelFormat));
+        => (Image.GetPixelFormatSize(bmp.PixelFormat) / 8,
+            bmp.LockBits(new(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadWrite, bmp.PixelFormat));
     private unsafe static void ClearBitmap(Bitmap bmp)
     {
-        var (bpp, bmpData) = LockBitmapData(bmp);
+        var (width, height) = (bmp.Width, bmp.Height); var (bpp, bmpData) = LockBitmapData(bmp);
         try
         {
             var bmpInit = (byte*)bmpData.Scan0 + bpp - 1;
-            Parallel.For(0, rectangle.Height, y =>
+            Parallel.For(0, height, y =>
             {
                 byte* pixelPtr = bmpInit + y * bmpData.Stride;
-                for (int x = 0; x < rectangle.Width; x++, pixelPtr += bpp) *pixelPtr = 0; // It suffices to set color.A to zero
-            }); // Deliberate loop order
+                for (int x = 0; x < width; x++, pixelPtr += bpp) *pixelPtr = 0;
+            });
         }
         finally { bmp.UnlockBits(bmpData); }
     }
@@ -371,8 +380,8 @@ public partial class Graph : Form
     private delegate void PixelLoop(int x, int y, IntPtr pixelPtr, ref int pixNum); // Instead of Action<int, int, IntPtr, ref int>
     private unsafe static void LoopBase(PixelLoop pixelLoop)
     {
-        Bitmap bmp = GetBitmap(is_main); var (bpp, bmpData) = LockBitmapData(bmp);
-        var (xInit, yInit) = (AddOne(borders[0]), AddOne(borders[2])); var (xLen, yLen) = (borders[1] - xInit, borders[3] - yInit);
+        Bitmap bmp = GetBitmap(is_main); var (width, height) = (bmp.Width, bmp.Height); var (bpp, bmpData) = LockBitmapData(bmp);
+        var (xInit, yInit) = (1, 1); var (xLen, yLen) = (width - xInit, height - yInit);
         try
         {
             int[] pixNums = new int[yLen]; var bmpInit = (byte*)bmpData.Scan0 + yInit * bmpData.Stride + xInit * bpp;
@@ -381,28 +390,12 @@ public partial class Graph : Form
                 int pixNum = 0; var pixelPtr = (IntPtr)(bmpInit + y * bmpData.Stride);
                 for (int x = 0; x < xLen; x++, pixelPtr += bpp) pixelLoop(x, y, pixelPtr, ref pixNum);
                 pixNums[y] = pixNum;
-            }); // Deliberate loop order
+            });
             fixed (int* ptr = pixNums) { int* _ptr = ptr; for (int y = 0; y < yLen; y++, _ptr++) pixel_number += *_ptr; }
         }
         finally { bmp.UnlockBits(bmpData); }
     }
-    private unsafe void RealLoop(Matrix<Real> output, Color _zero, Color _pole, Func<Real, Color> extractor, (Real, Real) mM)
-        => LoopBase((x, y, pixelPtr, ref pixNum) =>
-        {
-            Real value = output[x, y]; var _pixelPtr = (byte*)pixelPtr;
-            if (Real.IsNaN(value)) return;
-            SetPixel(_pixelPtr, extractor(value), ref pixNum);
-            if (!delete_point) RealSpecial(_pixelPtr, _zero, _pole, MathR.Atan(value), mM, ref pixNum);
-        });
-    private unsafe void ComplexLoop(Matrix<Complex> output, Color _zero, Color _pole, Func<Complex, Color> extractor)
-        => LoopBase((x, y, pixelPtr, ref pixNum) =>
-        {
-            Complex value = output[x, y]; var _pixelPtr = (byte*)pixelPtr;
-            if (Real.IsNaN(value.real) || Real.IsNaN(value.imaginary)) return;
-            SetPixel(_pixelPtr, extractor(value), ref pixNum);
-            if (!delete_point) ComplexSpecial(_pixelPtr, _zero, _pole, Complex.Modulus(value), ref pixNum);
-        });
-    private static Func<Real, Color> GetColorReal123(int mode) => value =>
+    private static Color GetColorReal123(Real value, int mode)
     {
         Color func23(Color c1, Color c2) => value < 0 ? Swap(c1, c2) : value > 0 ? Swap(c2, c1) : Color.Empty;
         return mode switch
@@ -411,10 +404,10 @@ public partial class Graph : Form
             2 => func23(Color.White, Color.Black),
             3 => func23(UPPER_GOLD, LOWER_BLUE)
         };
-    };
-    private static Func<Real, Color> GetColorReal45(bool mode, (Real min, Real max) mM) => value => mode ?
+    }
+    private static Color GetColorReal45(Real value, bool mode, (Real min, Real max) mM) => mode ?
         ObtainColorStrip(value, mM.min, mM.max) : ObtainColorStrip(value, mM.min, mM.max, GetShade(LowRatio(value, stride_real)));
-    private static Func<Complex, Color> GetColorComplex123(int mode, bool isReIm) => input =>
+    private static Color GetColorComplex123(Complex input, int mode, bool isReIm)
     {
         var (v1, v2) = Complex.ReIm(isReIm ? input : Complex.Log(input));
         var (s1, s2) = isReIm ? (stride, stride) : (mod_stride, arg_stride);
@@ -425,23 +418,50 @@ public partial class Graph : Form
             3 => (LOWER_BLUE, UPPER_GOLD)
         };
         bool draw = mode != 1 ? Int32.IsEvenInteger(LowIdx(v1, s1) + LowIdx(v2, s2))
-            : MathR.Min(MathR.Min(LowDist(v1, s1), LowDist(v2, s2)), MathR.Min(-LowDist(v1, -s1), -LowDist(v2, -s2))) < epsilon;
+            : MathR.Min(LowNearDist(v1, s1), LowNearDist(v2, s2)) < epsilon;
         return mode == 1 ? (draw ? Swap(c2, c1) : Color.Empty) : (draw ? Swap(c1, c2) : Swap(c2, c1));
-    };
-    private static Func<Complex, Color> GetColorComplex45(bool mode) => mode ? (c => ObtainColorWheel(c, alpha: 1)) : (value =>
+    }
+    private static Color GetColorComplex45(Complex value, bool mode)
     {
-        Complex valueLog = Complex.Log(value);
-        Real alpha = (LowRatio(valueLog.real, mod_stride) + LowRatio(valueLog.imaginary, arg_stride)) / 2;
-        return ObtainColorWheel(value, GetShade(alpha));
-    });
-    private void RealLoop123(Matrix<Real> output, Color _zero, Color _pole, int mode, (Real, Real) mM)
-        => RealLoop(output, _zero, _pole, GetColorReal123(mode), mM);
-    private void RealLoop45(Matrix<Real> output, bool mode, (Real, Real) mM)
-        => RealLoop(output, Color.Black, Color.White, GetColorReal45(mode, mM), mM);
-    private void ComplexLoop123(Matrix<Complex> output, Color _zero, Color _pole, int mode, bool isReIm)
-        => ComplexLoop(output, _zero, _pole, GetColorComplex123(mode, isReIm));
-    private void ComplexLoop45(Matrix<Complex> output, bool mode)
-        => ComplexLoop(output, Color.Black, Color.White, GetColorComplex45(mode));
+        if (mode) return ObtainColorWheel(value, 1);
+        Complex z = Complex.Log(value);
+        Real alpha = GetShade((LowRatioFast(z.real, mod_stride) + LowRatioFast(z.imaginary, arg_stride)) / 2);
+        if (shade) return ObtainColorWheel(value, alpha);
+        Real argument = z.imaginary < 0 ? z.imaginary + MathR.Tau : z.imaginary;
+        return ObtainColorBase(argument, alpha, 255);
+    }
+    private unsafe void RealLoop123(Matrix<Real> output, Color zero, Color pole, int mode, (Real, Real) mM)
+        => LoopBase((x, y, pixelPtr, ref pixNum) =>
+        {
+            Real value = output[x, y]; byte* ptr = (byte*)pixelPtr;
+            if (Real.IsNaN(value)) return;
+            SetPixel(ptr, GetColorReal123(value, mode), ref pixNum);
+            if (!delete_point) RealSpecial(ptr, zero, pole, MathR.Atan(value), mM, ref pixNum);
+        });
+    private unsafe void RealLoop45(Matrix<Real> output, bool mode, (Real, Real) mM)
+        => LoopBase((x, y, pixelPtr, ref pixNum) =>
+        {
+            Real value = output[x, y]; byte* ptr = (byte*)pixelPtr;
+            if (Real.IsNaN(value)) return;
+            SetPixel(ptr, GetColorReal45(value, mode, mM), ref pixNum);
+            if (!delete_point) RealSpecial(ptr, Color.Black, Color.White, MathR.Atan(value), mM, ref pixNum);
+        });
+    private unsafe void ComplexLoop123(Matrix<Complex> output, Color zero, Color pole, int mode, bool isReIm)
+        => LoopBase((x, y, pixelPtr, ref pixNum) =>
+        {
+            Complex value = output[x, y]; byte* ptr = (byte*)pixelPtr;
+            if (Real.IsNaN(value.real) || Real.IsNaN(value.imaginary)) return;
+            SetPixel(ptr, GetColorComplex123(value, mode, isReIm), ref pixNum);
+            if (!delete_point) ComplexSpecial(ptr, zero, pole, Complex.Modulus(value), ref pixNum);
+        });
+    private unsafe void ComplexLoop45(Matrix<Complex> output, bool mode)
+        => LoopBase((x, y, pixelPtr, ref pixNum) =>
+        {
+            Complex value = output[x, y]; byte* ptr = (byte*)pixelPtr;
+            if (Real.IsNaN(value.real) || Real.IsNaN(value.imaginary)) return;
+            SetPixel(ptr, GetColorComplex45(value, mode), ref pixNum);
+            if (!delete_point) ComplexSpecial(ptr, Color.Black, Color.White, Complex.Modulus(value), ref pixNum);
+        });
     #endregion
 
     #region Rendering
@@ -589,7 +609,7 @@ public partial class Graph : Form
         if (is_checking) return; // Necessary
         ClearBitmap(GetBitmap(is_main)); // Required thanks to ZAL
         computeAction();
-        DisplayBase(() => { graphics.DrawImage(GetBitmap(is_main), 0, 0); });
+        DisplayBase(() => { graphics.DrawImageUnscaled(GetBitmap(is_main), borders[0], borders[2]); });
     }
     private void DisplayExpression(string input)
     {
@@ -697,7 +717,7 @@ public partial class Graph : Form
         }; // ARGB color hexagon used for standard domain coloring
     } // Reference: https://en.wikipedia.org/wiki/Domain_coloring & https://complex-analysis.com/content/domain_coloring.html
     private static Color ObtainColorWheel(Complex c, Real alpha = 1) => ObtainColorBase(RealComplex.ArgRGB(c.real, c.imaginary),
-        alpha, (int)(255 / (1 + decay * Complex.Modulus(shade ? c : Complex.ZERO))));
+        alpha, shade ? (int)(255 / (1 + decay * Complex.Modulus(c))) : 255);
     private static Color ObtainColorWheelCurve(Real alpha) => ObtainColorBase(alpha * MathR.Tau, 1, 255);
     private static Color ObtainColorStrip(Real value, Real min, Real max, Real alpha = 1) // alpha: brightness
     {
