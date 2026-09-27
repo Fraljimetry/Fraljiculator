@@ -1,6 +1,7 @@
 using System.Drawing.Imaging;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 using MathR = System.Math;
 using Real = System.Double;
@@ -32,6 +33,7 @@ public partial class Graph : Form
     private static readonly Size SIZE_PIXEL = new(1, 1);
     private static readonly SolidBrush BACK_BRUSH = new(Color.Black);
     private static readonly Pen BDR_PEN = new(Color.Gray), _BDR_PEN = new(Color.White), AXES_PEN = new(Color.DarkGray, 4);
+    private static readonly SolidBrush REF_BRUSH = new(SystemColors.ControlDark);
     private static readonly Color CORRECT_GREEN = Argb(192, 255, 192), ERROR_RED = Argb(255, 192, 192),
         UNCHECK_YELLOW = Argb(255, 255, 128), READONLY_PURPLE = Argb(255, 192, 255), COMBO_BLUE = Argb(192, 255, 255),
         FOCUS_GRAY = Color.LightGray, CTRL_GRAY = Argb(105, 105, 105), GRID_GRAY = Argb(75, 255, 255, 255), READONLY_GRAY = Color.Gainsboro,
@@ -50,13 +52,15 @@ public partial class Graph : Form
     private static readonly int[] BORDERS_MAC = [X_LEFT_MAC, X_RIGHT_MAC, Y_UP_MAC, Y_DOWN_MAC], BORDERS_MIC = [X_LEFT_MIC,
         X_RIGHT_MIC, Y_UP_MIC, Y_DOWN_MIC], BORDERS_CHECK = [X_LEFT_CHECK, X_RIGHT_CHECK, Y_UP_CHECK, Y_DOWN_CHECK];
     private static Real[] scopes; // Corresponds to detail_inputs = [X_Left, X_Right, Y_Left, Y_Right]
+    private static Real[] shown_scopes = new Real[4];
     private static int[] borders; // = [x_left, x_right, y_up, y_down]
-    private static Matrix<Complex> output_complex;
-    private static Matrix<Real> output_real;
+    private static int[] shown_borders = new int[4];
+    private static Matrix<Complex> output_complex, shown_complex;
+    private static Matrix<Real> output_real, shown_real;
     //
-    private static bool is_flashing, is_complex = true, delete_point = true, delete_coor, swap_colors, is_auto, freeze_graph,
+    private static bool is_flashing, is_complex = true, delete_point = true, delete_coor = true, swap_colors, is_auto, freeze_graph,
         clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking, error_input, error_address, is_resized,
-        ctrl_pressed, sft_pressed, bdp_painted, paren_change;
+        ctrl_pressed, sft_pressed, bdp_painted, paren_change, shown_ready, shown_curve, shown_complex_mode, shown_main;
     private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile", INPUT_DEFAULT = "z",
         GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO", MICRO = "MICRO", ZERO = "0",
         REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History saved at", CAPTION_DEFAULT = "Your inputs will be shown here.",
@@ -66,6 +70,36 @@ public partial class Graph : Form
         SEP_1 = new('>', 3), SEP_2 = new('<', 3), SEP = new('-', 6), _SEP = new('-', 80), TAB = new(' ', 4);
     private static readonly string[] CONTOUR_MODES = ["Cartesian (x, y)", "Polar (r, θ)"], COLOR_MODES =
         ["Commonplace", "Monochromatic", "Bichromatic", "Kaleidoscopic", "Miscellaneous"];
+    private static readonly string SESSION_DIR = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Fraljiculator"), SESSION_FILE = Path.Combine(SESSION_DIR, "session.json");
+    private const int SESSION_VERSION = 1;
+    private sealed class SessionState
+    {
+        public int Version { get; set; }
+        public string? Input { get; set; }
+        public string? Address { get; set; }
+        public string? General { get; set; }
+        public string? XLeft { get; set; }
+        public string? XRight { get; set; }
+        public string? YLeft { get; set; }
+        public string? YRight { get; set; }
+        public string? Thick { get; set; }
+        public string? Dense { get; set; }
+        public int Coloring { get; set; }
+        public int Contour { get; set; }
+        public bool Auto { get; set; }
+        public bool Swap { get; set; }
+        public bool Points { get; set; }
+        public bool Shade { get; set; }
+        public bool Retain { get; set; }
+        public bool Edit { get; set; }
+        public bool Complex { get; set; }
+        public bool Coor { get; set; }
+        public string? Draft { get; set; }
+        public string? Caption { get; set; }
+        public int LoopNumber { get; set; }
+        public int ChosenNumber { get; set; }
+    }
     #endregion
 
     #region Initializations
@@ -74,6 +108,7 @@ public partial class Graph : Form
         InitializeComponent(); InitializeArrays();
         SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor); BanMouseWheel();
         InitializeTimers(); InitializeGraphics(); InitializeCombo(); InitializeData(); SetThicknessDensenessScopesBorders();
+        LoadSessionState(); FormClosing += (sender, e) => SaveSessionState();
     }
     private void Graph_Load(object sender, EventArgs e) => TextBoxFocus(sender, e);
     private void Graph_Paint(object sender, PaintEventArgs e) { if (!bdp_painted && !clicked) SubtitleBox_DoubleClick(sender, e); }
@@ -91,7 +126,7 @@ public partial class Graph : Form
             FunctionDisplay, CaptionBox];
 
         default_checks = [(CheckAuto, false), (CheckSwap, false), (CheckPoints, false), (CheckShade, false), (CheckRetain, false),
-            (CheckEdit, false), (CheckComplex, true), (CheckCoor, true)];
+            (CheckEdit, false), (CheckComplex, true), (CheckCoor, false)];
 
         reset_labels = [InputLabel, AtLabel, GeneralLabel, DetailLabel, X_Scope, Y_Scope, ThickLabel, DenseLabel, ExampleLabel,
             FunctionLabel, ModeLabel, ContourLabel];
@@ -170,6 +205,77 @@ public partial class Graph : Form
     }
     private void ResetInputs() { foreach (var (tbx, value) in reset_inputs) SetText(tbx, value); FocusInput(); }
     private void InitializeData() { ResetInputs(); SetText(DraftBox, DRAFT_DEFAULT); SetText(CaptionBox, CAPTION_DEFAULT); }
+    private void SaveSessionState()
+    {
+        try
+        {
+            SessionState state = new()
+            {
+                Version = SESSION_VERSION,
+                Input = InputString.Text,
+                Address = AddressInput.Text,
+                General = GeneralInput.Text,
+                XLeft = X_Left.Text,
+                XRight = X_Right.Text,
+                YLeft = Y_Left.Text,
+                YRight = Y_Right.Text,
+                Thick = ThickInput.Text,
+                Dense = DenseInput.Text,
+                Coloring = ComboColoring.SelectedIndex,
+                Contour = ComboContour.SelectedIndex,
+                Auto = CheckAuto.Checked,
+                Swap = CheckSwap.Checked,
+                Points = CheckPoints.Checked,
+                Shade = CheckShade.Checked,
+                Retain = CheckRetain.Checked,
+                Edit = CheckEdit.Checked,
+                Complex = CheckComplex.Checked,
+                Coor = CheckCoor.Checked,
+                Draft = DraftBox.Text,
+                Caption = CaptionBox.Text,
+                LoopNumber = loop_number,
+                ChosenNumber = chosen_number
+            };
+            Directory.CreateDirectory(SESSION_DIR);
+            string tempFile = SESSION_FILE + ".tmp";
+            File.WriteAllText(tempFile, JsonSerializer.Serialize(state));
+            File.Move(tempFile, SESSION_FILE, true);
+        }
+        catch (Exception) { } // Session persistence must never prevent shutdown
+    }
+    private void LoadSessionState()
+    {
+        try
+        {
+            if (!File.Exists(SESSION_FILE)) return;
+            SessionState? state = JsonSerializer.Deserialize<SessionState>(File.ReadAllText(SESSION_FILE));
+            if (state == null || state.Version != SESSION_VERSION) return;
+
+            bool inputReadOnly = InputString.ReadOnly; InputString.ReadOnly = true;
+            try
+            {
+                SetText(InputString, state.Input ?? InputString.Text); SetText(AddressInput, state.Address ?? AddressInput.Text);
+                SetText(GeneralInput, state.General ?? GeneralInput.Text); SetText(X_Left, state.XLeft ?? X_Left.Text);
+                SetText(X_Right, state.XRight ?? X_Right.Text); SetText(Y_Left, state.YLeft ?? Y_Left.Text);
+                SetText(Y_Right, state.YRight ?? Y_Right.Text); SetText(ThickInput, state.Thick ?? ThickInput.Text);
+                SetText(DenseInput, state.Dense ?? DenseInput.Text);
+                if ((uint)state.Coloring < (uint)ComboColoring.Items.Count) ComboColoring.SelectedIndex = state.Coloring;
+                if ((uint)state.Contour < (uint)ComboContour.Items.Count) ComboContour.SelectedIndex = state.Contour;
+                CheckAuto.Checked = state.Auto; CheckSwap.Checked = state.Swap; CheckPoints.Checked = state.Points;
+                CheckShade.Checked = state.Shade; CheckRetain.Checked = state.Retain; CheckEdit.Checked = state.Edit;
+                CheckComplex.Checked = state.Complex; CheckCoor.Checked = state.Coor;
+                (is_auto, swap_colors, delete_point, shade, freeze_graph, is_complex, delete_coor) =
+                    (state.Auto, state.Swap, !state.Points, state.Shade, state.Retain, state.Complex, !state.Coor);
+                DraftBox.ReadOnly = !state.Edit; DraftBox.BackColor = DraftBox.ReadOnly ? Color.Black : SystemColors.ControlDarkDark;
+                DraftBox.ForeColor = DraftBox.ReadOnly ? READONLY_GRAY : Color.White;
+                DraftBox.ScrollBars = DraftBox.ReadOnly ? ScrollBars.None : ScrollBars.Vertical;
+                SetText(DraftBox, state.Draft ?? DraftBox.Text); SetText(CaptionBox, state.Caption ?? CaptionBox.Text);
+                loop_number = MathR.Max(0, state.LoopNumber); chosen_number = MathR.Max(0, state.ChosenNumber);
+            }
+            finally { InputString.ReadOnly = inputReadOnly; }
+        }
+        catch (Exception) { } // Missing, corrupt, or incompatible state falls back to normal defaults
+    }
     private void SetThicknessDensenessScopesBorders(bool autoFill = true)
     {
         foreach (var (tbx, value) in parameter_defaults) FillEmpty(tbx, value);
@@ -289,13 +395,23 @@ public partial class Graph : Form
         if (!isFrozen) { DrawBackdrop(borders); SetAxesDrawn(isMain); }
         if (!delete_coor && !GetAxesDrawnRef(isMain)) { DrawAxesGrids(borders); SetAxesDrawn(isMain, true); }
     } // Sensitive
-    private void DrawReferenceRectangles(Color color) => graphics.FillRectangle(new SolidBrush(color), VScrollBarX.Location.X - REF_POS_1,
-        Y_UP_MIC + REF_POS_2, 2 * (VScrollBarX.Width + REF_POS_1), VScrollBarX.Height - 2 * REF_POS_2);
+    private void DrawReferenceRectangles(Color color)
+    {
+        REF_BRUSH.Color = color;
+        graphics.FillRectangle(REF_BRUSH, VScrollBarX.Location.X - REF_POS_1, Y_UP_MIC + REF_POS_2,
+            2 * (VScrollBarX.Width + REF_POS_1), VScrollBarX.Height - 2 * REF_POS_2);
+    }
     private void UpdateScrollBars((Real x, Real y) xyCoor)
     {
         int range = VScrollBarX.Maximum - VScrollBarX.Minimum;
         VScrollBarX.Value = Frac(range, (xyCoor.x - scopes[0]) / RowScopes());
         VScrollBarY.Value = Frac(range, (xyCoor.y - scopes[2]) / ColumnScopes());
+    }
+    private void UpdateShownScrollBars((Real x, Real y) xyCoor)
+    {
+        int range = VScrollBarX.Maximum - VScrollBarX.Minimum;
+        VScrollBarX.Value = Frac(range, (xyCoor.x - shown_scopes[0]) / (shown_scopes[1] - shown_scopes[0]));
+        VScrollBarY.Value = Frac(range, (xyCoor.y - shown_scopes[2]) / (shown_scopes[3] - shown_scopes[2]));
     }
     #endregion
 
@@ -307,6 +423,12 @@ public partial class Graph : Form
     private static int LinearTransformY(Real y, int[] borders, Real ratioColumn) => (int)(borders[2] + (y - scopes[3]) / ratioColumn);
     private static (Real, Real) LinearTransform(int x, int y, Real xCoor, Real yCoor, int[] borders)
         => (scopes[0] + (x - borders[0]) * xCoor, scopes[3] + (y - borders[2]) * yCoor);
+    private static (Real, Real) LinearTransformShown(int x, int y, int[] borders)
+    {
+        Real xCoor = (shown_scopes[1] - shown_scopes[0]) / RowBorders(borders),
+            yCoor = -(shown_scopes[3] - shown_scopes[2]) / ColumnBorders(borders);
+        return (shown_scopes[0] + (x - borders[0]) * xCoor, shown_scopes[3] + (y - borders[2]) * yCoor);
+    }
     private static int LowIdx(Real a, Real m) => (int)MathR.Floor(a / m);
     private static Real LowDist(Real a, Real m) => a - m * LowIdx(a, m);
     private static Real LowRatio(Real a, Real m) => a == 0 && BitConverter.DoubleToInt64Bits(a) < 0 ? 1 : LowDist(a, m) / m;
@@ -426,9 +548,8 @@ public partial class Graph : Form
         if (mode) return ObtainColorWheel(value, 1);
         Complex z = Complex.Log(value);
         Real alpha = GetShade((LowRatioFast(z.real, mod_stride) + LowRatioFast(z.imaginary, arg_stride)) / 2);
-        if (shade) return ObtainColorWheel(value, alpha);
-        Real argument = z.imaginary < 0 ? z.imaginary + MathR.Tau : z.imaginary;
-        return ObtainColorBase(argument, alpha, 255);
+        return shade ? ObtainColorWheel(value, alpha) :
+            ObtainColorBase(z.imaginary < 0 ? z.imaginary + MathR.Tau : z.imaginary, alpha, 255);
     }
     private unsafe void RealLoop123(Matrix<Real> output, Color zero, Color pole, int mode, (Real, Real) mM)
         => LoopBase((x, y, pixelPtr, ref pixNum) =>
@@ -548,37 +669,47 @@ public partial class Graph : Form
     {
         Real curveWidth = MathR.Min(CURVE_WIDTH * Obtain(ThickInput), CURVE_WIDTH_LIMIT);
         Pen dichoPen(Color c1, Color c2) => new(Swap(c1, c2), (float)curveWidth);
-        Pen vividPen = dichoPen(Color.Empty, Color.Empty), defaultPen = dichoPen(Color.Black, Color.White),
+        using Pen vividPen = dichoPen(Color.Empty, Color.Empty), defaultPen = dichoPen(Color.Black, Color.White),
             blackPen = dichoPen(Color.White, Color.Black), whitePen = dichoPen(Color.Black, Color.White),
-            bluePen = dichoPen(LOWER_BLUE, UPPER_GOLD), yellowPen = dichoPen(UPPER_GOLD, LOWER_BLUE),
-            selectedPen = color_mode == 1 ? defaultPen : vividPen;
+            bluePen = dichoPen(LOWER_BLUE, UPPER_GOLD), yellowPen = dichoPen(UPPER_GOLD, LOWER_BLUE);
+        Pen selectedPen = color_mode == 1 ? defaultPen : vividPen;
 
-        Point pos = new(), posBuffer = new(); bool inRange, inRangeBuffer = false; int _ratio, _ratioBuffer = 0;
+        bool inRange, inRangeBuffer = false, scrollEnabled = false; int x = 0, y = 0, xBuffer = 0, yBuffer = 0, _ratio, _ratioBuffer = 0;
         Real relativeSpeed = Obtain(DenseInput) / length, ratio; Real* v1Ptr = value1.RowPtr(), v2Ptr = value2.RowPtr();
         var (ratioRow, ratioColumn) = (GetRatioRow(borders), GetRatioColumn(borders));
 
         for (int steps = 0; steps <= length; steps++, v1Ptr++, v2Ptr++, segment_number++)
         {
-            (pos.X, pos.Y) = (LinearTransformX(*v1Ptr, borders, ratioRow), LinearTransformY(*v2Ptr, borders, ratioColumn));
-            inRange = *v1Ptr > scopes[0] && *v1Ptr < scopes[1] && *v2Ptr > scopes[2] && *v2Ptr < scopes[3];
-            if (inRangeBuffer && inRange && posBuffer != pos)
+            Real v1 = *v1Ptr, v2 = *v2Ptr;
+            inRange = v1 > scopes[0] && v1 < scopes[1] && v2 > scopes[2] && v2 < scopes[3];
+
+            if (inRange)
             {
-                ratio = relativeSpeed * steps % 1;
-                selectedPen = color_mode switch
+                x = LinearTransformX(v1, borders, ratioRow); y = LinearTransformY(v2, borders, ratioColumn);
+                if (inRangeBuffer && (xBuffer != x || yBuffer != y))
                 {
-                    2 => ratio < (Real)0.5 ? whitePen : blackPen,
-                    3 => ratio < (Real)0.5 ? bluePen : yellowPen,
-                    _ => selectedPen
-                };
-                if (color_mode > 3) vividPen.Color = ObtainColorWheelCurve(ratio);
-                graphics.DrawLine(selectedPen, posBuffer, pos);
-                SetScrollBars(true); // Necessary for each loop
-                UpdateScrollBars(LinearTransform(pos.X, pos.Y, ratioRow, ratioColumn, borders));
-                _ratio = Frac(REFRESH, ratio);
-                if (_ratioBuffer != _ratio) DrawReferenceRectangles(selectedPen.Color);
-                _ratioBuffer = _ratio;
+                    if (!scrollEnabled) { SetScrollBars(true); scrollEnabled = true; }
+                    ratio = relativeSpeed * steps % 1;
+                    selectedPen = color_mode switch
+                    {
+                        2 => ratio < (Real)0.5 ? whitePen : blackPen,
+                        3 => ratio < (Real)0.5 ? bluePen : yellowPen,
+                        _ => selectedPen
+                    };
+                    if (color_mode > 3) vividPen.Color = ObtainColorWheelCurve(ratio);
+                    graphics.DrawLine(selectedPen, xBuffer, yBuffer, x, y);
+
+                    _ratio = Frac(REFRESH, ratio);
+                    if (_ratioBuffer != _ratio)
+                    {
+                        UpdateScrollBars((v1, v2));
+                        DrawReferenceRectangles(selectedPen.Color);
+                        _ratioBuffer = _ratio;
+                    }
+                }
+                xBuffer = x; yBuffer = y;
             }
-            inRangeBuffer = inRange; posBuffer = pos;
+            inRangeBuffer = inRange;
         }
     }
     private void DisplayCurve(string[] split, bool isPolar = false, bool isParam = false)
@@ -746,45 +877,57 @@ public partial class Graph : Form
     {
         Cursor = Cursors.Cross;
         Graphics.FromImage(BMP_PIXEL).CopyFromScreen(Cursor.Position, Point.Empty, SIZE_PIXEL);
-        DrawReferenceRectangles(BMP_PIXEL.GetPixel(0, 0));
-        SetScrollBars(true);
-        HandleMouseAction(e, borders, v => { UpdateScrollBars(v); DisplayMouseMove(e, v.Item1, v.Item2); });
+        DrawReferenceRectangles(BMP_PIXEL.GetPixel(0, 0)); SetScrollBars(true);
+        HandleMouseAction(e, borders, v => { UpdateShownScrollBars(v); DisplayMouseMove(e, v.Item1, v.Item2); });
     }
     private void RunMouseDown(MouseEventArgs e, int[] borders)
     { chosen_number++; HandleMouseAction(e, borders, v => { DisplayMouseDown(e, v.Item1, v.Item2); }); }
-    private bool ActivateMoveDown() => activate_mouse && !error_input && !is_checking && !NoInput();
+    private bool ActivateMoveDown() => shown_ready && activate_mouse && !is_checking;
     private static void RunMouse(MouseEventArgs e, int[] b, Action<MouseEventArgs, int[]> action, Action? _action)
     { if (e.X > b[0] && e.X < b[1] && e.Y > b[2] && e.Y < b[3]) action(e, b); else _action?.Invoke(); }
-    private static void CheckMoveDown(Action<int[]> checkMouse) => checkMouse(GetBorders(is_main ? 1 : 2));
+    private static void CheckMoveDown(Action<int[]> checkMouse) => checkMouse(shown_borders);
     private static void HandleMouseAction(MouseEventArgs e, int[] borders, Action<(Real, Real)> actionHandler)
-        => actionHandler(LinearTransform(e.X, e.Y, GetRatioRow(borders), GetRatioColumn(borders), borders));
-    private void DisplayMouseMoveCore(int x = 0, int y = 0)
+        => actionHandler(LinearTransformShown(e.X, e.Y, borders));
+    private void DisplayMouseMoveCore(int x = 0, int y = 0, bool shown = false)
     {
-        if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
+        bool curve = shown ? shown_curve : MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES),
+            complex = shown ? shown_complex_mode : is_complex;
+        int[] b = shown ? shown_borders : borders;
+        if ((shown && !shown_ready) || curve || (uint)x >= (uint)RowBorders(b) || (uint)y >= (uint)ColumnBorders(b))
+        { SetText(FunctionDisplay, DISPLAY_ERROR); return; }
+
+        if (complex)
         {
-            if (is_complex) SetText(FunctionDisplay, $"[Re] {output_complex[x, y].real}\r\n[Im] {output_complex[x, y].imaginary}");
-            else SetText(FunctionDisplay, output_real[x, y].ToString());
+            Complex value = (shown ? shown_complex : output_complex)[x, y];
+            SetText(FunctionDisplay, $"[Re] {value.real}\r\n[Im] {value.imaginary}");
         }
-        else SetText(FunctionDisplay, DISPLAY_ERROR);
+        else SetText(FunctionDisplay, (shown ? shown_real : output_real)[x, y].ToString());
     }
     private void DisplayMouseMove(MouseEventArgs e, Real xCoor, Real yCoor)
     {
         static string trimMove(Real input) => MyString.FormatNumber(input, THRESHOLD);
         SetText(X_CoorDisplay, trimMove(xCoor)); SetText(Y_CoorDisplay, trimMove(yCoor));
         SetText(ModulusDisplay, trimMove(Real.Hypot(xCoor, yCoor))); SetText(AngleDisplay, MyString.FormatAngle(xCoor, yCoor));
-        DisplayMouseMoveCore(e.X - AddOne(borders[0]), e.Y - AddOne(borders[2]));
+        DisplayMouseMoveCore(e.X - AddOne(shown_borders[0]), e.Y - AddOne(shown_borders[2]), true);
     }
     private void DisplayMouseDown(MouseEventArgs e, Real xCoor, Real yCoor)
     {
         static string trimDown(Real input) => MyString.FormatNumber(input, THRESHOLD);
         string _xCoor = trimDown(xCoor), _yCoor = trimDown(yCoor), modulus = trimDown(Real.Hypot(xCoor, yCoor)),
             angle = MyString.FormatAngle(xCoor, yCoor), message = String.Empty;
-        if (!MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES))
+        if (!shown_curve)
         {
-            message += "\r\n\r\n";
-            var (x, y) = (e.X - AddOne(borders[0]), e.Y - AddOne(borders[2]));
-            if (is_complex) message += $"Re = {trimDown(output_complex[x, y].real)}\r\nIm = {trimDown(output_complex[x, y].imaginary)}";
-            else message += $"f(x, y) = {trimDown(output_real[x, y])}";
+            var (x, y) = (e.X - AddOne(shown_borders[0]), e.Y - AddOne(shown_borders[2]));
+            if ((uint)x < (uint)RowBorders(shown_borders) && (uint)y < (uint)ColumnBorders(shown_borders))
+            {
+                message += "\r\n\r\n";
+                if (shown_complex_mode)
+                {
+                    Complex value = shown_complex[x, y];
+                    message += $"Re = {trimDown(value.real)}\r\nIm = {trimDown(value.imaginary)}";
+                }
+                else message += $"f(x, y) = {trimDown(shown_real[x, y])}";
+            }
         }
         AddDraft($"\r\n{SEP_1} Point {chosen_number} of No.{loop_number} {SEP_2}\r\n" +
             $"\r\nx = {_xCoor}\r\ny = {_yCoor}\r\n" + $"\r\nmod = {modulus}\r\narg = {angle}{message}\r\n");
@@ -815,7 +958,7 @@ public partial class Graph : Form
             clicked = true; loop_number++;
 
             PrepareSetDisplay(borders, isMain);
-            endAction();
+            CaptureShownState(isMain); endAction();
         }
         catch (Exception) { Invoke(() => InputErrorBox(sender, e, WRONG_FORMAT)); } // Executed on the UI thread
         finally
@@ -862,6 +1005,12 @@ public partial class Graph : Form
         (x_left, x_right, y_up, y_down, is_main) = (borders[0], borders[1], borders[2], borders[3], isMain);
         SetThicknessDensenessScopesBorders();
         DisplayInput();
+    }
+    private void CaptureShownState(bool isMain)
+    {
+        shown_ready = true; shown_main = isMain; shown_curve = MyString.ContainsAny(InputString.Text, MyString.FPP_NAMES);
+        shown_complex_mode = is_complex; shown_borders = [.. borders]; shown_scopes = [.. scopes];
+        if (!shown_curve) { if (shown_complex_mode) shown_complex = output_complex; else shown_real = output_real; }
     }
     private void Ending(string mode)
     {
@@ -1223,21 +1372,21 @@ public partial class Graph : Form
         if (index < L1) set = index switch
         {
             0 => (1, "1.1", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, true, false, false)),
-            1 => (3, "1.2", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            2 => (3, "1.1", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            3 => (4, "pi/2", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            4 => (3, "pi", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            5 => (3, "1.5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            1 => (3, "1.2", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
+            2 => (3, "1.1", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
+            3 => (4, "pi/2", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
+            4 => (3, "pi", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
+            5 => (3, "1.5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
             6 => (3, "0", ("-1.6", "0.6", "-1.1", "1.1"), ("100", DENSE_DEFAULT), (false, false, true, true)),
-            7 => (4, "2", ("", "", "", ""), (THICK_DEFAULT, "pi/2"), (true, false, false, false))
+            7 => (4, "2", ("", "", "", ""), (THICK_DEFAULT, "pi/2"), (false, false, false, false))
         };
         else if (index > L1 && index < L1 + L2 + 1) set = (index - L1 - 1) switch
         {
-            0 => (2, "10", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            1 => (4, "2pi", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
-            2 => (3, "5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (true, false, false, false)),
+            0 => (2, "10", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
+            1 => (4, "2pi", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
+            2 => (3, "5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, false)),
             3 => (0, "5", ("", "", "", ""), (THICK_DEFAULT, DENSE_DEFAULT), (false, false, false, true)),
-            4 => (1, "e", ("", "", "", ""), ("0.1", DENSE_DEFAULT), (true, true, false, false)),
+            4 => (1, "e", ("", "", "", ""), ("0.1", DENSE_DEFAULT), (false, true, false, false)),
             5 => (3, "3pi/2", ("", "", "", ""), ("0.5", DENSE_DEFAULT), (false, false, true, false)),
             6 => (0, "0", ("0", "1", "0", "1"), ("0.2", DENSE_DEFAULT), (true, false, false, true)),
             7 => (4, "2", ("", "", "", ""), ("5", DENSE_DEFAULT), (false, false, true, false))
@@ -1310,6 +1459,7 @@ public partial class Graph : Form
         ClearBitmap(GetBitmap(isMain));
         Invalidate(isMain ? rect_mac : rect_mic); Update(); // Clears curves that extend beyond the display bounds
         DrawBackdropAxesGrids(borders, isMain);
+        if (shown_ready && shown_main == isMain) shown_ready = false;
     } // Sensitive
     private void Delete_Click(EventArgs e) { DeleteMain_Click(this, e); DeletePreview_Click(this, e); }
     private void DeleteMain_Click(object sender, EventArgs e) => Delete_Click(GetBorders(1), true);
@@ -1343,7 +1493,7 @@ public partial class Graph : Form
     {
         DrawBackdrop(GetBorders(1)); DrawBackdrop(GetBorders(2));
         SetAxesDrawn(true); SetAxesDrawn(false);
-        DrawReferenceRectangles(SystemColors.ControlDark);
+        DrawReferenceRectangles(SystemColors.ControlDark); shown_ready = false;
     }
     private void InputString_DoubleClick(object sender, EventArgs e) => InputString_TextChanged(sender, e);
     private void AddressInput_DoubleClick(object sender, EventArgs e) => AddressInput_TextChanged(sender, e);
