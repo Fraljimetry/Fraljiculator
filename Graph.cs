@@ -60,7 +60,7 @@ public partial class Graph : Form
     //
     private static bool is_flashing, is_complex = true, delete_point = true, delete_coor = true, swap_colors, is_auto, freeze_graph,
         clicked, shade, axes_drawn_mac, axes_drawn_mic, is_main, activate_mouse, is_checking, error_input, error_address, is_resized,
-        ctrl_pressed, sft_pressed, bdp_painted, paren_change, shown_ready, shown_curve, shown_complex_mode, shown_main;
+        ctrl_pressed, sft_pressed, bdp_painted, paren_change, shown_ready, shown_curve, shown_complex_mode, shown_main, session_loading;
     private static readonly string ADDRESS_DEFAULT = @"C:\Users\Public", DATE = "Oct, 2024", STOCKPILE = "stockpile", INPUT_DEFAULT = "z",
         GENERAL_DEFAULT = "e", THICK_DEFAULT = "1", DENSE_DEFAULT = "1", MACRO = "MACRO", MICRO = "MICRO", ZERO = "0",
         REMIND_EXPORT = "Snapshot saved at", REMIND_STORE = "History saved at", CAPTION_DEFAULT = "Your inputs will be shown here.",
@@ -71,9 +71,10 @@ public partial class Graph : Form
     private static readonly string[] CONTOUR_MODES = ["Cartesian (x, y)", "Polar (r, θ)"], COLOR_MODES =
         ["Commonplace", "Monochromatic", "Bichromatic", "Kaleidoscopic", "Miscellaneous"];
     private static readonly string SESSION_DIR = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Fraljiculator"), SESSION_FILE = Path.Combine(SESSION_DIR, "session.json");
-    private const int SESSION_VERSION = 1;
-    private sealed class SessionState
+        "Fraljiculator"), SESSION_FILE = Path.Combine(SESSION_DIR, "session.json"), DRAFT_FILE = Path.Combine(SESSION_DIR, "draft.txt"),
+        CAPTION_FILE = Path.Combine(SESSION_DIR, "caption.txt");
+    private const int SESSION_VERSION = 2;
+    private class SessionState
     {
         public int Version { get; set; }
         public string? Input { get; set; }
@@ -95,11 +96,10 @@ public partial class Graph : Form
         public bool Edit { get; set; }
         public bool Complex { get; set; }
         public bool Coor { get; set; }
-        public string? Draft { get; set; }
-        public string? Caption { get; set; }
         public int LoopNumber { get; set; }
         public int ChosenNumber { get; set; }
     }
+    private sealed class LegacySessionState : SessionState { public string? Draft { get; set; } public string? Caption { get; set; } }
     #endregion
 
     #region Initializations
@@ -108,7 +108,7 @@ public partial class Graph : Form
         InitializeComponent(); InitializeArrays();
         SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor); BanMouseWheel();
         InitializeTimers(); InitializeGraphics(); InitializeCombo(); InitializeData(); SetThicknessDensenessScopesBorders();
-        LoadSessionState(); FormClosing += (sender, e) => SaveSessionState();
+        InitializeSession();
     }
     private void Graph_Load(object sender, EventArgs e) => TextBoxFocus(sender, e);
     private void Graph_Paint(object sender, PaintEventArgs e) { if (!bdp_painted && !clicked) SubtitleBox_DoubleClick(sender, e); }
@@ -207,6 +207,7 @@ public partial class Graph : Form
     private void InitializeData() { ResetInputs(); SetText(DraftBox, DRAFT_DEFAULT); SetText(CaptionBox, CAPTION_DEFAULT); }
     private void SaveSessionState()
     {
+        if (session_loading) return;
         try
         {
             SessionState state = new()
@@ -231,50 +232,89 @@ public partial class Graph : Form
                 Edit = CheckEdit.Checked,
                 Complex = CheckComplex.Checked,
                 Coor = CheckCoor.Checked,
-                Draft = DraftBox.Text,
-                Caption = CaptionBox.Text,
                 LoopNumber = loop_number,
                 ChosenNumber = chosen_number
             };
             Directory.CreateDirectory(SESSION_DIR);
-            string tempFile = SESSION_FILE + ".tmp";
-            File.WriteAllText(tempFile, JsonSerializer.Serialize(state));
-            File.Move(tempFile, SESSION_FILE, true);
+            static void save(string file, string text)
+            { string temp = file + ".tmp"; File.WriteAllText(temp, text); File.Move(temp, file, true); }
+            save(SESSION_FILE, JsonSerializer.Serialize(state)); save(DRAFT_FILE, DraftBox.Text); save(CAPTION_FILE, CaptionBox.Text);
         }
         catch (Exception) { } // Session persistence must never prevent shutdown
     }
-    private void LoadSessionState()
+    private static int ReadSessionVersion()
     {
         try
         {
-            if (!File.Exists(SESSION_FILE)) return;
-            SessionState? state = JsonSerializer.Deserialize<SessionState>(File.ReadAllText(SESSION_FILE));
-            if (state == null || state.Version != SESSION_VERSION) return;
-
-            bool inputReadOnly = InputString.ReadOnly; InputString.ReadOnly = true;
-            try
-            {
-                SetText(InputString, state.Input ?? InputString.Text); SetText(AddressInput, state.Address ?? AddressInput.Text);
-                SetText(GeneralInput, state.General ?? GeneralInput.Text); SetText(X_Left, state.XLeft ?? X_Left.Text);
-                SetText(X_Right, state.XRight ?? X_Right.Text); SetText(Y_Left, state.YLeft ?? Y_Left.Text);
-                SetText(Y_Right, state.YRight ?? Y_Right.Text); SetText(ThickInput, state.Thick ?? ThickInput.Text);
-                SetText(DenseInput, state.Dense ?? DenseInput.Text);
-                if ((uint)state.Coloring < (uint)ComboColoring.Items.Count) ComboColoring.SelectedIndex = state.Coloring;
-                if ((uint)state.Contour < (uint)ComboContour.Items.Count) ComboContour.SelectedIndex = state.Contour;
-                CheckAuto.Checked = state.Auto; CheckSwap.Checked = state.Swap; CheckPoints.Checked = state.Points;
-                CheckShade.Checked = state.Shade; CheckRetain.Checked = state.Retain; CheckEdit.Checked = state.Edit;
-                CheckComplex.Checked = state.Complex; CheckCoor.Checked = state.Coor;
-                (is_auto, swap_colors, delete_point, shade, freeze_graph, is_complex, delete_coor) =
-                    (state.Auto, state.Swap, !state.Points, state.Shade, state.Retain, state.Complex, !state.Coor);
-                DraftBox.ReadOnly = !state.Edit; DraftBox.BackColor = DraftBox.ReadOnly ? Color.Black : SystemColors.ControlDarkDark;
-                DraftBox.ForeColor = DraftBox.ReadOnly ? READONLY_GRAY : Color.White;
-                DraftBox.ScrollBars = DraftBox.ReadOnly ? ScrollBars.None : ScrollBars.Vertical;
-                SetText(DraftBox, state.Draft ?? DraftBox.Text); SetText(CaptionBox, state.Caption ?? CaptionBox.Text);
-                loop_number = MathR.Max(0, state.LoopNumber); chosen_number = MathR.Max(0, state.ChosenNumber);
-            }
-            finally { InputString.ReadOnly = inputReadOnly; }
+            using FileStream stream = File.OpenRead(SESSION_FILE); Span<byte> buffer = stackalloc byte[128];
+            int count = stream.Read(buffer); Utf8JsonReader reader = new(buffer[..count]);
+            while (reader.Read()) if (reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals("Version") && reader.Read())
+                return reader.GetInt32();
         }
-        catch (Exception) { } // Missing, corrupt, or incompatible state falls back to normal defaults
+        catch (Exception) { }
+        return 0;
+    }
+    private void ApplySessionState(SessionState state)
+    {
+        bool inputReadOnly = InputString.ReadOnly; InputString.ReadOnly = true;
+        try
+        {
+            SetText(InputString, state.Input ?? InputString.Text); SetText(AddressInput, state.Address ?? AddressInput.Text);
+            SetText(GeneralInput, state.General ?? GeneralInput.Text); SetText(X_Left, state.XLeft ?? X_Left.Text);
+            SetText(X_Right, state.XRight ?? X_Right.Text); SetText(Y_Left, state.YLeft ?? Y_Left.Text);
+            SetText(Y_Right, state.YRight ?? Y_Right.Text); SetText(ThickInput, state.Thick ?? ThickInput.Text);
+            SetText(DenseInput, state.Dense ?? DenseInput.Text);
+            if ((uint)state.Coloring < (uint)ComboColoring.Items.Count) ComboColoring.SelectedIndex = state.Coloring;
+            if ((uint)state.Contour < (uint)ComboContour.Items.Count) ComboContour.SelectedIndex = state.Contour;
+            CheckAuto.Checked = state.Auto; CheckSwap.Checked = state.Swap; CheckPoints.Checked = state.Points;
+            CheckShade.Checked = state.Shade; CheckRetain.Checked = state.Retain; CheckEdit.Checked = state.Edit;
+            CheckComplex.Checked = state.Complex; CheckCoor.Checked = state.Coor;
+            (is_auto, swap_colors, delete_point, shade, freeze_graph, is_complex, delete_coor) =
+                (state.Auto, state.Swap, !state.Points, state.Shade, state.Retain, state.Complex, !state.Coor);
+            DraftBox.ReadOnly = !state.Edit; DraftBox.BackColor = DraftBox.ReadOnly ? Color.Black : SystemColors.ControlDarkDark;
+            DraftBox.ForeColor = DraftBox.ReadOnly ? READONLY_GRAY : Color.White;
+            DraftBox.ScrollBars = DraftBox.ReadOnly ? ScrollBars.None : ScrollBars.Vertical;
+            loop_number = MathR.Max(0, state.LoopNumber); chosen_number = MathR.Max(0, state.ChosenNumber);
+        }
+        finally { InputString.ReadOnly = inputReadOnly; }
+    }
+    private int LoadSessionState()
+    {
+        try
+        {
+            if (!File.Exists(SESSION_FILE)) return 0; int version = ReadSessionVersion();
+            if (version != SESSION_VERSION) return version == 1 ? -1 : 0;
+            SessionState? state = JsonSerializer.Deserialize<SessionState>(File.ReadAllText(SESSION_FILE));
+            if (state == null) return 0; ApplySessionState(state); return 1;
+        }
+        catch (Exception) { return 0; } // Missing, corrupt, or incompatible state falls back to normal defaults
+    }
+    private async Task LoadSessionTextAsync(int mode)
+    {
+        try
+        {
+            if (mode < 0)
+            {
+                LegacySessionState? state = await Task.Run(() =>
+                    JsonSerializer.Deserialize<LegacySessionState>(File.ReadAllText(SESSION_FILE)));
+                if (state == null || state.Version != 1) return; ApplySessionState(state);
+                SetText(DraftBox, state.Draft ?? DraftBox.Text); SetText(CaptionBox, state.Caption ?? CaptionBox.Text);
+                return;
+            }
+            var text = await Task.Run(() => (
+                File.Exists(DRAFT_FILE) ? File.ReadAllText(DRAFT_FILE) : null,
+                File.Exists(CAPTION_FILE) ? File.ReadAllText(CAPTION_FILE) : null));
+            if (text.Item1 != null) SetText(DraftBox, text.Item1);
+            if (text.Item2 != null) SetText(CaptionBox, text.Item2);
+        }
+        catch (Exception) { }
+        finally { session_loading = false; } // Large display text must never block or endanger launch
+    }
+    private void InitializeSession()
+    {
+        int mode = LoadSessionState(); session_loading = mode != 0;
+        if (session_loading) { Opacity = 0; Shown += async (s, e) => { await LoadSessionTextAsync(mode); Opacity = 1; }; }
+        FormClosing += (s, e) => SaveSessionState();
     }
     private void SetThicknessDensenessScopesBorders(bool autoFill = true)
     {
