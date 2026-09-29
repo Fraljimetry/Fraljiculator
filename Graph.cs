@@ -15,6 +15,7 @@ public partial class Graph : Form
 {
     // 1. PREPARATIONS
     #region Fields
+    private Panel? session_cover;
     private static DateTime TimeNow = new();
     private static TimeSpan TimeCount = new();
     private static System.Windows.Forms.Timer WaitTimer, DisplayTimer;
@@ -105,7 +106,7 @@ public partial class Graph : Form
     #region Initializations
     public Graph()
     {
-        InitializeComponent(); InitializeArrays();
+        InitializeComponent(); BackColor = Argb(64, 64, 64); InitializeArrays();
         SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor); BanMouseWheel();
         InitializeTimers(); InitializeGraphics(); InitializeCombo(); InitializeData(); SetThicknessDensenessScopesBorders();
         InitializeSession();
@@ -313,7 +314,16 @@ public partial class Graph : Form
     private void InitializeSession()
     {
         int mode = LoadSessionState(); session_loading = mode != 0;
-        if (session_loading) { Opacity = 0; Shown += async (s, e) => { await LoadSessionTextAsync(mode); Opacity = 1; }; }
+        if (session_loading)
+        {
+            session_cover = new() { Dock = DockStyle.Fill, BackColor = Color.Black };
+            Controls.Add(session_cover); session_cover.BringToFront();
+            Shown += async (s, e) =>
+            {
+                try { await LoadSessionTextAsync(mode); }
+                finally { session_cover.Dispose(); session_cover = null; }
+            };
+        }
         FormClosing += (s, e) => SaveSessionState();
     }
     private void SetThicknessDensenessScopesBorders(bool autoFill = true)
