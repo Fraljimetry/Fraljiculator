@@ -106,7 +106,7 @@ public partial class Graph : Form
     #region Initializations
     public Graph()
     {
-        InitializeComponent(); BackColor = Argb(64, 64, 64); InitializeArrays();
+        InitializeComponent(); InitializeArrays();
         SetTitleBarColor(); ReduceFontSizeByScale(this, ref scale_factor); BanMouseWheel();
         InitializeTimers(); InitializeGraphics(); InitializeCombo(); InitializeData(); SetThicknessDensenessScopesBorders();
         InitializeSession();
