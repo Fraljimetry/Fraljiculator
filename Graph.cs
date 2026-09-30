@@ -208,7 +208,7 @@ public partial class Graph : Form
     private void InitializeData() { ResetInputs(); SetText(DraftBox, DRAFT_DEFAULT); SetText(CaptionBox, CAPTION_DEFAULT); }
     private void SaveSessionState()
     {
-        if (session_loading) return;
+        RecoverParen(); if (session_loading) return;
         try
         {
             SessionState state = new()
@@ -1545,17 +1545,15 @@ public partial class Graph : Form
         SetAxesDrawn(true); SetAxesDrawn(false);
         DrawReferenceRectangles(SystemColors.ControlDark); shown_ready = false;
     }
-    private static void RecheckDoubleClick(object sender, EventArgs e, Action<object, EventArgs> action)
-    { RecoverParen(); action(sender, e); }
-    private void InputString_DoubleClick(object sender, EventArgs e) => RecheckDoubleClick(sender, e, InputString_TextChanged);
-    private void AddressInput_DoubleClick(object sender, EventArgs e) => RecheckDoubleClick(sender, e, AddressInput_TextChanged);
-    private void GeneralInput_DoubleClick(object sender, EventArgs e) => RecheckDoubleClick(sender, e, GeneralInput_TextChanged);
-    private void X_Left_DoubleClick(object sender, EventArgs e) => RecheckDoubleClick(sender, e, X_Left_TextChanged);
-    private void X_Right_DoubleClick(object sender, EventArgs e) => RecheckDoubleClick(sender, e, X_Right_TextChanged);
-    private void Y_Left_DoubleClick(object sender, EventArgs e) => RecheckDoubleClick(sender, e, Y_Left_TextChanged);
-    private void Y_Right_DoubleClick(object sender, EventArgs e) => RecheckDoubleClick(sender, e, Y_Right_TextChanged);
-    private void ThickInput_DoubleClick(object sender, EventArgs e) => RecheckDoubleClick(sender, e, ThickInput_TextChanged);
-    private void DenseInput_DoubleClick(object sender, EventArgs e) => RecheckDoubleClick(sender, e, DenseInput_TextChanged);
+    private void InputString_DoubleClick(object sender, EventArgs e) => InputString_TextChanged(sender, e);
+    private void AddressInput_DoubleClick(object sender, EventArgs e) => AddressInput_TextChanged(sender, e);
+    private void GeneralInput_DoubleClick(object sender, EventArgs e) => GeneralInput_TextChanged(sender, e);
+    private void X_Left_DoubleClick(object sender, EventArgs e) => X_Left_TextChanged(sender, e);
+    private void X_Right_DoubleClick(object sender, EventArgs e) => X_Right_TextChanged(sender, e);
+    private void Y_Left_DoubleClick(object sender, EventArgs e) => Y_Left_TextChanged(sender, e);
+    private void Y_Right_DoubleClick(object sender, EventArgs e) => Y_Right_TextChanged(sender, e);
+    private void ThickInput_DoubleClick(object sender, EventArgs e) => ThickInput_TextChanged(sender, e);
+    private void DenseInput_DoubleClick(object sender, EventArgs e) => DenseInput_TextChanged(sender, e);
     //
     private static bool RemoveSomeKeys(TextBox tbx)
     {
